@@ -21,7 +21,7 @@ The low-poly venue plus saturated moving beams is visually promising. Additive f
 
 ## Audio clock prototype
 
-`apps/lighting-spike/src/audio-clock.ts` replaces the placeholder performance clock. Song time is `AudioContext.currentTime - outputLatency`, anchored on an `AudioBufferSourceNode`, so play, pause, scrub and loop are all re-anchors rather than a second time source (ADR-002).
+`apps/lighting-spike/src/audio-clock.ts` replaces the placeholder performance clock. Song time is `AudioContext.currentTime - outputLatency`, anchored on an `AudioBufferSourceNode`, so play, pause, scrub and loop are all re-anchors rather than a second time source (ADR-002). The transport can also load a user-selected local audio file; imported tracks start at zero with full-track looping, and their waveform is shown without beat ticks until a beat grid is supplied.
 
 - Latency compensation uses `outputLatency` (40 ms in the integrated Chrome here), so visuals follow the sample that is actually audible.
 - Looping uses the source node's `loopStart`/`loopEnd`, which is sample-accurate; the visual clock wraps on the same region.
@@ -49,4 +49,4 @@ The low-poly venue plus saturated moving beams is visually promising. Additive f
 3. Validate WebGL2 fallback and compare output/quality.
 4. Improve physical fixture geometry and DMX profile/channel fidelity before carrying spike code into `packages/renderer`.
 5. Add a photosensitivity warning/control before making strobe-heavy shows a normal default.
-6. Replace the hard-coded beat grid with real import-time analysis (BPM/offset detection, correctable) and move the transport strip toward the Phase 1 timeline.
+6. Replace the hard-coded sample beat grid with real import-time analysis (BPM/offset detection, correctable) and move the transport strip toward the Phase 1 timeline.

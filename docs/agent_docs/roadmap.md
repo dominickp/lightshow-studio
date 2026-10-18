@@ -14,7 +14,7 @@ Exit criteria: a documented frame budget in `docs/agent_docs/spike-notes.md`, a 
 
 Build on the working audio clock in this order:
 
-1. Add local audio selection and playback for a user-provided file.
+1. [x] Add local audio selection and playback for a user-provided file.
 2. Show and allow editing of BPM and beat-grid offset; keep analysis results correctable.
 3. Display the waveform with beat/bar markers driven by that grid.
 4. Add a minimal clip lane with create/move/resize and play/pause/scrub, proving a short lighting cue can be authored and stays synced.

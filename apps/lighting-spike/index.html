@@ -131,7 +131,7 @@
         right: 12px;
         bottom: 12px;
         display: grid;
-        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-columns: auto auto minmax(0, 1fr) auto;
         align-items: center;
         gap: 12px;
         padding: 8px 10px;
@@ -193,6 +193,21 @@
         text-align: right;
       }
 
+      #transport-meta span + span {
+        max-width: 260px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      #transport-meta #audio-status {
+        color: var(--accent);
+      }
+
+      #audio-file {
+        display: none;
+      }
+
       #loading {
         position: fixed;
         inset: 0;
@@ -247,10 +262,13 @@
 
     <div class="panel" id="transport">
       <button id="btn-play" disabled>▶ Play</button>
+      <button id="btn-audio" type="button">Choose audio</button>
+      <input id="audio-file" type="file" accept="audio/*" aria-label="Choose an audio file" />
       <canvas id="waveform" aria-label="Waveform, beat grid and playhead"></canvas>
       <div id="transport-meta">
         <b id="transport-time">–</b>
         <span id="transport-track">The Koto Chill — zircon · 130 BPM · bars 41–56</span>
+        <span id="audio-status" role="status" aria-live="polite">Loading default track…</span>
       </div>
     </div>
 

@@ -59,7 +59,11 @@ const ui = {
   latency: element('stat-latency'),
   loop: element('stat-loop'),
   transportTime: element('transport-time'),
+  transportTrack: element('transport-track'),
+  audioStatus: element('audio-status'),
   play: element<HTMLButtonElement>('btn-play'),
+  chooseAudio: element<HTMLButtonElement>('btn-audio'),
+  audioFile: element<HTMLInputElement>('audio-file'),
   vol: element<HTMLButtonElement>('btn-vol'),
   bloom: element<HTMLButtonElement>('btn-bloom'),
   shadow: element<HTMLButtonElement>('btn-shadow'),
@@ -90,7 +94,7 @@ const formatClock = (seconds: number): string => {
 const syncButtons = (): void => {
   ui.play.classList.toggle('on', clock.playing);
   ui.play.textContent = clock.playing ? '❚❚ Pause' : '▶ Play';
-  ui.loop.textContent = `${TRACK.loopStartBar}–${TRACK.loopStartBar + TRACK.loopBars - 1} ${clock.loopEnabled ? 'on' : 'off'}`;
+  ui.loop.textContent = clock.loopEnabled ? 'on' : 'off';
   ui.vol.classList.toggle('on', volumetrics);
   ui.bloom.classList.toggle('on', bloomOn);
   ui.shadow.classList.toggle('on', shadowsOn);
@@ -122,6 +126,42 @@ const togglePlay = (): void => {
 };
 
 ui.play.addEventListener('click', togglePlay);
+ui.chooseAudio.addEventListener('click', () => ui.audioFile.click());
+ui.audioFile.addEventListener('change', () => {
+  const file = ui.audioFile.files?.[0];
+  ui.audioFile.value = '';
+  if (file === undefined) return;
+
+  ui.chooseAudio.disabled = true;
+  ui.audioStatus.textContent = `Loading ${file.name}…`;
+  void (async () => {
+    try {
+      const buffer = await clock.decode(await file.arrayBuffer());
+      clock.load(buffer);
+      clock.setLoop({ startSec: 0, endSec: buffer.duration }, true);
+      clock.seek(0);
+      ui.transportTrack.textContent = file.name;
+      ui.transportTime.textContent = `${formatClock(0)} / ${formatClock(buffer.duration)}`;
+      ui.audioStatus.textContent = 'Local audio loaded · beat grid not set';
+      waveform.setTimeline({
+        durationSec: buffer.duration,
+        loopStartSec: 0,
+        loopEndSec: buffer.duration,
+        firstBeatSec: 0,
+        bpm: null,
+        beatsPerBar: TRACK.beatsPerBar,
+      });
+      waveform.setPeaks(computePeaks(buffer, 1600));
+      ui.play.disabled = false;
+    } catch (error) {
+      console.error(`could not load audio file "${file.name}"`, error);
+      ui.audioStatus.textContent = `Could not load ${file.name}; previous audio is unchanged`;
+    } finally {
+      ui.chooseAudio.disabled = false;
+      syncButtons();
+    }
+  })();
+});
 ui.vol.addEventListener('click', () => {
   volumetrics = !volumetrics;
   syncButtons();
@@ -264,9 +304,12 @@ try {
   if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
   const buffer = await clock.decode(await response.arrayBuffer());
   clock.load(buffer);
+  clock.setLoop({ startSec: loopStartSec, endSec: loopEndSec }, true);
   clock.seek(loopStartSec);
   ui.play.disabled = false;
 
+  ui.transportTrack.textContent = `${TRACK.title} — ${TRACK.artist} · ${TRACK.bpm} BPM · bars ${TRACK.loopStartBar}–${TRACK.loopStartBar + TRACK.loopBars - 1}`;
+  ui.audioStatus.textContent = 'Ready';
   waveform.setTimeline({
     durationSec: buffer.duration,
     loopStartSec,
@@ -279,9 +322,7 @@ try {
   ui.transportTime.textContent = `${formatClock(loopStartSec)} / ${formatClock(buffer.duration)}`;
 } catch (error) {
   console.error(error);
-  ui.loading.textContent = `could not load ${TRACK.title}`;
-  ui.loading.hidden = false;
-  await new Promise((resolve) => setTimeout(resolve, 2500));
+  ui.audioStatus.textContent = `Could not load default track: ${TRACK.title}`;
 }
 
 ui.loading.hidden = true;

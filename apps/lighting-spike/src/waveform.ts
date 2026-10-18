@@ -9,7 +9,7 @@ export interface Timeline {
   loopStartSec: number;
   loopEndSec: number;
   firstBeatSec: number;
-  bpm: number;
+  bpm: number | null;
   beatsPerBar: number;
 }
 
@@ -199,6 +199,8 @@ export class WaveformStrip {
   }
 
   private paintTicks(ctx: CanvasRenderingContext2D, timeline: Timeline): void {
+    if (timeline.bpm === null || timeline.bpm <= 0) return;
+
     const beatSec = 60 / timeline.bpm;
     const spacing = (beatSec / timeline.durationSec) * this.width;
     if (spacing < 2.5) return;

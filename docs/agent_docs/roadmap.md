@@ -10,7 +10,16 @@ Phase gates are about proving the risky thing before building the expensive thin
 
 Exit criteria: a documented frame budget in `docs/agent_docs/spike-notes.md`, a look worth iterating on, and enough audio-sync evidence to proceed into the vertical slice. The first two have promising evidence; target-hardware performance and automated beat analysis remain open.
 
-Recommended next: begin the Phase 1 authoring slice on top of the working clock—local audio selection, editable BPM/offset, then waveform beat grid and a minimal clip lane with scrub/playback. Keep the current fixture set; more fixture/effect types are later-phase work. In parallel, validate the renderer on a 60 Hz / mid-range GPU and compare proxy beams with half-resolution volumetrics.
+### Recommended next: timeline authoring slice
+
+Build on the working audio clock in this order:
+
+1. Add local audio selection and playback for a user-provided file.
+2. Show and allow editing of BPM and beat-grid offset; keep analysis results correctable.
+3. Display the waveform with beat/bar markers driven by that grid.
+4. Add a minimal clip lane with create/move/resize and play/pause/scrub, proving a short lighting cue can be authored and stays synced.
+
+**Keep the current fixture set.** Defer additional fixture types and lighting effects until this authoring flow is proven; those expand the content surface before the core workflow is validated. In parallel, validate the renderer on a 60 Hz / mid-range GPU and compare proxy beams with half-resolution volumetrics.
 
 ## Phase 1 — Vertical slice
 

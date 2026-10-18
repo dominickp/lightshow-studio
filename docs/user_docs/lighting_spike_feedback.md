@@ -49,3 +49,5 @@
 - "Fixter preview" needs a redesign. This panel should auto open when you click on a track, so it should have a permant spot somewhere I think. Or maybe there should be a little gear icon on each track to open this. No idea what test output does or the checkbox next to it. 
   - "Live render-only tuning; not stored in clips or the show." i dont understand this warning.
 - Debug/stats menu should be toggleable, so it doesn't show all the time. Maybe its time for a preferences/settings panel?
+- The timeline and settings need to be exportable and importable as a project file
+  - Along with this work, the current koto chill demo needs to be loaded from that filetype off of the disk. This way, the user can iterate on the demo project.

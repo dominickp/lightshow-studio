@@ -118,6 +118,10 @@ export class Stage {
 
   private readonly rigs: FixtureRig[] = [];
   private readonly fixturePreviews = new Map<string, Partial<FixturePreview>>();
+    private readonly hiddenFixtures = new Set<string>();
+    private readonly selectionMarker = new THREE.Group();
+    private selectedFixtureId: string | null = null;
+    private activeCount = Number.POSITIVE_INFINITY;
   private readonly pointLights: THREE.PointLight[] = [];
   private readonly spot: THREE.SpotLight;
   private readonly ledUniforms = { time: uniform(0), energy: uniform(0.4) };
@@ -147,6 +151,7 @@ export class Stage {
     addRoom(this.scene);
     this.addLeds();
     this.addAtmosphere();
+        this.addSelectionMarker();
 
     const spot = new THREE.SpotLight(0xffe6c8, 190, 42, 0.42, 0.7, 2);
     spot.position.set(0, 9.5, -4);
@@ -204,6 +209,25 @@ export class Stage {
     this.scene.add(stageEdge);
   }
 
+  private addSelectionMarker(): void {
+    const material = new THREE.MeshBasicMaterial({
+      color: 0x7ad1ff,
+      transparent: true,
+      opacity: 0.9,
+      depthTest: false,
+    });
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.022, 8, 40), material);
+    ring.rotation.x = Math.PI / 2;
+    ring.renderOrder = 999;
+    const pointer = new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.2, 10), material);
+    pointer.rotation.x = Math.PI;
+    pointer.position.y = 0.62;
+    pointer.renderOrder = 999;
+    this.selectionMarker.add(ring, pointer);
+    this.selectionMarker.visible = false;
+    this.scene.add(this.selectionMarker);
+  }
+
   private addAtmosphere(): void {
     const haze = new THREE.Mesh(
       new THREE.PlaneGeometry(40, 30),
@@ -234,8 +258,39 @@ export class Stage {
   }
 
   setActiveCount(count: number): void {
-    this.rigs.forEach((rig, index) => rig.setVisible(index < count));
-  }
+      this.activeCount = count;
+      this.applyVisibility();
+    }
+
+    setFixtureHidden(fixtureId: string, hidden: boolean): void {
+      if (hidden) this.hiddenFixtures.add(fixtureId);
+      else this.hiddenFixtures.delete(fixtureId);
+      this.applyVisibility();
+    }
+
+    setSelectedFixture(fixtureId: string | null): void {
+      this.selectedFixtureId = fixtureId;
+      const rig = this.rigs.find((item) => item.placement.id === fixtureId);
+      if (rig === undefined || fixtureId === null) {
+        this.selectionMarker.visible = false;
+        return;
+      }
+      this.selectionMarker.position.copy(rig.root.position);
+      this.selectionMarker.visible = true;
+    }
+
+    private applyVisibility(): void {
+      this.rigs.forEach((rig, index) => {
+        const inCount = index < this.activeCount;
+        const hidden = this.hiddenFixtures.has(rig.placement.id);
+        rig.setVisible(inCount && !hidden);
+      });
+      if (this.selectedFixtureId !== null && this.hiddenFixtures.has(this.selectedFixtureId)) {
+        this.selectionMarker.visible = false;
+      } else {
+        this.setSelectedFixture(this.selectedFixtureId);
+      }
+    }
 
   setFixturePreview(fixtureId: string, preview: Partial<FixturePreview>): void {
     this.fixturePreviews.set(fixtureId, { ...this.fixturePreviews.get(fixtureId), ...preview });

@@ -14,6 +14,8 @@
         --edge: rgba(122, 209, 255, 0.22);
         --track-width: 176px;
         --row-height: 30px;
+        --dock-height: 42vh;
+        --wave-height: 62px;
       }
 
       * { box-sizing: border-box; }
@@ -31,7 +33,7 @@
 
       #stage-viewport {
         position: fixed;
-        inset: 0 0 42vh;
+        inset: 0 0 var(--dock-height);
         background: #04060a;
       }
 
@@ -54,6 +56,7 @@
       }
 
       #stats { top: 12px; left: 12px; min-width: 172px; }
+      #stats[hidden] { display: none; }
       #stats .row { display: flex; justify-content: space-between; gap: 18px; }
       #stats .row span { color: var(--dim); }
       #stats .row b { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
@@ -85,15 +88,19 @@
       }
 
       #controls button:hover, #transport button:hover { border-color: var(--edge); background: rgba(122, 209, 255, 0.08); }
+      #controls .controls-group { margin-top: 3px; color: #5f6b80; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; }
+      #controls .controls-group:first-child { margin-top: 0; }
       #controls button em { font-style: normal; color: var(--dim); }
       #controls button.on, #transport button.on { border-color: rgba(122, 209, 255, 0.55); color: var(--accent); }
 
       #fixture-preview {
         position: fixed;
-        right: 12px;
-        bottom: calc(42vh + 12px);
+              right: calc(12px + 202px);
+        bottom: calc(var(--dock-height) + 12px);
         z-index: 5;
         width: min(260px, calc(100vw - 24px));
+              max-height: calc(100vh - var(--dock-height) - 24px);
+              overflow: auto;
         background: var(--panel);
         border: 1px solid var(--edge);
         border-radius: 8px;
@@ -102,6 +109,9 @@
       }
       #fixture-preview summary { color: var(--accent); cursor: pointer; }
       #fixture-preview .preview-note { color: var(--dim); font-size: 10px; margin: 4px 0 8px; }
+      #preview-output-enabled { width: 100%; padding: 5px 8px; cursor: pointer; appearance: none; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.11); border-radius: 5px; color: var(--ink); font: inherit; }
+      #preview-output-enabled:disabled { opacity: 0.45; cursor: not-allowed; }
+      #preview-output-enabled.on { border-color: rgba(122, 209, 255, 0.55); color: var(--accent); background: rgba(122, 209, 255, 0.1); }
       #fixture-preview label { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; margin-top: 6px; }
       #fixture-preview input { grid-column: 1 / span 2; width: 100%; accent-color: var(--accent); }
       #fixture-preview output { color: var(--ink); font-variant-numeric: tabular-nums; }
@@ -116,14 +126,49 @@
            shares a raster layer with the WebGPU canvas and is repainted every
            frame, even though its content is static. */
         will-change: transform;
-        height: 42vh;
-        min-height: 310px;
+        height: var(--dock-height);
+        min-height: 180px;
         display: grid;
         grid-template-rows: auto auto minmax(0, 1fr);
         background: #0a0d13;
         border-top: 1px solid rgba(122, 209, 255, 0.3);
         box-shadow: 0 -12px 34px rgba(0, 0, 0, 0.35);
       }
+
+      #timeline-dock.collapsed {
+        height: auto;
+        min-height: 0;
+        grid-template-rows: auto;
+      }
+      #timeline-dock.collapsed #clip-inspector,
+      #timeline-dock.collapsed #arrangement-scroll,
+      #timeline-dock.collapsed #zoom-tools { display: none; }
+
+      #dock-resizer {
+        position: absolute;
+        top: -4px;
+        left: 0;
+        right: 0;
+        z-index: 9;
+        height: 8px;
+        cursor: ns-resize;
+        touch-action: none;
+      }
+      #dock-resizer::after {
+        content: '';
+        position: absolute;
+        top: 3px;
+        left: 50%;
+        width: 54px;
+        height: 2px;
+        transform: translateX(-50%);
+        border-radius: 2px;
+        background: rgba(122, 209, 255, 0.35);
+      }
+      #dock-resizer:hover::after, #dock-resizer.dragging::after { background: var(--accent); }
+      #timeline-dock.collapsed #dock-resizer { display: none; }
+
+      #transport #btn-dock { min-width: 0; margin-left: auto; }
 
       #transport {
         position: sticky;
@@ -234,6 +279,24 @@
       .track-copy { min-width: 0; }
       .track-copy small { color: #778398; font-size: 9px; line-height: 1.2; }
       .track-indicator { width: 3px; height: 19px; flex: 0 0 3px; border-radius: 2px; background: var(--track-color); }
+      .track-visibility {
+        flex: 0 0 auto;
+        display: grid;
+        place-items: center;
+        width: 20px;
+        height: 20px;
+        margin-left: auto;
+        border-radius: 4px;
+        color: #7d8a9e;
+        font-size: 11px;
+        line-height: 1;
+        cursor: pointer;
+      }
+      .track-visibility:hover { background: rgba(122, 209, 255, 0.12); color: var(--accent); }
+      .fixture-row.hidden .track-visibility { color: #566173; }
+      .fixture-row.hidden .track-copy { opacity: 0.45; }
+      .fixture-row.hidden .fixture-lane { opacity: 0.32; }
+      .fixture-row.selected .track-name { box-shadow: inset 3px 0 0 var(--accent); }
 
       #timeline-ruler-row { position: sticky; top: 0; z-index: 6; height: 28px; will-change: transform; }
       #timeline-ruler-label {
@@ -284,14 +347,34 @@
       #btn-follow.on { color: var(--accent); border-color: rgba(122, 209, 255, 0.55); background: rgba(122, 209, 255, 0.1); }
       #btn-loop.on { color: var(--accent); border-color: rgba(122, 209, 255, 0.55); background: rgba(122, 209, 255, 0.1); }
 
-      #waveform-row { position: sticky; top: 28px; z-index: 5; height: 62px; background: #080b11; will-change: transform; }
-      #waveform-label { height: 62px; color: #aab5c8; background: #0f151e; }
+      #waveform-row { position: sticky; top: 28px; z-index: 5; height: var(--wave-height); background: #080b11; will-change: transform; }
+      #waveform-label { height: var(--wave-height); color: #aab5c8; background: #0f151e; }
       #waveform {
         display: block;
-        height: 62px;
+        height: var(--wave-height);
         cursor: ew-resize;
         touch-action: none;
       }
+      #waveform-resizer {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -4px;
+        z-index: 6;
+        height: 8px;
+        cursor: ns-resize;
+        touch-action: none;
+      }
+      #waveform-resizer::after {
+        content: '';
+        position: absolute;
+        left: 8px;
+        right: 8px;
+        top: 3px;
+        height: 1px;
+        background: rgba(122, 209, 255, 0.2);
+      }
+      #waveform-resizer:hover::after, #waveform-resizer.dragging::after { background: var(--accent); }
 
       .fixture-row { height: var(--row-height); }
       .fixture-row.selected .track-name { background: #1b2633; }
@@ -470,10 +553,9 @@
         background: rgba(255, 255, 255, 0.05);
         color: #d7e2f4;
         font: inherit;
-      }
-      #hint .warn { color: #ffb36b; }
+              }
 
-      #loading {
+              #loading {
         position: fixed;
         inset: 0;
         z-index: 10;
@@ -488,10 +570,9 @@
       #loading[hidden] { display: none; }
 
       @media (max-width: 1000px) {
-        #stage-viewport { bottom: 50vh; }
-        #timeline-dock { height: 50vh; }
-        #fixture-preview { bottom: calc(50vh + 12px); }
-        #clip-inspector { gap: 5px; padding: 5px 8px; }
+        :root { --dock-height: 50vh; }
+              #fixture-preview { right: calc(12px + 202px); }
+              #clip-inspector { gap: 5px; padding: 5px 8px; }
         #selected-fixture { max-width: 80px; }
         #fixture-capabilities { display: none; }
         #transport-meta { column-gap: 8px; }
@@ -501,6 +582,7 @@
         #stats { transform: scale(0.82); transform-origin: top left; }
         #controls { min-width: 150px; gap: 3px; padding: 7px; }
         #controls button { padding: 3px 6px; }
+                #fixture-preview { right: calc(12px + 162px); width: min(260px, calc(100vw - 190px)); }
         #transport { gap: 5px; padding: 5px; }
         #transport button { min-width: 0; padding: 5px; }
         #transport-meta { display: none; }
@@ -533,19 +615,25 @@
       </div>
 
       <div class="panel" id="controls">
+        <span class="controls-group">Render</span>
         <button id="btn-vol" class="on">Beam cones <em>1</em></button>
         <button id="btn-bloom" class="on">Bloom <em>2</em></button>
         <button id="btn-shadow" class="on">Shadows <em>3</em></button>
         <button id="btn-lofi">Lo-fi grade <em>4</em></button>
         <button id="btn-strobe">Strobes <em id="strobe-status">off</em><em>5</em></button>
+        <span class="controls-group">View</span>
         <button id="btn-view">Camera <em>c</em></button>
+        <span class="controls-group">Scene</span>
         <button id="btn-count">Fixture count <em>[ ]</em></button>
+        <span class="controls-group">Diagnostics</span>
+        <button id="btn-stats" class="on">Stats <em>s</em></button>
       </div>
 
       <details id="fixture-preview">
         <summary id="fixture-preview-title">Fixture preview · select a track</summary>
-        <p class="preview-note">Live render-only tuning; not stored in clips or the show.</p>
-        <label><span>Test output <input id="preview-output-enabled" type="checkbox" aria-label="Enable test output" disabled /></span><output id="preview-intensity-value">50%</output>
+        <p class="preview-note">Preview only — changes here are not saved to clips or the show.</p>
+        <button id="preview-output-enabled" type="button" aria-pressed="false" disabled>Test output: off</button>
+        <label><span>Test intensity</span><output id="preview-intensity-value">50%</output>
           <input id="preview-intensity" type="range" min="0" max="100" step="1" value="50" aria-label="Fixture test output level" disabled />
         </label>
         <label id="preview-yaw-row">Mount / aim pan <output id="preview-yaw-value">0°</output>
@@ -565,18 +653,18 @@
           <b>Space</b> play/pause · <b>← →</b> seek 1/16 (Shift = measure) · <b>M</b> mute ·
           drag the ruler or waveform to scrub · <b>L</b> loop ·
           <b>1</b> beams <b>2</b> bloom <b>3</b> shadows <b>4</b> grade <b>5</b> strobes ·
-          <b>C</b> camera · <b>[ ]</b> fixture count<br />
+          <b>C</b> camera · <b>[ ]</b> fixture count · <b>S</b> stats<br />
           <b>Ctrl/⌘ + wheel</b> zoom at pointer · <b>Ctrl/⌘ +/-</b> zoom · <b>Ctrl/⌘ 0</b> fit ·
           drag a lane to draw a clip, drag a clip to move, drag its edge to resize<br />
           <b>Shift + drag anywhere in the timeline</b> to draw a loop · drag the cyan loop edges to adjust it ·
           <b>L</b> or the Loop button toggles looping · Fit loop zooms to it<br />
           Playback loops measures 41–56 (1 measure = 1 bar of 4 beats); scrubbing before the loop plays the intro through to the loop end.
-          <span class="warn">Strobes are opt-in (key 5). Flashing effects can affect photosensitive viewers.</span>
-        </div>
+                  </div>
       </details>
     </section>
 
     <section id="timeline-dock" aria-label="Lighting arrangement">
+      <div id="dock-resizer" role="separator" aria-label="Resize timeline dock" title="Drag to resize timeline"></div>
       <div class="panel" id="transport">
         <button id="btn-play" disabled>▶ Play</button>
         <button id="btn-audio" type="button">Load audio</button>
@@ -590,6 +678,7 @@
           <span id="transport-track">The Koto Chill — zircon · 130 BPM</span>
           <span id="audio-status" role="status" aria-live="polite">Loading default track…</span>
         </div>
+        <button id="btn-dock" type="button" title="Collapse or expand the timeline dock">Collapse timeline</button>
       </div>
 
       <div id="clip-inspector">
@@ -620,6 +709,7 @@
               <canvas id="waveform" aria-label="Waveform and playhead"></canvas>
               <span id="waveform-hover" class="timeline-hover-line" hidden></span>
               <span class="arrangement-playhead" id="waveform-playhead"></span>
+              <div id="waveform-resizer" role="separator" aria-label="Resize waveform height" title="Drag to resize the waveform"></div>
             </div>
           </div>
           <div id="arrangement-rows"></div>

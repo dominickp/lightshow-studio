@@ -51,6 +51,7 @@ export class Arrangement {
   private fixtures: FixturePlacement[];
   private selectedFixtureId: string | null = null;
   private selectedCueId: string | null = null;
+  private readonly hiddenFixtureIds = new Set<string>();
   private gesture: Gesture | null = null;
   private nextId = 1;
   private songTime = 0;
@@ -75,6 +76,7 @@ export class Arrangement {
     fixtures: FixturePlacement[],
     private readonly onChange: (cues: readonly Cue[]) => void,
     private readonly onSelection: (fixture: FixturePlacement | null, cue: Cue | null) => void,
+    private readonly onVisibilityChange?: (fixtureId: string, hidden: boolean) => void,
   ) {
     this.fixtures = fixtures;
     const overlay = document.createElement('canvas');
@@ -87,6 +89,15 @@ export class Arrangement {
     this.root.appendChild(overlay);
 
     this.root.addEventListener('pointerdown', (event) => this.pointerDown(event));
+    this.root.addEventListener('keydown', (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || target.closest('.track-visibility') === null) return;
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      const row = target.closest<HTMLElement>('.fixture-row');
+      const fixtureId = row?.dataset.fixtureId;
+      if (fixtureId !== undefined) this.toggleFixtureVisibility(fixtureId);
+    });
     scroller.addEventListener('scroll', () => {
       this.scheduleClipVisibility();
       this.scheduleDraw();
@@ -107,6 +118,10 @@ export class Arrangement {
 
   get selectedFixture(): FixturePlacement | null {
     return this.fixtures.find((fixture) => fixture.id === this.selectedFixtureId) ?? null;
+  }
+
+  isFixtureHidden(fixtureId: string): boolean {
+    return this.hiddenFixtureIds.has(fixtureId);
   }
 
   get selectedCue(): Cue | null {
@@ -242,6 +257,15 @@ export class Arrangement {
     this.notifySelection();
   }
 
+  private toggleFixtureVisibility(fixtureId: string): void {
+    if (!this.fixtures.some((fixture) => fixture.id === fixtureId)) return;
+    const hidden = !this.hiddenFixtureIds.has(fixtureId);
+    if (hidden) this.hiddenFixtureIds.add(fixtureId);
+    else this.hiddenFixtureIds.delete(fixtureId);
+    this.renderRows();
+    this.onVisibilityChange?.(fixtureId, hidden);
+  }
+
   toClip(cue: Cue): Clip {
     return cueToClip(this.fixtures.find((item) => item.id === cue.fixtureId), cue);
   }
@@ -264,6 +288,11 @@ export class Arrangement {
     if (row === null) return;
     const fixtureId = row.dataset.fixtureId;
     if (fixtureId === undefined) return;
+    if (target.closest('.track-visibility') !== null) {
+      this.toggleFixtureVisibility(fixtureId);
+      event.preventDefault();
+      return;
+    }
     this.selectedFixtureId = fixtureId;
     if (target.closest('.track-name') !== null) {
       this.selectedCueId = null;
@@ -479,6 +508,7 @@ export class Arrangement {
     this.root.dataset.grid = gridMode;
     const rows = this.fixtures.map((fixture) => {
       const selected = fixture.id === this.selectedFixtureId;
+      const hidden = this.hiddenFixtureIds.has(fixture.id);
       const clips = this.cues
         .filter((cue) => cue.fixtureId === fixture.id)
         .map((cue) => {
@@ -493,10 +523,11 @@ export class Arrangement {
         ? ''
         : `--sixteenth-width:${beatWidth / 4}px;--beat-width:${beatWidth}px;--bar-width:${beatWidth * timeline.beatsPerBar}px;--grid-offset-x:${timeline.firstBeatSec * this.pixelsPerSecond}px;`;
       const loopMarkup = this.loopMarkup(timeline, secondsWidth);
-      return `<div class="fixture-row${selected ? ' selected' : ''}" data-fixture-id="${fixture.id}">
+      return `<div class="fixture-row${selected ? ' selected' : ''}${hidden ? ' hidden' : ''}" data-fixture-id="${fixture.id}">
         <button type="button" class="track-name" title="${fixture.profile.name}">
           <span class="track-indicator" style="--track-color:${this.trackColor(fixture)}"></span>
           <span class="track-copy"><b>${fixture.id}</b><small>${this.kindLabel(fixture.profile.kind)} · ${this.capabilitySummary(fixture)}</small></span>
+          <span class="track-visibility" role="button" tabindex="0" aria-pressed="${hidden}" aria-label="${hidden ? 'Show' : 'Hide'} ${fixture.id} in the 3D scene" title="${hidden ? 'Show' : 'Hide'} in the scene">${hidden ? '◌' : '◉'}</span>
         </button>
         <div class="fixture-lane" style="width:${secondsWidth}px;${gridStyle}">
           ${loopMarkup}${clips}

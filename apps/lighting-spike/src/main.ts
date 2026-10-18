@@ -66,6 +66,7 @@ const element = <T extends HTMLElement>(id: string): T => {
 };
 
 const ui = {
+  statsPanel: element('stats'),
   fps: element('stat-fps'),
   ms: element('stat-ms'),
   calls: element('stat-calls'),
@@ -92,6 +93,12 @@ const ui = {
   strobeStatus: element('strobe-status'),
   view: element<HTMLButtonElement>('btn-view'),
   count: element<HTMLButtonElement>('btn-count'),
+    stats: element<HTMLButtonElement>('btn-stats'),
+    dock: element('timeline-dock'),
+    dockResizer: element('dock-resizer'),
+    dockToggle: element<HTMLButtonElement>('btn-dock'),
+    waveformResizer: element('waveform-resizer'),
+    fixturePreview: element<HTMLDetailsElement>('fixture-preview'),
   waveform: element<HTMLCanvasElement>('waveform'),
   waveformPlayhead: element('waveform-playhead'),
   waveformHover: element('waveform-hover'),
@@ -117,7 +124,7 @@ const ui = {
   fixtureCapabilities: element('fixture-capabilities'),
   loading: element('loading'),
   fixturePreviewTitle: element('fixture-preview-title'),
-  previewOutputEnabled: element<HTMLInputElement>('preview-output-enabled'),
+  previewOutputEnabled: element<HTMLButtonElement>('preview-output-enabled'),
   previewIntensity: element<HTMLInputElement>('preview-intensity'),
   previewIntensityValue: element('preview-intensity-value'),
   previewYaw: element<HTMLInputElement>('preview-yaw'),
@@ -166,7 +173,14 @@ let currentTimeline: CueTimeline | null = null;
 let followPlayhead = true;
 let loopRegion = { startSec: loopStartSec, endSec: loopEndSec };
 
+const syncPreviewOutputButton = (preview: FixturePreviewSettings): void => {
+  ui.previewOutputEnabled.textContent = `Test output: ${preview.outputEnabled ? 'on' : 'off'}`;
+  ui.previewOutputEnabled.classList.toggle('on', preview.outputEnabled);
+  ui.previewOutputEnabled.setAttribute('aria-pressed', String(preview.outputEnabled));
+};
+
 const syncCueInspector = (fixture: (typeof show.fixtures)[number] | null, cue: Cue | null): void => {
+  stage.setSelectedFixture(fixture?.id ?? null);
   ui.selectedFixture.textContent = fixture?.id ?? 'Select a fixture track';
   ui.fixtureCapabilities.textContent = fixture === null
     ? 'Choose a track to see its available controls'
@@ -184,6 +198,9 @@ const syncCueInspector = (fixture: (typeof show.fixtures)[number] | null, cue: C
   if (fixture === null) {
     ui.fixturePreviewTitle.textContent = 'Fixture preview · select a track';
     ui.previewOutputEnabled.disabled = true;
+        ui.previewOutputEnabled.textContent = 'Test output: off';
+        ui.previewOutputEnabled.classList.remove('on');
+        ui.previewOutputEnabled.setAttribute('aria-pressed', 'false');
     ui.previewIntensity.disabled = true;
     ui.previewYaw.disabled = true;
     ui.previewPitch.disabled = true;
@@ -194,7 +211,7 @@ const syncCueInspector = (fixture: (typeof show.fixtures)[number] | null, cue: C
     const [spreadMin, spreadMax] = fixture.profile.beam.spreadDeg;
     ui.fixturePreviewTitle.textContent = `${fixture.id} · fixture preview`;
     ui.previewOutputEnabled.disabled = false;
-    ui.previewOutputEnabled.checked = preview.outputEnabled;
+        syncPreviewOutputButton(preview);
     ui.previewIntensity.disabled = false;
     ui.previewIntensity.value = String(Math.round(preview.intensity * 100));
     ui.previewIntensityValue.textContent = `${Math.round(preview.intensity * 100)}%`;
@@ -258,7 +275,12 @@ arrangement = new Arrangement(ui.arrangement, ui.arrangementScroll, show.fixture
   cues = nextCues;
   indexCues();
   syncCueInspector(arrangement.selectedFixture, arrangement.selectedCue);
-}, syncCueInspector);
+}, (fixture, cue) => {
+  if (fixture !== null) ui.fixturePreview.open = true;
+  syncCueInspector(fixture, cue);
+}, (fixtureId, hidden) => {
+  stage.setFixtureHidden(fixtureId, hidden);
+});
 
 const updateSelectedPreview = (update: (preview: FixturePreviewSettings, fixture: (typeof show.fixtures)[number]) => void): void => {
   const fixture = arrangement.selectedFixture;
@@ -268,8 +290,9 @@ const updateSelectedPreview = (update: (preview: FixturePreviewSettings, fixture
   applyFixturePreview(fixture, preview);
 };
 
-ui.previewOutputEnabled.addEventListener('change', () => updateSelectedPreview((preview) => {
-  preview.outputEnabled = ui.previewOutputEnabled.checked;
+ui.previewOutputEnabled.addEventListener('click', () => updateSelectedPreview((preview) => {
+  preview.outputEnabled = !preview.outputEnabled;
+  syncPreviewOutputButton(preview);
 }));
 ui.previewIntensity.addEventListener('input', () => updateSelectedPreview((preview) => {
   preview.intensity = Number(ui.previewIntensity.value) / 100;
@@ -390,6 +413,107 @@ ui.mute.addEventListener('click', () => {
   applyVolume(false);
 });
 applyVolume(false);
+
+// --- View preferences (persisted) -----------------------------------------
+const STATS_KEY = 'dmxsim.spike.stats';
+let statsVisible = localStorage.getItem(STATS_KEY) !== 'off';
+const applyStats = (): void => {
+  ui.statsPanel.hidden = !statsVisible;
+  ui.stats.classList.toggle('on', statsVisible);
+  ui.stats.setAttribute('aria-pressed', String(statsVisible));
+};
+const toggleStats = (): void => {
+  statsVisible = !statsVisible;
+  localStorage.setItem(STATS_KEY, statsVisible ? 'on' : 'off');
+  applyStats();
+};
+applyStats();
+ui.stats.addEventListener('click', toggleStats);
+
+const DOCK_HEIGHT_KEY = 'dmxsim.spike.dockHeight';
+const DOCK_COLLAPSED_KEY = 'dmxsim.spike.dockCollapsed';
+const WAVE_HEIGHT_KEY = 'dmxsim.spike.waveHeight';
+const COLLAPSED_DOCK_PX = 54;
+const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
+
+const storedDockHeight = Number.parseFloat(localStorage.getItem(DOCK_HEIGHT_KEY) ?? '');
+let dockHeightPx = Number.isFinite(storedDockHeight) ? storedDockHeight : 0;
+let dockCollapsed = localStorage.getItem(DOCK_COLLAPSED_KEY) === 'on';
+
+const applyDock = (): void => {
+  const root = document.documentElement;
+  if (dockCollapsed) root.style.setProperty('--dock-height', `${COLLAPSED_DOCK_PX}px`);
+  else if (dockHeightPx > 0) root.style.setProperty('--dock-height', `${dockHeightPx}px`);
+  else root.style.removeProperty('--dock-height');
+  ui.dock.classList.toggle('collapsed', dockCollapsed);
+  ui.dockToggle.textContent = dockCollapsed ? 'Expand timeline' : 'Collapse timeline';
+  ui.dockToggle.setAttribute('aria-expanded', String(!dockCollapsed));
+  // The 3D viewport is laid out from --dock-height, so it must re-measure.
+  requestAnimationFrame(() => resizeViewport());
+};
+
+let dockDrag: { startY: number; startHeight: number } | null = null;
+ui.dockResizer.addEventListener('pointerdown', (event) => {
+  if (dockCollapsed) return;
+  dockDrag = { startY: event.clientY, startHeight: ui.dock.getBoundingClientRect().height };
+  ui.dockResizer.setPointerCapture(event.pointerId);
+  ui.dockResizer.classList.add('dragging');
+  event.preventDefault();
+});
+ui.dockResizer.addEventListener('pointermove', (event) => {
+  if (dockDrag === null) return;
+  dockHeightPx = clamp(
+    dockDrag.startHeight - (event.clientY - dockDrag.startY),
+    180,
+    window.innerHeight - 160,
+  );
+  applyDock();
+});
+const endDockDrag = (): void => {
+  if (dockDrag === null) return;
+  dockDrag = null;
+  ui.dockResizer.classList.remove('dragging');
+  localStorage.setItem(DOCK_HEIGHT_KEY, String(Math.round(dockHeightPx)));
+};
+ui.dockResizer.addEventListener('pointerup', endDockDrag);
+ui.dockResizer.addEventListener('pointercancel', endDockDrag);
+
+ui.dockToggle.addEventListener('click', () => {
+  dockCollapsed = !dockCollapsed;
+  localStorage.setItem(DOCK_COLLAPSED_KEY, dockCollapsed ? 'on' : 'off');
+  applyDock();
+});
+
+const storedWaveHeight = Number.parseFloat(localStorage.getItem(WAVE_HEIGHT_KEY) ?? '');
+let waveHeightPx = Number.isFinite(storedWaveHeight) ? Math.max(40, Math.min(200, storedWaveHeight)) : 62;
+const applyWaveHeight = (): void => {
+  document.documentElement.style.setProperty('--wave-height', `${waveHeightPx}px`);
+  waveform.paint();
+};
+applyWaveHeight();
+
+let waveDrag: { startY: number; startHeight: number } | null = null;
+ui.waveformResizer.addEventListener('pointerdown', (event) => {
+  waveDrag = { startY: event.clientY, startHeight: ui.waveform.getBoundingClientRect().height };
+  ui.waveformResizer.setPointerCapture(event.pointerId);
+  ui.waveformResizer.classList.add('dragging');
+  event.preventDefault();
+});
+ui.waveformResizer.addEventListener('pointermove', (event) => {
+  if (waveDrag === null) return;
+  waveHeightPx = Math.max(40, Math.min(200, waveDrag.startHeight + (event.clientY - waveDrag.startY)));
+  applyWaveHeight();
+});
+const endWaveDrag = (): void => {
+  if (waveDrag === null) return;
+  waveDrag = null;
+  ui.waveformResizer.classList.remove('dragging');
+  localStorage.setItem(WAVE_HEIGHT_KEY, String(Math.round(waveHeightPx)));
+};
+ui.waveformResizer.addEventListener('pointerup', endWaveDrag);
+ui.waveformResizer.addEventListener('pointercancel', endWaveDrag);
+
+applyDock();
 
 const ZOOM_SLIDER_STEPS = 1000;
 const ZOOM_RANGE = MAX_PIXELS_PER_SECOND / MIN_PIXELS_PER_SECOND;
@@ -859,6 +983,8 @@ window.addEventListener('keydown', (event) => {
     post.setLofi(lofi);
   } else if (event.key === '5') {
     strobesOn = !strobesOn;
+  } else if (event.key === 's' || event.key === 'S') {
+    toggleStats();
   } else if (event.key === 'l' || event.key === 'L') {
     clock.setLoopEnabled(!clock.loopEnabled);
     updateLoopUi();

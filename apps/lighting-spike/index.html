@@ -10,16 +10,15 @@
         --ink: #cfd6e6;
         --dim: #7a8399;
         --accent: #7ad1ff;
-        --panel: rgba(10, 13, 20, 0.72);
+        --panel: rgba(10, 13, 20, 0.76);
         --edge: rgba(122, 209, 255, 0.22);
+        --track-width: 176px;
+        --row-height: 30px;
       }
 
-      * {
-        box-sizing: border-box;
-      }
+      * { box-sizing: border-box; }
 
-      html,
-      body {
+      html, body {
         margin: 0;
         height: 100%;
         overflow: hidden;
@@ -28,12 +27,17 @@
         font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       }
 
-      #app {
+      button, select { color: inherit; font: inherit; }
+
+      #stage-viewport {
         position: fixed;
-        inset: 0;
+        inset: 0 0 42vh;
+        background: #04060a;
       }
 
-      #app canvas {
+      #app, #app canvas {
+        position: absolute;
+        inset: 0;
         display: block;
         width: 100%;
         height: 100%;
@@ -49,27 +53,10 @@
         user-select: none;
       }
 
-      #stats {
-        top: 12px;
-        left: 12px;
-        min-width: 172px;
-      }
-
-      #stats .row {
-        display: flex;
-        justify-content: space-between;
-        gap: 18px;
-      }
-
-      #stats .row span {
-        color: var(--dim);
-      }
-
-      #stats .row b {
-        font-weight: 500;
-        color: var(--ink);
-        font-variant-numeric: tabular-nums;
-      }
+      #stats { top: 12px; left: 12px; min-width: 172px; }
+      #stats .row { display: flex; justify-content: space-between; gap: 18px; }
+      #stats .row span { color: var(--dim); }
+      #stats .row b { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
 
       #controls {
         top: 12px;
@@ -79,199 +66,446 @@
         min-width: 190px;
       }
 
-      #controls button {
+      #controls button, #transport button, #clip-inspector select {
         appearance: none;
         background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.09);
+        border: 1px solid rgba(255, 255, 255, 0.11);
         border-radius: 5px;
         color: var(--ink);
         font: inherit;
-        text-align: left;
         padding: 5px 8px;
+      }
+
+      #controls button {
+        text-align: left;
         cursor: pointer;
         display: flex;
         justify-content: space-between;
         gap: 10px;
       }
 
-      #controls button:hover {
-        border-color: var(--edge);
-        background: rgba(122, 209, 255, 0.08);
-      }
+      #controls button:hover, #transport button:hover { border-color: var(--edge); background: rgba(122, 209, 255, 0.08); }
+      #controls button em { font-style: normal; color: var(--dim); }
+      #controls button.on, #transport button.on { border-color: rgba(122, 209, 255, 0.55); color: var(--accent); }
 
-      #controls button em {
-        font-style: normal;
-        color: var(--dim);
-      }
-
-      #controls button.on {
-        border-color: rgba(122, 209, 255, 0.55);
-        box-shadow: inset 0 0 0 1px rgba(122, 209, 255, 0.2);
-      }
-
-      #controls button.on em {
-        color: var(--accent);
-      }
-
-      #hint {
-        bottom: 132px;
-        left: 12px;
-        color: var(--dim);
-        max-width: 640px;
-        line-height: 1.7;
-      }
-
-      #hint b {
-        color: var(--ink);
-        font-weight: 500;
+      #timeline-dock {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 42vh;
+        min-height: 310px;
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        background: #0a0d13;
+        border-top: 1px solid rgba(122, 209, 255, 0.3);
+        box-shadow: 0 -12px 34px rgba(0, 0, 0, 0.35);
       }
 
       #transport {
-        left: 12px;
-        right: 12px;
-        bottom: 12px;
-        display: grid;
-        grid-template-columns: auto auto minmax(0, 1fr) auto;
+        position: sticky;
+        top: 0;
+        z-index: 6;
+        left: auto;
+        right: auto;
+        bottom: auto;
+        display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 8px 10px;
+        gap: 9px;
+        min-height: 54px;
+        padding: 7px 12px;
+        border: 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 0;
+        background: #111720;
       }
 
-      #transport button {
-        appearance: none;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.09);
-        border-radius: 5px;
-        color: var(--ink);
-        font: inherit;
-        padding: 6px 12px;
-        cursor: pointer;
-        white-space: nowrap;
-        min-width: 92px;
-      }
-
-      #transport button:hover {
-        border-color: var(--edge);
-        background: rgba(122, 209, 255, 0.08);
-      }
-
-      #transport button.on {
-        border-color: rgba(122, 209, 255, 0.55);
-        box-shadow: inset 0 0 0 1px rgba(122, 209, 255, 0.2);
-        color: var(--accent);
-      }
-
-      #transport button:disabled {
-        opacity: 0.45;
-        cursor: not-allowed;
-      }
-
-      #waveform {
-        display: block;
-        width: 100%;
-        height: 78px;
-        border-radius: 4px;
-        cursor: ew-resize;
-        touch-action: none;
-      }
+      #transport button { min-width: 78px; cursor: pointer; white-space: nowrap; }
+      #transport button:disabled, #clip-inspector select:disabled { opacity: 0.45; cursor: not-allowed; }
 
       #transport-meta {
         display: grid;
-        justify-items: end;
-        gap: 2px;
-        min-width: 158px;
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-rows: auto auto;
+        align-items: center;
+        column-gap: 14px;
+        min-width: 0;
+        flex: 1;
       }
 
-      #transport-meta b {
-        font-weight: 500;
-        font-variant-numeric: tabular-nums;
-      }
+      #transport-meta b { grid-row: 1 / span 2; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      #transport-meta span { overflow: hidden; color: var(--dim); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+      #transport-meta #transport-track { grid-column: 2; grid-row: 1; }
+      #transport-meta #audio-status { grid-column: 2; grid-row: 2; color: var(--accent); }
+      #audio-file { display: none; }
 
-      #transport-meta span {
-        color: var(--dim);
-        font-size: 11px;
-        text-align: right;
+      #clip-inspector {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        padding: 6px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        background: #0e141c;
       }
-
-      #transport-meta span + span {
-        max-width: 260px;
+      #selected-fixture {
+        max-width: 135px;
         overflow: hidden;
+        color: var(--accent);
         text-overflow: ellipsis;
         white-space: nowrap;
       }
 
-      #transport-meta #audio-status {
-        color: var(--accent);
+      #clip-inspector select { max-width: 95px; cursor: pointer; }
+      #clip-inspector #cue-color { max-width: 88px; }
+      #clip-inspector #btn-cue-delete { min-width: 0; }
+      #fixture-capabilities {
+        max-width: 220px;
+        overflow: hidden;
+        color: #8290a4;
+        font-size: 10px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
-      #audio-file {
-        display: none;
+      #arrangement-scroll {
+        min-height: 0;
+        overflow: auto;
+        overscroll-behavior: contain;
+        scrollbar-color: #394455 #10151d;
+        scrollbar-width: thin;
       }
+
+      #arrangement-content { width: max-content; min-width: 100%; padding-bottom: 44px; }
+      #arrangement-scroll.loop-mode,
+      #arrangement-scroll.loop-mode * { cursor: crosshair !important; }
+      #arrangement-scroll.loop-mode { box-shadow: inset 0 0 0 1px rgba(122, 209, 255, 0.45); }
+      #timeline-ruler-row, #waveform-row, .fixture-row { display: grid; grid-template-columns: var(--track-width) auto; width: max-content; }
+
+      .track-name {
+        position: sticky;
+        left: 0;
+        z-index: 3;
+        width: var(--track-width);
+        height: var(--row-height);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 2px 9px;
+        overflow: hidden;
+        text-align: left;
+        background: #111720;
+        border: 0;
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        cursor: pointer;
+      }
+
+      .track-name b, .track-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .track-name b { color: #dbe3f3; font-size: 11px; font-weight: 500; }
+      .track-copy { min-width: 0; }
+      .track-copy small { color: #778398; font-size: 9px; line-height: 1.2; }
+      .track-indicator { width: 3px; height: 19px; flex: 0 0 3px; border-radius: 2px; background: var(--track-color); }
+
+      #timeline-ruler-row { position: sticky; top: 0; z-index: 6; height: 28px; }
+      #timeline-ruler-label {
+        height: 28px;
+        justify-content: flex-start;
+        gap: 7px;
+        color: #8f9bb0;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        cursor: default;
+        background: #0f151e;
+      }
+      #timeline-ruler-label .ruler-mode { color: #5f6b80; font-size: 9px; letter-spacing: 0; }
+      .ruler-track { position: relative; width: max-content; }
+      #timeline-ruler { display: block; height: 28px; cursor: ew-resize; touch-action: none; }
+
+      #zoom-tools {
+        position: absolute;
+        right: 14px;
+        bottom: 12px;
+        z-index: 8;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 9px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 7px;
+        background: rgba(10, 13, 20, 0.92);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(6px);
+      }
+      #zoom-tools button {
+        min-width: 24px;
+        height: 24px;
+        padding: 0 7px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 4px;
+        background: #1b2430;
+        color: #c3cfe0;
+        font-size: 11px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      #zoom-tools button:hover:not(:disabled) { border-color: var(--edge); background: rgba(122, 209, 255, 0.12); }
+      #zoom-tools button:disabled { opacity: 0.45; cursor: not-allowed; }
+      #zoom-tools input { width: 116px; accent-color: var(--accent); cursor: ew-resize; }
+      #zoom-percent { min-width: 36px; color: #9aa8bb; font-size: 9px; text-align: right; }
+      #btn-follow.on { color: var(--accent); border-color: rgba(122, 209, 255, 0.55); background: rgba(122, 209, 255, 0.1); }
+      #btn-loop.on { color: var(--accent); border-color: rgba(122, 209, 255, 0.55); background: rgba(122, 209, 255, 0.1); }
+
+      #waveform-row { position: sticky; top: 28px; z-index: 5; height: 62px; background: #080b11; }
+      #waveform-label { height: 62px; color: #aab5c8; background: #0f151e; }
+      #waveform {
+        display: block;
+        height: 62px;
+        cursor: ew-resize;
+        touch-action: none;
+      }
+
+      .fixture-row { height: var(--row-height); }
+      .fixture-row.selected .track-name { background: #1b2633; }
+      .fixture-row.selected .track-name b { color: #91dcff; }
+      .fixture-lane {
+        position: relative;
+        height: var(--row-height);
+        overflow: hidden;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+        background-color: #0b1017;
+        background-image:
+          linear-gradient(to right, rgba(255,255,255,0.035) 1px, transparent 1px),
+          linear-gradient(to right, rgba(255,255,255,0.075) 1px, transparent 1px),
+          linear-gradient(to right, rgba(122,209,255,0.09) 1px, transparent 1px);
+        background-size: var(--sixteenth-width, 12px) 100%, var(--beat-width, 48px) 100%, var(--bar-width, 192px) 100%;
+        cursor: crosshair;
+        touch-action: none;
+      }
+
+      .fixture-row:nth-of-type(even) .fixture-lane { background-color: #0e141d; }
+      .fixture-row.selected .fixture-lane { background-color: #111c28; }
+
+      .lane-outside {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        z-index: 0;
+        background: rgba(0, 0, 0, 0.42);
+        pointer-events: none;
+      }
+      .lane-loop {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        z-index: 0;
+        border-left: 1px solid rgba(122, 209, 255, 0.45);
+        border-right: 1px solid rgba(122, 209, 255, 0.45);
+        background: rgba(122, 209, 255, 0.035);
+        pointer-events: none;
+      }
+
+      .arrangement-clip {
+        position: absolute;
+        top: 4px;
+        bottom: 4px;
+        z-index: 1;
+        min-width: 5px;
+        overflow: hidden;
+        border: 1px solid color-mix(in srgb, var(--clip-color), white 20%);
+        border-radius: 4px;
+        background: linear-gradient(180deg, color-mix(in srgb, var(--clip-color), white 12%), var(--clip-color));
+        box-shadow: inset 0 1px rgba(255,255,255,0.15), 0 1px 5px rgba(0,0,0,0.3);
+        color: white;
+        cursor: grab;
+        touch-action: none;
+      }
+
+      .arrangement-clip.selected { z-index: 2; outline: 1px solid white; outline-offset: 1px; }
+      .arrangement-clip.preview {
+        z-index: 2;
+        border-style: dashed;
+        border-color: rgba(122, 209, 255, 0.85);
+        background: rgba(122, 209, 255, 0.18);
+        box-shadow: none;
+        opacity: 0.9;
+        pointer-events: none;
+      }
+      .clip-label { display: block; padding: 2px 7px; overflow: hidden; font-size: 9px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
+      .clip-resize { position: absolute; top: 0; bottom: 0; z-index: 2; width: 6px; cursor: ew-resize; }
+      .clip-resize.start { left: 0; }
+      .clip-resize.end { right: 0; }
+      .arrangement-playhead { position: absolute; top: 0; bottom: 0; z-index: 3; width: 1px; background: #f3fbff; box-shadow: 0 0 4px #7ad1ff; pointer-events: none; }
+
+      #cue-status { min-width: 0; overflow: hidden; color: var(--dim); text-overflow: ellipsis; white-space: nowrap; }
+
+      #hint {
+        position: absolute;
+        left: 12px;
+        bottom: 12px;
+        z-index: 4;
+        max-width: 570px;
+        padding: 8px 11px;
+        border: 1px solid var(--edge);
+        border-radius: 8px;
+        background: var(--panel);
+        backdrop-filter: blur(8px);
+        color: var(--dim);
+        font-size: 10px;
+        line-height: 1.75;
+        user-select: none;
+      }
+      #hint summary { color: var(--ink); cursor: pointer; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
+      #hint summary::marker { color: var(--dim); }
+      #hint b { color: var(--ink); font-weight: 500; }
+      #hint kbd {
+        padding: 0 4px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.05);
+        color: #d7e2f4;
+        font: inherit;
+      }
+      #hint .warn { color: #ffb36b; }
 
       #loading {
         position: fixed;
         inset: 0;
+        z-index: 10;
         display: grid;
         place-items: center;
         background: #04060a;
         color: var(--dim);
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        z-index: 10;
       }
 
-      #loading[hidden] {
-        display: none;
+      #loading[hidden] { display: none; }
+
+      @media (max-width: 1000px) {
+        #stage-viewport { bottom: 50vh; }
+        #timeline-dock { height: 50vh; }
+        #clip-inspector { gap: 5px; padding: 5px 8px; }
+        #selected-fixture { max-width: 80px; }
+        #fixture-capabilities { display: none; }
+        #transport-meta { column-gap: 8px; }
+      }
+
+      @media (max-width: 680px) {
+        #stats { transform: scale(0.82); transform-origin: top left; }
+        #controls { min-width: 150px; gap: 3px; padding: 7px; }
+        #controls button { padding: 3px 6px; }
+        #transport { gap: 5px; padding: 5px; }
+        #transport button { min-width: 0; padding: 5px; }
+        #transport-meta { display: none; }
+        #clip-inspector #btn-cue-delete, #cue-status { display: none; }
+        #selected-fixture { display: none; }
+        #zoom-tools { right: 8px; bottom: 8px; gap: 4px; padding: 4px 6px; }
+        #zoom-tools input { width: 64px; }
+        #zoom-percent { display: none; }
+        #hint { display: none; }
+        :root { --track-width: 145px; }
       }
     </style>
   </head>
   <body>
-    <div id="app"></div>
+    <section id="stage-viewport" aria-label="3D lighting preview">
+      <div id="app"></div>
+
+      <div class="panel" id="stats">
+        <div class="row"><span>fps</span><b id="stat-fps">–</b></div>
+        <div class="row"><span>frame (rAF)</span><b id="stat-ms">–</b></div>
+        <div class="row"><span>draw calls</span><b id="stat-calls">–</b></div>
+        <div class="row"><span>triangles</span><b id="stat-tris">–</b></div>
+        <div class="row"><span>resolution</span><b id="stat-res">–</b></div>
+        <div class="row"><span>backend</span><b id="stat-backend">–</b></div>
+        <div class="row"><span>fixtures</span><b id="stat-fixtures">–</b></div>
+        <div class="row"><span>bar.beat</span><b id="stat-time">–</b></div>
+        <div class="row"><span>latency</span><b id="stat-latency">–</b></div>
+        <div class="row"><span>loop</span><b id="stat-loop">–</b></div>
+      </div>
+
+      <div class="panel" id="controls">
+        <button id="btn-vol" class="on">Beam cones <em>1</em></button>
+        <button id="btn-bloom" class="on">Bloom <em>2</em></button>
+        <button id="btn-shadow" class="on">Shadows <em>3</em></button>
+        <button id="btn-lofi">Lo-fi grade <em>4</em></button>
+        <button id="btn-strobe">Strobes <em id="strobe-status">off</em><em>5</em></button>
+        <button id="btn-view">Camera <em>c</em></button>
+        <button id="btn-count">Fixture count <em>[ ]</em></button>
+      </div>
+
+      <details id="hint">
+        <summary>Controls &amp; shortcuts</summary>
+        <div>
+          <b>Space</b> play/pause · drag the ruler or waveform to scrub · <b>L</b> loop ·
+          <b>1</b> beams <b>2</b> bloom <b>3</b> shadows <b>4</b> grade <b>5</b> strobes ·
+          <b>C</b> camera · <b>[ ]</b> fixture count<br />
+          <b>Ctrl/⌘ + wheel</b> zoom at pointer · <b>Ctrl/⌘ +/-</b> zoom · <b>Ctrl/⌘ 0</b> fit ·
+          drag a lane to draw a clip, drag a clip to move, drag its edge to resize<br />
+          <b>Shift + drag anywhere in the timeline</b> to draw a loop · drag the cyan loop edges to adjust it ·
+          <b>L</b> or the Loop button toggles looping · Fit loop zooms to it<br />
+          Playback loops bars 41–56; scrubbing before the loop plays the intro through to the loop end.
+          <span class="warn">Strobes are opt-in (key 5). Flashing effects can affect photosensitive viewers.</span>
+        </div>
+      </details>
+    </section>
+
+    <section id="timeline-dock" aria-label="Lighting arrangement">
+      <div class="panel" id="transport">
+        <button id="btn-play" disabled>▶ Play</button>
+        <button id="btn-audio" type="button">Load audio</button>
+        <input id="audio-file" type="file" accept="audio/*" aria-label="Choose an audio file" />
+        <div id="transport-meta">
+          <b id="transport-time">–</b>
+          <span id="transport-track">The Koto Chill — zircon · 130 BPM</span>
+          <span id="audio-status" role="status" aria-live="polite">Loading default track…</span>
+        </div>
+      </div>
+
+      <div id="clip-inspector">
+        <span id="selected-fixture">Select a fixture track</span>
+        <select id="cue-action" aria-label="Clip action" disabled></select>
+        <select id="cue-color" aria-label="Clip color" disabled></select>
+        <span id="fixture-capabilities"></span>
+        <button id="btn-cue-add" type="button" disabled>+ Clip</button>
+        <button id="btn-cue-delete" type="button" disabled>Delete</button>
+        <span id="cue-status" role="status">Load audio to arrange cues</span>
+      </div>
+
+      <div id="arrangement-scroll" tabindex="0" aria-label="Scrollable fixture tracks and timeline">
+        <div id="arrangement-content">
+          <div id="timeline-ruler-row">
+            <div class="track-name" id="timeline-ruler-label">
+              <span>ARRANGEMENT</span>
+              <span class="ruler-mode">BARS</span>
+            </div>
+            <div class="ruler-track">
+              <canvas id="timeline-ruler" aria-label="Bar ruler"></canvas>
+              <span class="arrangement-playhead" id="ruler-playhead"></span>
+            </div>
+          </div>
+          <div id="waveform-row">
+            <div class="track-name" id="waveform-label">♫ &nbsp; AUDIO</div>
+            <canvas id="waveform" aria-label="Waveform and playhead"></canvas>
+          </div>
+          <div id="arrangement-rows"></div>
+        </div>
+      </div>
+
+      <div id="zoom-tools" role="toolbar" aria-label="Timeline zoom">
+        <button id="btn-zoom-out" type="button" aria-label="Zoom out" title="Zoom out (Ctrl/⌘ -)" disabled>−</button>
+        <input id="zoom-level" type="range" min="0" max="1000" step="1" value="695" aria-label="Timeline zoom" disabled />
+        <span id="zoom-percent">100%</span>
+        <button id="btn-zoom-in" type="button" aria-label="Zoom in" title="Zoom in (Ctrl/⌘ +)" disabled>+</button>
+        <button id="btn-zoom-fit" type="button" aria-label="Fit entire song" title="Fit entire song (Ctrl/⌘ 0)" disabled>Fit</button>
+        <button id="btn-loop-fit" type="button" aria-label="Fit loop" title="Zoom to the loop region" disabled>Fit loop</button>
+        <button id="btn-loop" type="button" class="on" aria-pressed="true" title="Toggle looping (L)" disabled>Loop</button>
+        <button id="btn-follow" type="button" class="on" aria-pressed="true" title="Scroll to keep the playhead visible">Follow</button>
+      </div>
+    </section>
 
     <div id="loading">initialising renderer…</div>
-
-    <div class="panel" id="stats">
-      <div class="row"><span>fps</span><b id="stat-fps">–</b></div>
-      <div class="row"><span>frame (rAF)</span><b id="stat-ms">–</b></div>
-      <div class="row"><span>draw calls</span><b id="stat-calls">–</b></div>
-      <div class="row"><span>triangles</span><b id="stat-tris">–</b></div>
-      <div class="row"><span>resolution</span><b id="stat-res">–</b></div>
-      <div class="row"><span>backend</span><b id="stat-backend">–</b></div>
-      <div class="row"><span>fixtures</span><b id="stat-fixtures">–</b></div>
-      <div class="row"><span>song time</span><b id="stat-time">–</b></div>
-      <div class="row"><span>latency</span><b id="stat-latency">–</b></div>
-      <div class="row"><span>loop</span><b id="stat-loop">–</b></div>
-    </div>
-
-    <div class="panel" id="controls">
-      <button id="btn-vol" class="on">Beam cones <em>1</em></button>
-      <button id="btn-bloom" class="on">Bloom <em>2</em></button>
-      <button id="btn-shadow" class="on">Shadows <em>3</em></button>
-      <button id="btn-lofi">Lo-fi grade <em>4</em></button>
-      <button id="btn-strobe">Strobes <em id="strobe-status">off</em><em>5</em></button>
-      <button id="btn-view">Camera <em>c</em></button>
-      <button id="btn-count">Fixture count <em>[ ]</em></button>
-    </div>
-
-    <div class="panel" id="hint">
-      <b>Lighting spike.</b> 16-bar loop on <i>The Koto Chill</i> (130 BPM), 32 fixtures.
-      Space plays/pauses, click or drag the waveform to scrub, <b>L</b> toggles audio looping.
-      Drag the venue to orbit, scroll to zoom. Strobe flashes are opt-in (key 5); flashing
-      effects may affect photosensitive viewers.
-    </div>
-
-    <div class="panel" id="transport">
-      <button id="btn-play" disabled>▶ Play</button>
-      <button id="btn-audio" type="button">Choose audio</button>
-      <input id="audio-file" type="file" accept="audio/*" aria-label="Choose an audio file" />
-      <canvas id="waveform" aria-label="Waveform, beat grid and playhead"></canvas>
-      <div id="transport-meta">
-        <b id="transport-time">–</b>
-        <span id="transport-track">The Koto Chill — zircon · 130 BPM · bars 41–56</span>
-        <span id="audio-status" role="status" aria-live="polite">Loading default track…</span>
-      </div>
-    </div>
-
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

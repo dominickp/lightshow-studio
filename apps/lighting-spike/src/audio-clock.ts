@@ -115,11 +115,7 @@ export class AudioClock {
 
   seek(songSec: number): void {
     if (this.buffer === null) return;
-    let target = clamp(songSec, 0, this.duration);
-    const loop = this.loopIsEnabled ? this.loopRegion : null;
-    if (loop !== null && loop.endSec > loop.startSec) {
-      target = clamp(target, loop.startSec, loop.endSec - 0.002);
-    }
+    const target = this.normalizePosition(songSec);
     if (this.isPlaying) this.isPlaying = this.startSource(target);
     else this.anchorSongSec = target;
   }
@@ -129,15 +125,22 @@ export class AudioClock {
       this.isPlaying = this.startSource(songSec);
       return;
     }
-    this.anchorSongSec = this.loopIsEnabled ? this.wrap(songSec) : songSec;
+    this.anchorSongSec = this.normalizePosition(songSec);
   }
 
-  private wrap(songSec: number): number {
+  /**
+   * A loop is a brace, not a cage: positions before the loop start are valid
+   * (intro/verse auditioning) and play through into the loop. Only positions at
+   * or past the loop end are folded back inside it.
+   */
+  private normalizePosition(songSec: number): number {
+    const clamped = clamp(songSec, 0, this.duration);
     const loop = this.loopIsEnabled ? this.loopRegion : null;
-    if (loop === null) return songSec;
+    if (loop === null) return clamped;
     const length = loop.endSec - loop.startSec;
-    if (length <= 0) return loop.startSec;
-    return loop.startSec + (((songSec - loop.startSec) % length) + length) % length;
+    if (length <= 0) return clamp(loop.startSec, 0, this.duration);
+    if (clamped < loop.endSec) return clamped;
+    return loop.startSec + ((clamped - loop.startSec) % length);
   }
 
   private startSource(songSec: number): boolean {
@@ -156,7 +159,9 @@ export class AudioClock {
       source.loop = true;
       source.loopStart = loop.startSec;
       source.loopEnd = loop.endSec;
-      offset = clamp(songSec, loop.startSec, Math.max(loop.startSec, loop.endSec - 0.002));
+      // Starting before the loop is legitimate; the source plays the intro and
+      // then wraps at loopEnd. Starting past it is folded into the loop.
+      offset = clamp(songSec, 0, Math.max(0, buffer.duration - 0.002));
     } else {
       offset = clamp(songSec, 0, Math.max(0, buffer.duration - 0.002));
     }

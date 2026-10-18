@@ -5,7 +5,7 @@ Phase gates are about proving the risky thing before building the expensive thin
 ## Phase 0 — Spikes (throwaway code allowed)
 
 - **Lighting spike** (`apps/lighting-spike`): procedural venue, mixed fixture types, additive TSL beam-cone proxies, fog, bloom, floor pools, perf HUD, dynamic resolution. Visual look and basic frame budget are documented; still compare half-resolution volumetrics and test on a 60 Hz / mid-range GPU before choosing the renderer path.
-- **Audio clock prototype** (`apps/lighting-spike/src/audio-clock.ts`): implemented against the sample track with `AudioContext` time, output-latency compensation, audio loop points, waveform peaks/grid, play/pause/scrub. This validates the clock/transport path, but audio selection and import are not implemented.
+- **Audio clock prototype** (`apps/lighting-spike/src/audio-clock.ts`): implemented against the sample track with `AudioContext` time, output-latency compensation, audio loop points, waveform peaks/grid, play/pause/scrub, and local audio selection/import.
 - **Beat detection evaluation**: compare `web-audio-beat-detector` / `essentia.js` results against manually tapped BPM. Not started — the current track's 130 BPM / 0.02 s offset was measured offline and hard-coded in `src/track.ts`.
 
 Exit criteria: a documented frame budget in `docs/agent_docs/spike-notes.md`, a look worth iterating on, and enough audio-sync evidence to proceed into the vertical slice. The first two have promising evidence; target-hardware performance and automated beat analysis remain open.
@@ -17,7 +17,7 @@ Build on the working audio clock in this order:
 1. [x] Add local audio selection and playback for a user-provided file.
 2. Show and allow editing of BPM and beat-grid offset; keep analysis results correctable.
 3. Display the waveform with beat/bar markers driven by that grid.
-4. Add a minimal clip lane with create/move/resize and play/pause/scrub, proving a short lighting cue can be authored and stays synced.
+4. [x] Prototype an FL Studio-inspired arrangement with fixture-specific lanes, create/move/resize clips, and capability-aware actions. This proves a cue can reach the matching fixture in sync; clips are still in-memory and not saved.
 
 **Keep the current fixture set.** Defer additional fixture types and lighting effects until this authoring flow is proven; those expand the content surface before the core workflow is validated. In parallel, validate the renderer on a 60 Hz / mid-range GPU and compare proxy beams with half-resolution volumetrics.
 

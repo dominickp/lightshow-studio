@@ -25,8 +25,26 @@ The low-poly venue plus saturated moving beams is visually promising. Additive f
 
 - Latency compensation uses `outputLatency` (40 ms in the integrated Chrome here), so visuals follow the sample that is actually audible.
 - Looping uses the source node's `loopStart`/`loopEnd`, which is sample-accurate; the visual clock wraps on the same region.
+- A loop is a brace, not a cage: seeking or starting before the loop is allowed, so the song intro plays through and then wraps at the loop end. Only positions at/past the loop end fold back inside it. The arrangement shades the loop region so clips that cannot play are visible.
+- The loop is editable: drag the cyan grips on the ruler to move the in/out points, Shift+drag anywhere in the timeline (ruler, waveform, or a lane) to draw a new loop, `Loop` toggles looping, and `Fit loop` zooms to it. The demo choreography keeps running over its authored 16-bar loop so the stage never goes dark when the audio loop moves.
+- The ruler is scrubbable as well as the waveform, so getting back before the loop does not depend on the horizontal scrollbar.
 - Choreography is evaluated against the loop's bar grid even when audio looping is off, so the lights never stop or fall out of phase with the beat.
 - The transport strip draws waveform peaks (min/max per pixel, computed once after decode), beat and bar ticks, the loop region, and a playhead.
+
+## Timeline and notefield design prototype
+
+The lower dock is an FL Studio-style **Playlist / Arrangement view**: a pinned transport, a pinned clip inspector, a sticky time ruler plus audio waveform, and one lane per fixture with sticky fixture labels, beat subdivisions, clip blocks, horizontal/vertical scrolling, and zoom controls.
+
+- Layout: the transport and clip inspector are fixed header rows; the ruler (`top: 0`) and waveform (`top: 28px`) are sticky, so scrolling through 32 fixture lanes never hides the beat grid, audio reference, or playback controls. Track labels stick to the left.
+- Zoom: a log-scaled slider (0.25–480 px/s), `−`/`+`, Fit-to-song, Ctrl/Cmd+wheel around the pointer (or plain wheel per axis), and Ctrl/Cmd `+`/`-`/`0`. Zooming keeps the pointer's time anchored. The toolbar floats in the dock corner so it cannot be clipped by the track-label column.
+- Loop clarity: the ruler and every lane shade the region outside the transport loop (bars 41–56 by default). Because the audio clock clamps seeks to the active loop, clips drawn outside it never play; the shading makes that constraint visible rather than surprising.
+- Authoring: drag in a lane to draw a clip with a live dashed preview; a plain click adds a default-length clip at the playhead. Drag a clip body to move it; drag either edge to resize that edge (left/right edge gestures are distinct). Snapping is 1/16 note when a BPM grid exists.
+- Inspector: the selected fixture's capabilities are listed (Dimmer, RGB/W, Pan/Tilt, Zoom, Strobe rate, Gobo, Prism, Rotation). Hold, fade, and pulse are available generally; pan/tilt fixtures add sweep and strobe-capable fixtures add strobe. Colour is editable for colour-mixing fixtures. When no clip is selected, the action/colour pickers set the default for the next clip, so drag-created clips inherit the user's intent.
+- Fixture response: clip action resolves into the existing show-model envelopes and overrides only its target fixture during playback/scrubbing.
+
+This is a design and behavior prototype, not a finished editor. Clip data is still in-memory and is discarded when another audio file is loaded; there is no save/load, undo/redo, multi-select, copy/paste, track reordering, or per-attribute keyframe inspector. BPM/offset editing and beat analysis remain open.
+
+See `docs/agent_docs/ux-lighting-controls.md` for the evaluated control surface and phased feature plan.
 
 ### Measured track facts
 
@@ -49,4 +67,4 @@ The low-poly venue plus saturated moving beams is visually promising. Additive f
 3. Validate WebGL2 fallback and compare output/quality.
 4. Improve physical fixture geometry and DMX profile/channel fidelity before carrying spike code into `packages/renderer`.
 5. Add a photosensitivity warning/control before making strobe-heavy shows a normal default.
-6. Replace the hard-coded sample beat grid with real import-time analysis (BPM/offset detection, correctable) and move the transport strip toward the Phase 1 timeline.
+6. Add editable BPM/offset and real import-time beat analysis (correctable), then validate the grid and snapping with local tracks.

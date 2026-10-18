@@ -20,9 +20,10 @@
   - Lane hover ghost, clip hover states, ruler grip cursor, timeline tooltip, waveform seek line.
 - [x] Better handling of zoom of arrangement timeline gridlines when user zooms out
   - Grid lines thin from 16ths → beats → measures → none as zoom decreases.
-- [ ] We need the ability to adjust the layout and persist to local storage
+- [x] We need the ability to adjust the layout and persist to local storage
   - Audio waveform timeline should be adjustable for vertical height
   - We should be able to raise or lower the entire timeline-dock, or even minimize it completely
+  - Done: drag the waveform divider to resize the audio strip; drag the dock's top edge to raise/lower it; Collapse/Expand in the transport minimizes it. All three persist to `localStorage`.
 - [ ] We may want to support two 3d viewports eventually. Like have the left side show the stage from above while the right side shows the view from an audience member, controllable by the user of course.
 - [ ] The enture design of the timeline/arrangement needs a review. There is a lot of very small text that is hard to read, and each light's track has text that gets cut off and is not very clear. We should consider if it makes sense to show the text here and we can look at other DAW apps for inspiration.
 - [x] Fix misalignment of arrangement bar labels on timeline.
@@ -42,12 +43,16 @@
 - [ ] The lighting looks nice for volumetric spotlights, but in general it doesnt look very realistic. All of the lights seem to be perfect looking cones that radiate from a single point, while the light can is large than that point. I think doing another investigation of some EDM lighting effects, stage lights, and how they actually look might help us understand the gaps. We don't have any reflections, which is part of it for sure. I will put some images in "./lightshow_inspiration" for an agent to review.
   - We can also review some articles like this https://www.suntechleds.com/types-of-stage-and-theatre-lighting.html 
   - If we chose the wrong approach with the typescript app and threejs, its okay, its just a prototype. We may want to review our prototype and see if we should adjust our decision of how to implement this if we don't think we can make nice looking effects this way.
-- You shold be able to quickly hide a particular teack on the arrangement timeline
+- [x] You shold be able to quickly hide a particular teack on the arrangement timeline
   - e.g. disable a particular light with an eye icon like other DAW apps
   - We should also add some sort of highlight or outline to the particular light in the scene so you know which light you selected in the timeline. Now its hard to tell which one you selected in the timeline maps to what you see in the scene.
-- Controls pane is a mess, strobes warning was not asked for and can be removed.
-- "Fixter preview" needs a redesign. This panel should auto open when you click on a track, so it should have a permant spot somewhere I think. Or maybe there should be a little gear icon on each track to open this. No idea what test output does or the checkbox next to it. 
+  - Done: each track has an eye toggle that hides that fixture in the 3D scene (clips stay intact), and the selected fixture gets a cyan ring/pointer marker in the scene plus an accent edge on its row.
+- [x] Controls pane is a mess, strobes warning was not asked for and can be removed.
+  - Done: controls are grouped into Render / View / Scene / Diagnostics, and the strobe warning was removed.
+- [x] "Fixter preview" needs a redesign. This panel should auto open when you click on a track, so it should have a permant spot somewhere I think. Or maybe there should be a little gear icon on each track to open this. No idea what test output does or the checkbox next to it. 
   - "Live render-only tuning; not stored in clips or the show." i dont understand this warning.
-- Debug/stats menu should be toggleable, so it doesn't show all the time. Maybe its time for a preferences/settings panel?
+  - Done (first pass): the panel auto-opens when a track is selected, sits in a fixed spot beside the controls, the checkbox is now a clear "Test output: off/on" button, and the note reads "Preview only — changes here are not saved to clips or the show."
+- [x] Debug/stats menu should be toggleable, so it doesn't show all the time. Maybe its time for a preferences/settings panel?
+  - Done: Stats button / `S` shortcut toggles the HUD and the choice persists. Layout preferences persist too (see the dock/waveform item).
 - The timeline and settings need to be exportable and importable as a project file
   - Along with this work, the current koto chill demo needs to be loaded from that filetype off of the disk. This way, the user can iterate on the demo project.

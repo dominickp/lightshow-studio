@@ -1,0 +1,181 @@
+/**
+ * Song time from the Web Audio clock.
+ *
+ * ADR-002: time is never accumulated from frame deltas. Audio plays on an
+ * `AudioBufferSourceNode`; the visual position is the context clock minus the
+ * output latency, so the frame we draw matches the sample leaving the speakers.
+ * Scrubbing and looping are just re-anchoring, never a second time source.
+ */
+
+export interface LoopRegion {
+  startSec: number;
+  endSec: number;
+}
+
+const clamp = (v: number, lo: number, hi: number): number => (v < lo ? lo : v > hi ? hi : v);
+
+export class AudioClock {
+  private readonly context: AudioContext;
+  private readonly gain: GainNode;
+  private buffer: AudioBuffer | null = null;
+  private source: AudioBufferSourceNode | null = null;
+  private isPlaying = false;
+  private anchorContextSec = 0;
+  private anchorSongSec = 0;
+  private loopRegion: LoopRegion | null = null;
+  private loopIsEnabled = true;
+
+  constructor() {
+    this.context = new AudioContext();
+    this.gain = this.context.createGain();
+    this.gain.connect(this.context.destination);
+  }
+
+  get playing(): boolean {
+    return this.isPlaying;
+  }
+
+  get duration(): number {
+    return this.buffer?.duration ?? 0;
+  }
+
+  get ready(): boolean {
+    return this.buffer !== null;
+  }
+
+  get loopEnabled(): boolean {
+    return this.loopIsEnabled;
+  }
+
+  /** Seconds between the scheduled sample and the sample the user hears. */
+  get latencySec(): number {
+    return this.context.outputLatency || this.context.baseLatency || 0;
+  }
+
+  get time(): number {
+    if (!this.isPlaying) return this.anchorSongSec;
+
+    const elapsed = Math.max(0, this.context.currentTime - this.anchorContextSec - this.latencySec);
+    const raw = this.anchorSongSec + elapsed;
+    const loop = this.loopIsEnabled ? this.loopRegion : null;
+    if (loop === null) return Math.min(raw, this.duration);
+
+    const length = loop.endSec - loop.startSec;
+    if (length <= 0 || raw < loop.endSec) return raw;
+    return loop.startSec + ((raw - loop.startSec) % length);
+  }
+
+  async decode(data: ArrayBuffer): Promise<AudioBuffer> {
+    return this.context.decodeAudioData(data);
+  }
+
+  load(buffer: AudioBuffer): void {
+    this.pause();
+    this.stopSource();
+    this.buffer = buffer;
+    this.anchorSongSec = 0;
+  }
+
+  setVolume(value: number): void {
+    this.gain.gain.value = clamp(value, 0, 1);
+  }
+
+  setLoop(region: LoopRegion, enabled = this.loopIsEnabled): void {
+    const now = this.time;
+    this.loopRegion = region;
+    this.loopIsEnabled = enabled;
+    this.reanchor(now);
+  }
+
+  setLoopEnabled(enabled: boolean): void {
+    if (this.loopIsEnabled === enabled) return;
+    const now = this.time;
+    this.loopIsEnabled = enabled;
+    this.reanchor(now);
+  }
+
+  async play(): Promise<void> {
+    if (this.buffer === null || this.isPlaying) return;
+    if (this.context.state !== 'running') await this.context.resume();
+    this.isPlaying = true;
+    this.startSource(this.anchorSongSec);
+  }
+
+  pause(): void {
+    if (!this.isPlaying) return;
+    const now = this.time;
+    this.isPlaying = false;
+    this.anchorSongSec = now;
+    this.stopSource();
+  }
+
+  async toggle(): Promise<void> {
+    if (this.isPlaying) this.pause();
+    else await this.play();
+  }
+
+  seek(songSec: number): void {
+    if (this.buffer === null) return;
+    const target = clamp(songSec, 0, this.duration);
+    if (this.isPlaying) this.startSource(target);
+    else this.anchorSongSec = target;
+  }
+
+  private reanchor(songSec: number): void {
+    if (this.isPlaying) this.startSource(songSec);
+    else this.anchorSongSec = this.loopIsEnabled ? this.wrap(songSec) : songSec;
+  }
+
+  private wrap(songSec: number): number {
+    const loop = this.loopIsEnabled ? this.loopRegion : null;
+    if (loop === null) return songSec;
+    const length = loop.endSec - loop.startSec;
+    if (length <= 0) return loop.startSec;
+    return loop.startSec + (((songSec - loop.startSec) % length) + length) % length;
+  }
+
+  private startSource(songSec: number): void {
+    const buffer = this.buffer;
+    if (buffer === null) return;
+
+    this.stopSource();
+
+    const source = this.context.createBufferSource();
+    source.buffer = buffer;
+    source.connect(this.gain);
+
+    const loop = this.loopIsEnabled ? this.loopRegion : null;
+    let offset: number;
+    if (loop !== null && loop.endSec > loop.startSec) {
+      source.loop = true;
+      source.loopStart = loop.startSec;
+      source.loopEnd = loop.endSec;
+      offset = clamp(songSec, loop.startSec, Math.max(loop.startSec, loop.endSec - 0.002));
+    } else {
+      offset = clamp(songSec, 0, Math.max(0, buffer.duration - 0.002));
+    }
+
+    source.onended = () => {
+      if (this.source !== source) return;
+      this.source = null;
+      this.isPlaying = false;
+      this.anchorSongSec = buffer.duration;
+    };
+    source.start(0, offset);
+    this.source = source;
+    this.anchorContextSec = this.context.currentTime;
+    this.anchorSongSec = offset;
+  }
+
+  private stopSource(): void {
+    if (this.source === null) return;
+    this.source.onended = null;
+    try {
+      this.source.stop();
+    } catch {
+      // Already stopped; stop() throws when the node never started.
+    }
+    this.source.disconnect();
+    this.source = null;
+  }
+}

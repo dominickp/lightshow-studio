@@ -114,7 +114,7 @@
       }
 
       #hint {
-        bottom: 12px;
+        bottom: 132px;
         left: 12px;
         color: var(--dim);
         max-width: 640px;
@@ -124,6 +124,73 @@
       #hint b {
         color: var(--ink);
         font-weight: 500;
+      }
+
+      #transport {
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        display: grid;
+        grid-template-columns: auto auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 10px;
+      }
+
+      #transport button {
+        appearance: none;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 5px;
+        color: var(--ink);
+        font: inherit;
+        padding: 6px 12px;
+        cursor: pointer;
+        white-space: nowrap;
+        min-width: 92px;
+      }
+
+      #transport button:hover {
+        border-color: var(--edge);
+        background: rgba(122, 209, 255, 0.08);
+      }
+
+      #transport button.on {
+        border-color: rgba(122, 209, 255, 0.55);
+        box-shadow: inset 0 0 0 1px rgba(122, 209, 255, 0.2);
+        color: var(--accent);
+      }
+
+      #transport button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      #waveform {
+        display: block;
+        width: 100%;
+        height: 78px;
+        border-radius: 4px;
+        cursor: ew-resize;
+        touch-action: none;
+      }
+
+      #transport-meta {
+        display: grid;
+        justify-items: end;
+        gap: 2px;
+        min-width: 158px;
+      }
+
+      #transport-meta b {
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+      }
+
+      #transport-meta span {
+        color: var(--dim);
+        font-size: 11px;
+        text-align: right;
       }
 
       #loading {
@@ -156,11 +223,12 @@
       <div class="row"><span>resolution</span><b id="stat-res">–</b></div>
       <div class="row"><span>backend</span><b id="stat-backend">–</b></div>
       <div class="row"><span>fixtures</span><b id="stat-fixtures">–</b></div>
-      <div class="row"><span>show time</span><b id="stat-time">–</b></div>
+      <div class="row"><span>song time</span><b id="stat-time">–</b></div>
+      <div class="row"><span>latency</span><b id="stat-latency">–</b></div>
+      <div class="row"><span>loop</span><b id="stat-loop">–</b></div>
     </div>
 
     <div class="panel" id="controls">
-      <button id="btn-play" class="on">Play / pause <em>space</em></button>
       <button id="btn-vol" class="on">Beam cones <em>1</em></button>
       <button id="btn-bloom" class="on">Bloom <em>2</em></button>
       <button id="btn-shadow" class="on">Shadows <em>3</em></button>
@@ -171,9 +239,21 @@
     </div>
 
     <div class="panel" id="hint">
-      <b>Lighting spike.</b> 16-bar demo at 128 BPM, 32 fixtures. Drag to orbit, scroll to zoom.
-      Strobe flashes are opt-in (key 5); flashing effects may affect photosensitive viewers.
-      Watch fps while toggling beams and bloom — that is the number that decides the Phase 1 budget.
+      <b>Lighting spike.</b> 16-bar loop on <i>The Koto Chill</i> (130 BPM), 32 fixtures.
+      Space plays/pauses, click or drag the waveform to scrub, <b>L</b> toggles audio looping.
+      Drag the venue to orbit, scroll to zoom. Strobe flashes are opt-in (key 5); flashing
+      effects may affect photosensitive viewers.
+    </div>
+
+    <div class="panel" id="transport">
+      <button id="btn-load">Load audio</button>
+      <button id="btn-play" disabled>▶ Play</button>
+      <input id="audio-file" type="file" accept="audio/*" hidden />
+      <canvas id="waveform" aria-label="Waveform, beat grid and playhead"></canvas>
+      <div id="transport-meta">
+        <b id="transport-time">–</b>
+        <span id="transport-track">No audio loaded · expected 130 BPM</span>
+      </div>
     </div>
 
     <script type="module" src="/src/main.ts"></script>

@@ -1,11 +1,13 @@
 import * as THREE from 'three/webgpu';
-import { evaluateFixtureStates, secondsPerBar } from '@dmxsim/show-model';
-import { createDemoShow, DEMO_LOOP_SEC } from './demo-show';
-import { LoopClock } from './clock';
+import { evaluateFixtureStates, timeToBeat } from '@dmxsim/show-model';
+import { createDemoShow } from './demo-show';
+import { AudioClock } from './audio-clock';
+import { loopEndSec, loopLengthSec, loopStartSec, TRACK, TRACK_URL } from './track';
+import { computePeaks, WaveformStrip } from './waveform';
 import { Stage } from './stage';
 import { Post } from './post';
 
-const show = createDemoShow();
+const show = createDemoShow(loopStartSec, TRACK.bpm);
 const counts = [10, 16, 22, 26, 32].filter((n) => n <= show.fixtures.length);
 
 const container = document.getElementById('app');
@@ -26,8 +28,8 @@ await renderer.init();
 
 const stage = new Stage(renderer.domElement, show);
 const post = new Post(renderer, stage.scene, stage.camera);
-const clock = new LoopClock(DEMO_LOOP_SEC);
-const barSec = secondsPerBar(show.beatGrid);
+const clock = new AudioClock();
+clock.setLoop({ startSec: loopStartSec, endSec: loopEndSec }, true);
 
 let volumetrics = true;
 let bloomOn = true;
@@ -54,6 +56,9 @@ const ui = {
   backend: element('stat-backend'),
   fixtures: element('stat-fixtures'),
   time: element('stat-time'),
+  latency: element('stat-latency'),
+  loop: element('stat-loop'),
+  transportTime: element('transport-time'),
   play: element<HTMLButtonElement>('btn-play'),
   vol: element<HTMLButtonElement>('btn-vol'),
   bloom: element<HTMLButtonElement>('btn-bloom'),
@@ -63,14 +68,29 @@ const ui = {
   strobeStatus: element('strobe-status'),
   view: element<HTMLButtonElement>('btn-view'),
   count: element<HTMLButtonElement>('btn-count'),
+  waveform: element<HTMLCanvasElement>('waveform'),
   loading: element('loading'),
 };
 
 const backend = (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend ? 'WebGPU' : 'WebGL2';
 ui.backend.textContent = backend;
+ui.loop.textContent = `${TRACK.loopStartBar}–${TRACK.loopStartBar + TRACK.loopBars - 1}`;
+
+const waveform = new WaveformStrip(ui.waveform, (songSec) => clock.seek(songSec));
+
+/** Choreography stays on the loop's bar grid even when the audio is not looping. */
+const showTime = (songSec: number): number =>
+  loopStartSec + (((songSec - loopStartSec) % loopLengthSec) + loopLengthSec) % loopLengthSec;
+
+const formatClock = (seconds: number): string => {
+  const safe = Math.max(0, seconds);
+  const minutes = Math.floor(safe / 60);
+  return `${minutes}:${(safe - minutes * 60).toFixed(1).padStart(4, '0')}`;
+};
 
 const syncButtons = (): void => {
   ui.play.classList.toggle('on', clock.playing);
+  ui.play.textContent = clock.playing ? '❚❚ Pause' : '▶ Play';
   ui.vol.classList.toggle('on', volumetrics);
   ui.bloom.classList.toggle('on', bloomOn);
   ui.shadow.classList.toggle('on', shadowsOn);
@@ -97,10 +117,11 @@ const setActiveCount = (count: number): void => {
   syncButtons();
 };
 
-ui.play.addEventListener('click', () => {
-  clock.toggle();
-  syncButtons();
-});
+const togglePlay = (): void => {
+  void clock.toggle().then(syncButtons);
+};
+
+ui.play.addEventListener('click', togglePlay);
 ui.vol.addEventListener('click', () => {
   volumetrics = !volumetrics;
   syncButtons();
@@ -133,7 +154,7 @@ ui.count.addEventListener('click', () => {
 window.addEventListener('keydown', (event) => {
   if (event.code === 'Space') {
     event.preventDefault();
-    clock.toggle();
+    togglePlay();
   } else if (event.key === '1') {
     volumetrics = !volumetrics;
   } else if (event.key === '2') {
@@ -147,6 +168,8 @@ window.addEventListener('keydown', (event) => {
     post.setLofi(lofi);
   } else if (event.key === '5') {
     strobesOn = !strobesOn;
+  } else if (event.key === 'l' || event.key === 'L') {
+    clock.setLoopEnabled(!clock.loopEnabled);
   } else if (event.key === 'c' || event.key === 'C') {
     stage.nextView();
   } else if (event.key === '[' || event.key === ']') {
@@ -184,7 +207,7 @@ const adjustResolution = (): void => {
   }
 };
 
-const updateStats = (now: number, states: ReturnType<typeof evaluateFixtureStates>): void => {
+const updateStats = (now: number, states: ReturnType<typeof evaluateFixtureStates>, songTime: number): void => {
   if (now - lastStats < 250) return;
   lastStats = now;
 
@@ -194,14 +217,17 @@ const updateStats = (now: number, states: ReturnType<typeof evaluateFixtureState
   ui.calls.textContent = String(info.drawCalls);
   ui.tris.textContent = info.triangles.toLocaleString('en-US');
   ui.res.textContent = `${(resolutionScale * 100).toFixed(0)}%`;
+  ui.latency.textContent = `${(clock.latencySec * 1000).toFixed(1)} ms`;
 
   const active = states.slice(0, activeCount).filter((state) => state.active).length;
   ui.fixtures.textContent = `${active} active / ${activeCount} shown`;
 
-  const t = clock.time;
-  const bar = Math.floor(t / barSec) + 1;
-  const beat = Math.floor((t % barSec) / (barSec / show.beatGrid.beatsPerBar)) + 1;
-  ui.time.textContent = `${bar}.${beat} · ${t.toFixed(1)}s`;
+  const { beatsPerBar } = show.beatGrid;
+  const beat = timeToBeat(show.beatGrid, showTime(songTime));
+  const bar = Math.floor(beat / beatsPerBar) + 1;
+  const beatInBar = Math.floor(((beat % beatsPerBar) + beatsPerBar) % beatsPerBar) + 1;
+  ui.time.textContent = `${bar}.${beatInBar}`;
+  ui.transportTime.textContent = `${formatClock(songTime)} / ${formatClock(clock.duration)}`;
 };
 
 const frame = (now: number): void => {
@@ -210,23 +236,51 @@ const frame = (now: number): void => {
   smoothedFrameMs += (Math.min(delta, 100) - smoothedFrameMs) * 0.08;
   framesSinceAdjust += 1;
 
-  const time = clock.time;
-  const states = evaluateFixtureStates(show, time).map((state) =>
+  const songTime = clock.time;
+  const showAt = showTime(songTime);
+  const states = evaluateFixtureStates(show, showAt).map((state) =>
     state.kind === 'strobe' && !strobesOn
       ? { ...state, intensity: 0, active: false, strobeHz: 0 }
       : state,
   );
 
-  stage.update(states, time, { volumetrics });
-  post.setTime(time);
+  stage.update(states, showAt, { volumetrics });
+  post.setTime(showAt);
   renderer.info.reset();
   post.render();
 
+  waveform.render(songTime);
   adjustResolution();
-  updateStats(now, states);
+  updateStats(now, states, songTime);
 
   requestAnimationFrame(frame);
 };
+
+ui.loading.textContent = 'loading audio…';
+
+try {
+  const response = await fetch(TRACK_URL);
+  if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+  const buffer = await clock.decode(await response.arrayBuffer());
+  clock.load(buffer);
+  clock.seek(loopStartSec);
+
+  waveform.setTimeline({
+    durationSec: buffer.duration,
+    loopStartSec,
+    loopEndSec,
+    firstBeatSec: TRACK.firstBeatSec,
+    bpm: TRACK.bpm,
+    beatsPerBar: TRACK.beatsPerBar,
+  });
+  waveform.setPeaks(computePeaks(buffer, 1600));
+  ui.transportTime.textContent = `${formatClock(loopStartSec)} / ${formatClock(buffer.duration)}`;
+} catch (error) {
+  console.error(error);
+  ui.loading.textContent = `could not load ${TRACK.title}`;
+  ui.loading.hidden = false;
+  await new Promise((resolve) => setTimeout(resolve, 2500));
+}
 
 ui.loading.hidden = true;
 syncButtons();

@@ -4,11 +4,11 @@ Phase gates are about proving the risky thing before building the expensive thin
 
 ## Phase 0 — Spikes (throwaway code allowed)
 
-- **Lighting spike** (`apps/spike`): procedural venue, mixed fixture types, additive TSL beam-cone proxies, fog, bloom, floor pools, perf HUD, dynamic resolution. Compare against true half-resolution volumetrics before deciding the renderer path. Answer: does the look work, and what fixture count holds 60 fps?
+- **Lighting spike** (`apps/lighting-spike`): procedural venue, mixed fixture types, additive TSL beam-cone proxies, fog, bloom, floor pools, perf HUD, dynamic resolution. Compare against true half-resolution volumetrics before deciding the renderer path. Answer: does the look work, and what fixture count holds 60 fps?
 - **Audio clock prototype**: song time from `AudioContext` with latency compensation; waveform peaks; beat grid from BPM + offset.
 - **Beat detection evaluation**: compare `web-audio-beat-detector` / `essentia.js` results against manually tapped BPM.
 
-Exit criteria: a documented frame budget in `agent_docs/spike-notes.md`, and a look that is worth iterating on.
+Exit criteria: a documented frame budget in `docs/agent_docs/spike-notes.md`, and a look that is worth iterating on.
 
 ## Phase 1 — Vertical slice
 

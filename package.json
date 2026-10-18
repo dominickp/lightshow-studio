@@ -7,8 +7,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev -w @dmxsim/spike",
-    "build": "npm run build -w @dmxsim/spike",
+      "dev": "npm run dev -w @dmxsim/lighting-spike",
+      "build": "npm run build -w @dmxsim/lighting-spike",
     "test": "vitest run",
     "typecheck": "tsc -b --pretty"
   },

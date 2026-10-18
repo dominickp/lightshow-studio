@@ -5,25 +5,25 @@ npm workspaces monorepo. One TypeScript toolchain, Vite for apps.
 ```
 apps/
   web/            # Phase 1 product app (not yet created)
-  spike/          # Phase 0 lighting/perf spike (renderer experiment; extract stable parts later)
+  lighting-spike/ # Phase 0 lighting/perf spike (renderer experiment; extract stable parts later)
 packages/
   show-model/     # Pure TS: schema, evaluate(), presets, migrations. NO three.js.
   renderer/       # three/webgpu: fixture meshes, TSL materials, post-processing
   fixtures/       # Fixture profiles (JSON/TS): channel maps, capabilities, physical limits
-agent_docs/       # Planning and decisions (agent-maintained)
-user_docs/        # User-authored docs — never modify
+docs/agent_docs/  # Planning and decisions (agent-maintained)
+docs/user_docs/   # User-authored docs — never modify
 ```
 
 ## Dependency rules
 
 ```
-apps/web, apps/spike -> packages/renderer -> packages/show-model
-apps/web, apps/spike -> packages/show-model
-apps/web, apps/spike -> packages/fixtures -> packages/show-model (types only)
+apps/web, apps/lighting-spike -> packages/renderer -> packages/show-model
+apps/web, apps/lighting-spike -> packages/show-model
+apps/web, apps/lighting-spike -> packages/fixtures -> packages/show-model (types only)
 show-model must never import three, DOM, or WebAudio.
 ```
 
-The current spike keeps its scene implementation in `apps/spike`; extract stable renderer pieces to `packages/renderer` after the visual/performance experiments.
+The current spike keeps its scene implementation in `apps/lighting-spike`; extract stable renderer pieces to `packages/renderer` after the visual/performance experiments.
 
 Enforce with an ESLint `no-restricted-imports` rule in `packages/show-model`.
 

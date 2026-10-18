@@ -16,7 +16,7 @@ const DEFAULTS: Record<ControllableAttribute, number> = {
   white: 0,
   pan: 0.5,
   tilt: 0.5,
-  zoom: 0.15,
+  zoom: 0,
   focus: 0.5,
   strobe: 0,
   rotation: 0,

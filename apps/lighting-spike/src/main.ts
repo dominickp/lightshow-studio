@@ -134,7 +134,7 @@ interface FixturePreviewSettings {
   intensity: number;
   yawOffsetDeg: number;
   pitchOffsetDeg: number;
-  spreadDeg: number;
+  spreadDeg?: number;
 }
 
 const fixturePreviews = new Map<string, FixturePreviewSettings>();
@@ -146,7 +146,6 @@ const previewFor = (fixture: (typeof show.fixtures)[number]): FixturePreviewSett
       intensity: 0.5,
       yawOffsetDeg: 0,
       pitchOffsetDeg: 0,
-      spreadDeg: (fixture.profile.beam.spreadDeg[0] + fixture.profile.beam.spreadDeg[1]) / 2,
     };
     fixturePreviews.set(fixture.id, preview);
   }
@@ -207,8 +206,16 @@ const syncCueInspector = (fixture: (typeof show.fixtures)[number] | null, cue: C
     ui.previewPitchValue.textContent = `${Math.round(preview.pitchOffsetDeg)}°`;
     ui.previewSpreadRow.hidden = !fixture.profile.capabilities.zoom;
     ui.previewSpread.disabled = !fixture.profile.capabilities.zoom;
-    ui.previewSpread.value = String(Math.round(((preview.spreadDeg - spreadMin) / (spreadMax - spreadMin)) * 100));
-    ui.previewSpreadValue.textContent = `${preview.spreadDeg.toFixed(1)}°`;
+    const activeClips = cues
+      .filter((item) => item.fixtureId === fixture.id && clock.time >= item.startSec && clock.time <= item.endSec)
+      .map((item) => arrangement.toClip(item));
+    const evaluatedSpread = evaluateFixture(fixture, activeClips, clock.time).spreadDeg;
+    const displayedSpread = Number.isFinite(preview.spreadDeg)
+      ? preview.spreadDeg!
+      : Number.isFinite(evaluatedSpread) ? evaluatedSpread : spreadMin;
+    const spreadRange = Math.max(Number.EPSILON, spreadMax - spreadMin);
+    ui.previewSpread.value = String(Math.round(((displayedSpread - spreadMin) / spreadRange) * 100));
+    ui.previewSpreadValue.textContent = `${displayedSpread.toFixed(1)}°`;
     applyFixturePreview(fixture, preview);
   }
 

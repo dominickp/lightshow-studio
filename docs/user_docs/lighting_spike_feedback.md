@@ -45,3 +45,7 @@
 - You shold be able to quickly hide a particular teack on the arrangement timeline
   - e.g. disable a particular light with an eye icon like other DAW apps
   - We should also add some sort of highlight or outline to the particular light in the scene so you know which light you selected in the timeline. Now its hard to tell which one you selected in the timeline maps to what you see in the scene.
+- Controls pane is a mess, strobes warning was not asked for and can be removed.
+- "Fixter preview" needs a redesign. This panel should auto open when you click on a track, so it should have a permant spot somewhere I think. Or maybe there should be a little gear icon on each track to open this. No idea what test output does or the checkbox next to it. 
+  - "Live render-only tuning; not stored in clips or the show." i dont understand this warning.
+- Debug/stats menu should be toggleable, so it doesn't show all the time. Maybe its time for a preferences/settings panel?

@@ -19,7 +19,7 @@ export interface FixturePreview {
   intensity: number;
   yawOffsetDeg: number;
   pitchOffsetDeg: number;
-  spreadDeg: number;
+  spreadDeg?: number;
 }
 
 const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x15171d, roughness: 0.6, metalness: 0.65 });
@@ -217,7 +217,9 @@ export class FixtureRig {
     this.yoke.rotation.y = yaw * DEG;
     this.head.rotation.x = -(state.tiltDeg + (preview?.pitchOffsetDeg ?? 0)) * DEG;
 
-    const strobeOn = state.strobeHz > 0 ? Math.floor(timeSec * state.strobeHz) % 2 === 0 : true;
+    const strobeOn = preview?.outputEnabled || state.strobeHz <= 0
+      ? true
+      : Math.floor(timeSec * state.strobeHz) % 2 === 0;
     const level = (preview?.outputEnabled ? preview.intensity : state.intensity) * (strobeOn ? 1 : 0);
 
     const color = this.color.setRGB(state.color.r, state.color.g, state.color.b, THREE.SRGBColorSpace);

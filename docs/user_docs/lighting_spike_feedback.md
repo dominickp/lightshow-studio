@@ -1,28 +1,47 @@
 ## Things we need to implement at some point
-- Need playback volume adjustment
-- FPS has seemingly dropped since timeline was implemented
+- [x] Need playback volume adjustment
+  - Agent comment: 	setVolume() exists at audio-clock.ts:79 but no UI. Add slider + mute + setTargetAtTime ramp; persist it.
+- [x] FPS has seemingly dropped since timeline was implemented
+  - Fixed: clips are drawn into a canvas overlay instead of hundreds of DOM elements. Chromium and Firefox now hold 144 fps during playback.
   - I now get around 42ish FPS while playing, down from 144 
-  - When I play the demo for a little bit, after I pause, all of the lights blink a few times
-- Quick skip on timeline back and fourth with arrow keys
-- Better indication of what will happen when you click on timeline waveform and arrangement bars, hover effects
-- Better handling of zoom of arrangement timeline gridlines when user zooms out
-- We need the ability to adjust the layout and persist to local storage
+  - [x] When I play the demo for a little bit, after I pause, all of the lights blink a few times
+    - Fixed: adaptive resolution no longer resizes while paused or when the main thread is the bottleneck.
+  - This is on Firefox, it says webgpu here but for some reason its much slower than 
+  - chromium.console.table() `debugger eval code:4:38`(index)Valuesmedian 20.8 p95 27.8
+  - raf 24ms, latency 34ms
+  - Agent comments on possible causes:
+    - Forced layout every frame in follow mode 
+    - Full-canvas waveform redraw every frame
+    - 32 DOM playhead writes per frame 
+    - Dynamic resolution is likely the "lights blink after pause"
+- [x] Quick skip on timeline back and fourth with arrow keys
+  - `←`/`→` = 1/16 note, `Shift` = 1 measure.
+- [x] Better indication of what will happen when you click on timeline waveform and arrangement bars, hover effects
+  - Lane hover ghost, clip hover states, ruler grip cursor, timeline tooltip, waveform seek line.
+- [x] Better handling of zoom of arrangement timeline gridlines when user zooms out
+  - Grid lines thin from 16ths → beats → measures → none as zoom decreases.
+- [ ] We need the ability to adjust the layout and persist to local storage
   - Audio waveform timeline should be adjustable for vertical height
   - We should be able to raise or lower the entire timeline-dock, or even minimize it completely
-- We may want to support two 3d viewports eventually. Like have the left side show the stage from above while the right side shows the view from an audience member, controllable by the user of course.
-- The enture design of the timeline/arrangement needs a review. There is a lot of very small text that is hard to read, and each light's track has text that gets cut off and is not very clear. We should consider if it makes sense to show the text here and we can look at other DAW apps for inspiration.
-- Fix misalignment of arrangement bar labels on timeline.
+- [ ] We may want to support two 3d viewports eventually. Like have the left side show the stage from above while the right side shows the view from an audience member, controllable by the user of course.
+- [ ] The enture design of the timeline/arrangement needs a review. There is a lot of very small text that is hard to read, and each light's track has text that gets cut off and is not very clear. We should consider if it makes sense to show the text here and we can look at other DAW apps for inspiration.
+- [x] Fix misalignment of arrangement bar labels on timeline.
+  - Lane grid lines now anchor to the first beat, so they line up with the ruler ticks.
   - Do bars == measures? I would prefer to say measures in that case
-- There are too many entities on the arrangement timeline. We need to understand how users manage these.
+  - Done: user-facing UI now says "measures" (1 measure = 1 bar of 4 beats).
+- [ ] There are too many entities on the arrangement timeline. We need to understand how users manage these.
   - We want different scenes (as mentioned in project_idea.md)
   - The user should be able to add or remove lights from the scene, so we need to understand how the user can place the lights.
   - The user should start with few lights on the scene, but they can add more. With each one they add, a new track shows up on the timeline.
   - Currently, they are seeing way too many tracks because we have so many lights in this demo.
-- We need to explore and do a spike on each light type, to determine what controls each light/track will have.
+- [ ] We need to explore and do a spike on each light type, to determine what controls each light/track will have.
   - E.g. fade, strobe speed, sweep  etc... Which direction does it sweep? we need to give the user the ability to control these things with sensible defaults.
   - The user may want lights to point some direction, with the ability to control that over time in the song
   - This is just one example. Each light may have its own unique controls which add richness to this simulator.
-- The LED wall currently makes zero sense. We need to add the ability to load video effects/animations onto it and have them appear as if they are rendered on a real LED wall. This seems like a big feature on its own.
-- The lighting looks nice for volumetric spotlights, but in general it doesnt look very realistic. All of the lights seem to be perfect looking cones that radiate from a single point, while the light can is large than that point. I think doing another investigation of some EDM lighting effects, stage lights, and how they actually look might help us understand the gaps. We don't have any reflections, which is part of it for sure. I will put some images in "./lightshow_inspiration" for an agent to review.
+- [ ] The LED wall currently makes zero sense. We need to add the ability to load video effects/animations onto it and have them appear as if they are rendered on a real LED wall. This seems like a big feature on its own.
+- [ ] The lighting looks nice for volumetric spotlights, but in general it doesnt look very realistic. All of the lights seem to be perfect looking cones that radiate from a single point, while the light can is large than that point. I think doing another investigation of some EDM lighting effects, stage lights, and how they actually look might help us understand the gaps. We don't have any reflections, which is part of it for sure. I will put some images in "./lightshow_inspiration" for an agent to review.
   - We can also review some articles like this https://www.suntechleds.com/types-of-stage-and-theatre-lighting.html 
   - If we chose the wrong approach with the typescript app and threejs, its okay, its just a prototype. We may want to review our prototype and see if we should adjust our decision of how to implement this if we don't think we can make nice looking effects this way.
+- You shold be able to quickly hide a particular teack on the arrangement timeline
+  - e.g. disable a particular light with an eye icon like other DAW apps
+  - We should also add some sort of highlight or outline to the particular light in the scene so you know which light you selected in the timeline. Now its hard to tell which one you selected in the timeline maps to what you see in the scene.

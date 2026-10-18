@@ -4,7 +4,9 @@ Phase gates are about proving the risky thing before building the expensive thin
 
 ## Phase 0 — Spikes (throwaway code allowed)
 
-- **Lighting spike** (`apps/lighting-spike`): procedural venue, mixed fixture types, additive TSL beam-cone proxies, fog, bloom, floor pools, perf HUD, dynamic resolution. Visual look and basic frame budget are documented; still compare half-resolution volumetrics and test on a 60 Hz / mid-range GPU before choosing the renderer path.
+- **Lighting spike** (`apps/lighting-spike`): procedural venue, mixed fixture types, additive TSL beam proxies with profile-sized emitting apertures, fog, bloom, floor pools, perf HUD, dynamic resolution. A selected-fixture panel now previews output level, aim offsets, and zoom spread; these tuning values are render-only and are not saved or authored into clips. Still compare half-resolution volumetrics and test on a 60 Hz / mid-range GPU before choosing the renderer path.
+- **Venue and fixture authoring discovery**: define a venue as a loadable stage structure with a default rig; users can add, remove, position, mount, aim, duplicate, and group fixtures. Specify placement gestures, snapping/attachment to truss or stage points, and fixture-library/profile selection before building a full editor.
+- **Atmosphere authoring discovery**: haze/fog-machine density and position should be controllable, including song-timed activation/envelopes so a fog cue can precede a laser look. Keep global venue atmosphere separate from local/sourced effects and fixture cues.
 - **Audio clock prototype** (`apps/lighting-spike/src/audio-clock.ts`): implemented against the sample track with `AudioContext` time, output-latency compensation, audio loop points, waveform peaks/grid, play/pause/scrub, and local audio selection/import.
 - **Beat detection evaluation**: compare `web-audio-beat-detector` / `essentia.js` results against manually tapped BPM. Not started — the current track's 130 BPM / 0.02 s offset was measured offline and hard-coded in `src/track.ts`.
 
@@ -31,11 +33,15 @@ Exit criteria: a 30-second clip can be authored end-to-end and looks/sounds sync
 
 ## Phase 2 — Authoring depth
 
+- **Fixture behavior and clip controls:** replace the current canned action mapping with capability-aware authoring. Moving heads/washes get mount orientation plus pan/tilt targets and movement shapes (sweep, circle, figure-8, bounce) with range, speed, direction, and phase; fixed fixtures get installation aim (yaw/pitch) and beam controls only when their profile supports them. Expose dimmer/fade, color, zoom in full-angle degrees, focus, strobe rate (Hz and musical divisions), and rotation in meaningful units. Keep unsupported channels read-only until the model can animate them.
 - Preset/effect library (pulse, chase, strobe, rainbow, sweep, bounce)
 - Undo/redo via command objects, copy/paste at beat offsets, quantize, loop regions
+- **Fixture placement editor:** add/remove/duplicate fixtures from the profile library; select and position/rotate them in the 3D venue, with snapping/attachment points on trusses and stage structures, numeric transforms, and a clear distinction between physical mounting orientation and animated pan/tilt. Allow grouping and multi-selection; preserve profile capability constraints.
+- **Venue templates:** load a venue with its geometry, camera presets, and sensible default fixture rig. Keep user-added fixtures and edits distinct from the venue defaults; provide reset-to-template behavior. Start with the current venue and one alternative only after placement workflow is validated.
 - Camera presets and fixture placement gizmo
 - Save/load `.dmxsim`, autosave, version migrations
 - Inspector with per-fixture capability constraints
+- **Atmosphere authoring:** global haze/fog density plus positioned fog-machine sources that can be triggered and faded by arrangement clips. A fog cue can build before a laser/beam cue; define timing, persistence/decay, coverage radius, and whether density accumulates or clears. Surface the photosensitivity warning/control for strobe-heavy looks.
 
 ## Phase 3 — Spectacle
 

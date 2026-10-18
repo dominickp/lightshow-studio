@@ -82,6 +82,8 @@ const ui = {
   play: element<HTMLButtonElement>('btn-play'),
   chooseAudio: element<HTMLButtonElement>('btn-audio'),
   audioFile: element<HTMLInputElement>('audio-file'),
+  volume: element<HTMLInputElement>('volume'),
+  mute: element<HTMLButtonElement>('btn-mute'),
   vol: element<HTMLButtonElement>('btn-vol'),
   bloom: element<HTMLButtonElement>('btn-bloom'),
   shadow: element<HTMLButtonElement>('btn-shadow'),
@@ -91,6 +93,9 @@ const ui = {
   view: element<HTMLButtonElement>('btn-view'),
   count: element<HTMLButtonElement>('btn-count'),
   waveform: element<HTMLCanvasElement>('waveform'),
+  waveformPlayhead: element('waveform-playhead'),
+  waveformHover: element('waveform-hover'),
+  tooltip: element('timeline-tooltip'),
   arrangement: element('arrangement-rows'),
   arrangementScroll: element('arrangement-scroll'),
   ruler: element<HTMLCanvasElement>('timeline-ruler'),
@@ -111,6 +116,45 @@ const ui = {
   selectedFixture: element('selected-fixture'),
   fixtureCapabilities: element('fixture-capabilities'),
   loading: element('loading'),
+  fixturePreviewTitle: element('fixture-preview-title'),
+  previewOutputEnabled: element<HTMLInputElement>('preview-output-enabled'),
+  previewIntensity: element<HTMLInputElement>('preview-intensity'),
+  previewIntensityValue: element('preview-intensity-value'),
+  previewYaw: element<HTMLInputElement>('preview-yaw'),
+  previewYawValue: element('preview-yaw-value'),
+  previewPitch: element<HTMLInputElement>('preview-pitch'),
+  previewPitchValue: element('preview-pitch-value'),
+  previewSpreadRow: element('preview-spread-row'),
+  previewSpread: element<HTMLInputElement>('preview-spread'),
+  previewSpreadValue: element('preview-spread-value'),
+};
+
+interface FixturePreviewSettings {
+  outputEnabled: boolean;
+  intensity: number;
+  yawOffsetDeg: number;
+  pitchOffsetDeg: number;
+  spreadDeg: number;
+}
+
+const fixturePreviews = new Map<string, FixturePreviewSettings>();
+const previewFor = (fixture: (typeof show.fixtures)[number]): FixturePreviewSettings => {
+  let preview = fixturePreviews.get(fixture.id);
+  if (preview === undefined) {
+    preview = {
+      outputEnabled: false,
+      intensity: 0.5,
+      yawOffsetDeg: 0,
+      pitchOffsetDeg: 0,
+      spreadDeg: (fixture.profile.beam.spreadDeg[0] + fixture.profile.beam.spreadDeg[1]) / 2,
+    };
+    fixturePreviews.set(fixture.id, preview);
+  }
+  return preview;
+};
+
+const applyFixturePreview = (fixture: (typeof show.fixtures)[number], preview: FixturePreviewSettings): void => {
+  stage.setFixturePreview(fixture.id, preview);
 };
 
 const backend = (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend ? 'WebGPU' : 'WebGL2';
@@ -138,6 +182,36 @@ const syncCueInspector = (fixture: (typeof show.fixtures)[number] | null, cue: C
         fixture.profile.capabilities.rotation ? 'Rotation' : null,
       ].filter((capability) => capability !== null).join(' · ');
 
+  if (fixture === null) {
+    ui.fixturePreviewTitle.textContent = 'Fixture preview · select a track';
+    ui.previewOutputEnabled.disabled = true;
+    ui.previewIntensity.disabled = true;
+    ui.previewYaw.disabled = true;
+    ui.previewPitch.disabled = true;
+    ui.previewSpread.disabled = true;
+    ui.previewSpreadRow.hidden = true;
+  } else {
+    const preview = previewFor(fixture);
+    const [spreadMin, spreadMax] = fixture.profile.beam.spreadDeg;
+    ui.fixturePreviewTitle.textContent = `${fixture.id} · fixture preview`;
+    ui.previewOutputEnabled.disabled = false;
+    ui.previewOutputEnabled.checked = preview.outputEnabled;
+    ui.previewIntensity.disabled = false;
+    ui.previewIntensity.value = String(Math.round(preview.intensity * 100));
+    ui.previewIntensityValue.textContent = `${Math.round(preview.intensity * 100)}%`;
+    ui.previewYaw.disabled = false;
+    ui.previewYaw.value = String(preview.yawOffsetDeg);
+    ui.previewYawValue.textContent = `${Math.round(preview.yawOffsetDeg)}°`;
+    ui.previewPitch.disabled = false;
+    ui.previewPitch.value = String(preview.pitchOffsetDeg);
+    ui.previewPitchValue.textContent = `${Math.round(preview.pitchOffsetDeg)}°`;
+    ui.previewSpreadRow.hidden = !fixture.profile.capabilities.zoom;
+    ui.previewSpread.disabled = !fixture.profile.capabilities.zoom;
+    ui.previewSpread.value = String(Math.round(((preview.spreadDeg - spreadMin) / (spreadMax - spreadMin)) * 100));
+    ui.previewSpreadValue.textContent = `${preview.spreadDeg.toFixed(1)}°`;
+    applyFixturePreview(fixture, preview);
+  }
+
   const available = arrangement.selectedActions;
   ui.cueAction.replaceChildren(...available.map((action) => {
     const option = document.createElement('option');
@@ -162,10 +236,52 @@ ui.cueColor.replaceChildren(...CUE_COLORS.map((color, index) => {
   return option;
 }));
 
-arrangement = new Arrangement(ui.arrangement, show.fixtures, (nextCues) => {
+let cuesByFixture = new Map<string, readonly Cue[]>();
+const indexCues = (): void => {
+  const next = new Map<string, Cue[]>();
+  for (const cue of cues) {
+    const list = next.get(cue.fixtureId);
+    if (list === undefined) next.set(cue.fixtureId, [cue]);
+    else list.push(cue);
+  }
+  cuesByFixture = next;
+};
+
+arrangement = new Arrangement(ui.arrangement, ui.arrangementScroll, show.fixtures, (nextCues) => {
   cues = nextCues;
+  indexCues();
   syncCueInspector(arrangement.selectedFixture, arrangement.selectedCue);
 }, syncCueInspector);
+
+const updateSelectedPreview = (update: (preview: FixturePreviewSettings, fixture: (typeof show.fixtures)[number]) => void): void => {
+  const fixture = arrangement.selectedFixture;
+  if (fixture === null) return;
+  const preview = previewFor(fixture);
+  update(preview, fixture);
+  applyFixturePreview(fixture, preview);
+};
+
+ui.previewOutputEnabled.addEventListener('change', () => updateSelectedPreview((preview) => {
+  preview.outputEnabled = ui.previewOutputEnabled.checked;
+}));
+ui.previewIntensity.addEventListener('input', () => updateSelectedPreview((preview) => {
+  preview.intensity = Number(ui.previewIntensity.value) / 100;
+  ui.previewIntensityValue.textContent = `${ui.previewIntensity.value}%`;
+}));
+ui.previewYaw.addEventListener('input', () => updateSelectedPreview((preview) => {
+  preview.yawOffsetDeg = Number(ui.previewYaw.value);
+  ui.previewYawValue.textContent = `${ui.previewYaw.value}°`;
+}));
+ui.previewPitch.addEventListener('input', () => updateSelectedPreview((preview) => {
+  preview.pitchOffsetDeg = Number(ui.previewPitch.value);
+  ui.previewPitchValue.textContent = `${ui.previewPitch.value}°`;
+}));
+ui.previewSpread.addEventListener('input', () => updateSelectedPreview((preview, fixture) => {
+  const [spreadMin, spreadMax] = fixture.profile.beam.spreadDeg;
+  preview.spreadDeg = spreadMin + ((spreadMax - spreadMin) * Number(ui.previewSpread.value)) / 100;
+  ui.previewSpreadValue.textContent = `${preview.spreadDeg.toFixed(1)}°`;
+}));
+
 arrangement.selectFixture(show.fixtures[0]?.id ?? '');
 
 /** Choreography stays on the loop's bar grid even when the audio is not looping. */
@@ -229,6 +345,45 @@ const measureTrackWidth = (): void => {
 const labelWidth = (): number => cachedTrackWidth;
 measureTrackWidth();
 
+/**
+ * Follow mode needs the scroll viewport every frame. Reading `scrollLeft` /
+ * `clientWidth` after style writes forces a synchronous layout (expensive with
+ * a wide, sticky timeline), so cache them from events instead.
+ */
+const scrollMetrics = { left: 0, width: 0 };
+const refreshScrollMetrics = (): void => {
+  scrollMetrics.left = ui.arrangementScroll.scrollLeft;
+  scrollMetrics.width = ui.arrangementScroll.clientWidth;
+};
+ui.arrangementScroll.addEventListener('scroll', refreshScrollMetrics, { passive: true });
+new ResizeObserver(refreshScrollMetrics).observe(ui.arrangementScroll);
+refreshScrollMetrics();
+
+const VOLUME_KEY = 'dmxsim.spike.volume';
+const storedVolume = Number.parseFloat(localStorage.getItem(VOLUME_KEY) ?? '');
+let volume = Number.isFinite(storedVolume) ? Math.min(1, Math.max(0, storedVolume)) : 1;
+let muted = false;
+
+const applyVolume = (persist = true): void => {
+  clock.setVolume(muted ? 0 : volume);
+  ui.volume.value = String(Math.round(volume * 100));
+  ui.mute.textContent = muted ? '🔇' : '🔊';
+  ui.mute.classList.toggle('on', muted);
+  ui.mute.setAttribute('aria-pressed', String(muted));
+  if (persist) localStorage.setItem(VOLUME_KEY, String(volume));
+};
+
+ui.volume.addEventListener('input', () => {
+  volume = Number(ui.volume.value) / 100;
+  muted = false;
+  applyVolume();
+});
+ui.mute.addEventListener('click', () => {
+  muted = !muted;
+  applyVolume(false);
+});
+applyVolume(false);
+
 const ZOOM_SLIDER_STEPS = 1000;
 const ZOOM_RANGE = MAX_PIXELS_PER_SECOND / MIN_PIXELS_PER_SECOND;
 const zoomToSlider = (zoom: number): number =>
@@ -252,8 +407,18 @@ const setZoom = (nextZoom: number, anchorClientX?: number): void => {
   createRuler(ui.ruler, currentTimeline, width, zoom);
   ui.zoomLevel.value = String(zoomToSlider(zoom));
   ui.zoomPercent.textContent = `${Math.round((zoom / PIXELS_PER_SECOND) * 100)}%`;
-  ui.arrangementScroll.scrollLeft = Math.max(0, anchorTime * zoom + trackWidth - anchorX);
-  ui.rulerPlayhead.style.left = `${clock.time * zoom}px`;
+  const nextScroll = Math.max(0, anchorTime * zoom + trackWidth - anchorX);
+  ui.arrangementScroll.scrollLeft = nextScroll;
+  scrollMetrics.left = nextScroll;
+  waveform.requestPaint();
+  setRulerPlayhead(clock.time * zoom);
+};
+
+const setRulerPlayhead = (x: number): void => {
+  ui.rulerPlayhead.style.transform = `translate3d(${x}px, 0, 0)`;
+};
+const setWaveformPlayhead = (x: number): void => {
+  ui.waveformPlayhead.style.transform = `translate3d(${x}px, 0, 0)`;
 };
 ui.zoomIn.addEventListener('click', () => setZoom(arrangement.zoomLevel * 1.25));
 ui.zoomOut.addEventListener('click', () => setZoom(arrangement.zoomLevel * 0.8));
@@ -291,6 +456,53 @@ const snapTime = (timeSec: number): number => {
     timeline.firstBeatSec + Math.round((timeSec - timeline.firstBeatSec) / divisionSec) * divisionSec,
   ));
 };
+
+/** Arrow-key seek: one 1/16 by default, one bar with Shift. */
+const seekBy = (direction: 1 | -1, coarse: boolean): void => {
+  const timeline = currentTimeline;
+  if (timeline === null) return;
+  const bpm = timeline.bpm;
+  const stepSec = bpm !== null && bpm > 0
+    ? (coarse ? (60 / bpm) * timeline.beatsPerBar : 60 / bpm / 4)
+    : (coarse ? 5 : 1);
+  clock.seek(snapTime(clock.time) + direction * stepSec);
+};
+
+const barBeatLabel = (timeSec: number): string => {
+  const timeline = currentTimeline;
+  if (timeline === null || timeline.bpm === null || timeline.bpm <= 0) {
+    return formatClock(timeSec);
+  }
+  const beatSec = 60 / timeline.bpm;
+  const beat = (timeSec - timeline.firstBeatSec) / beatSec;
+  const beatsPerBar = Math.max(1, timeline.beatsPerBar);
+  const bar = Math.floor(beat / beatsPerBar) + 1;
+  const beatInBar = Math.floor(((beat % beatsPerBar) + beatsPerBar) % beatsPerBar) + 1;
+  return `${bar}.${beatInBar}`;
+};
+
+const showTimelineTooltip = (event: PointerEvent, timeSec: number, hint: string): void => {
+  ui.tooltip.hidden = false;
+  ui.tooltip.textContent = `${barBeatLabel(timeSec)} · ${formatClock(timeSec)} · ${hint}`;
+  ui.tooltip.style.left = `${event.clientX + 14}px`;
+  ui.tooltip.style.top = `${event.clientY + 16}px`;
+};
+const hideTimelineTooltip = (): void => {
+  ui.tooltip.hidden = true;
+};
+ui.waveform.addEventListener('pointermove', (event) => {
+  ui.waveformHover.hidden = false;
+  ui.waveformHover.style.transform = `translate3d(${event.offsetX}px, 0, 0)`;
+  showTimelineTooltip(event, event.offsetX / arrangement.zoomLevel, 'click to seek');
+});
+ui.waveform.addEventListener('pointerleave', () => {
+  ui.waveformHover.hidden = true;
+  hideTimelineTooltip();
+});
+ui.ruler.addEventListener('pointermove', (event) => {
+  showTimelineTooltip(event, event.offsetX / arrangement.zoomLevel, 'click to seek · Shift-drag for loop');
+});
+ui.ruler.addEventListener('pointerleave', hideTimelineTooltip);
 
 const loopRangeLabel = (): string => {
   const timeline = currentTimeline;
@@ -331,6 +543,7 @@ const applyLoop = (commitToClock = true): void => {
       bpm: timeline.bpm,
       beatsPerBar: timeline.beatsPerBar,
     });
+    waveform.requestPaint();
     createRuler(
       ui.ruler,
       currentTimeline,
@@ -383,6 +596,15 @@ const rulerXFor = (timeSec: number): number => {
   const rect = ui.ruler.getBoundingClientRect();
   return (timeSec / Math.max(1, timeline.durationSec)) * rect.width;
 };
+
+ui.ruler.addEventListener('pointermove', (event) => {
+  if (ui.ruler.hasPointerCapture(event.pointerId)) return;
+  const rect = ui.ruler.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const near = Math.abs(x - rulerXFor(loopRegion.startSec)) <= LOOP_GRIP_PX
+    || Math.abs(x - rulerXFor(loopRegion.endSec)) <= LOOP_GRIP_PX;
+  ui.ruler.style.cursor = near ? 'col-resize' : 'ew-resize';
+});
 
 ui.ruler.addEventListener('pointerdown', (event) => {
   if (currentTimeline === null) return;
@@ -611,6 +833,12 @@ window.addEventListener('keydown', (event) => {
   if (event.code === 'Space') {
     event.preventDefault();
     togglePlay();
+  } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+    event.preventDefault();
+    seekBy(event.key === 'ArrowRight' ? 1 : -1, event.shiftKey);
+  } else if (event.key === 'm' || event.key === 'M') {
+    muted = !muted;
+    applyVolume(false);
   } else if (event.key === '1') {
     volumetrics = !volumetrics;
   } else if (event.key === '2') {
@@ -642,28 +870,49 @@ const resizeViewport = (): void => {
   renderer.setSize(viewport.clientWidth, viewport.clientHeight);
   stage.camera.aspect = viewport.clientWidth / Math.max(1, viewport.clientHeight);
   stage.camera.updateProjectionMatrix();
+  refreshScrollMetrics();
+  waveform.paint();
 };
 window.addEventListener('resize', resizeViewport);
 
 let resolutionScale = 1;
 let smoothedFrameMs = 16.7;
-let framesSinceAdjust = 0;
+let smoothedCpuMs = 1;
 let lastFrame = performance.now();
 let lastStats = 0;
+let lastResolutionChange = 0;
+const RESOLUTION_COOLDOWN_MS = 3000;
 
-const adjustResolution = (): void => {
-  if (framesSinceAdjust < 45) return;
-  framesSinceAdjust = 0;
+const applyResolutionScale = (now: number): void => {
+  lastResolutionChange = now;
+  renderer.setPixelRatio(baseRatio * resolutionScale);
+  renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+};
 
-  if (smoothedFrameMs > 20.5 && resolutionScale > 0.55) {
-    resolutionScale = Math.max(0.55, resolutionScale - 0.08);
-    renderer.setPixelRatio(baseRatio * resolutionScale);
-    renderer.setSize(viewport.clientWidth, viewport.clientHeight);
-  } else if (smoothedFrameMs < 13.2 && resolutionScale < 1) {
-    resolutionScale = Math.min(1, resolutionScale + 0.05);
-    renderer.setPixelRatio(baseRatio * resolutionScale);
-    renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+/**
+ * Adaptive resolution is a GPU lever. Two rules keep it from misfiring:
+ * - never resize while paused (a framebuffer reallocation reads as a flash,
+ *   and there is no playback load to measure);
+ * - only downscale when the main thread is not the bottleneck, because a
+ *   CPU-paint-bound frame (e.g. Firefox with the timeline) cannot be fixed by
+ *   rendering fewer pixels.
+ */
+const adjustResolution = (deltaMs: number, cpuMs: number, now: number): void => {
+  if (document.hidden || !clock.playing) return;
+  if (now - lastResolutionChange < RESOLUTION_COOLDOWN_MS) return;
+
+  if (smoothedFrameMs < 13.2) {
+    if (resolutionScale >= 1) return;
+    resolutionScale = Math.min(1, resolutionScale + 0.1);
+    applyResolutionScale(now);
+    return;
   }
+  if (smoothedFrameMs < 20.5) return;
+
+  const gpuBound = cpuMs < deltaMs * 0.5;
+  if (!gpuBound || resolutionScale <= 0.55) return;
+  resolutionScale = Math.max(0.55, resolutionScale - 0.1);
+  applyResolutionScale(now);
 };
 
 const updateStats = (now: number, states: readonly FixtureState[], songTime: number): void => {
@@ -691,30 +940,34 @@ const updateStats = (now: number, states: readonly FixtureState[], songTime: num
 };
 
 const frame = (now: number): void => {
+  const workStart = performance.now();
   const delta = now - lastFrame;
   lastFrame = now;
   smoothedFrameMs += (Math.min(delta, 100) - smoothedFrameMs) * 0.08;
-  framesSinceAdjust += 1;
 
   const songTime = clock.time;
   if (clock.playing && followPlayhead) {
     const trackWidth = labelWidth();
     const pps = arrangement.zoomLevel;
+    const viewportWidth = scrollMetrics.width || ui.arrangementScroll.clientWidth;
     // Content coordinates include the sticky label column; the lane starts after it.
     const playheadX = trackWidth + songTime * pps;
-    const scroll = ui.arrangementScroll;
-    const viewportRight = scroll.scrollLeft + scroll.clientWidth;
-    const visibleLeft = scroll.scrollLeft + trackWidth;
+    const viewportRight = scrollMetrics.left + viewportWidth;
+    const visibleLeft = scrollMetrics.left + trackWidth;
     if (playheadX > viewportRight - 140) {
-      scroll.scrollLeft = playheadX - scroll.clientWidth + 200;
+      const next = Math.max(0, playheadX - viewportWidth + 200);
+      ui.arrangementScroll.scrollLeft = next;
+      scrollMetrics.left = next;
     } else if (playheadX < visibleLeft + 40) {
-      scroll.scrollLeft = Math.max(0, playheadX - trackWidth - 80);
+      const next = Math.max(0, playheadX - trackWidth - 80);
+      ui.arrangementScroll.scrollLeft = next;
+      scrollMetrics.left = next;
     }
   }
   const showAt = showTime(songTime);
   const states = show.fixtures.map((fixture) => {
-    const trackClips = cues
-      .filter((cue) => cue.fixtureId === fixture.id && songTime >= cue.startSec && songTime <= cue.endSec)
+    const trackClips = (cuesByFixture.get(fixture.id) ?? [])
+      .filter((cue) => songTime >= cue.startSec && songTime <= cue.endSec)
       .map((cue) => arrangement.toClip(cue));
     const state = evaluateFixture(fixture, trackClips, songTime);
     return fixture.profile.kind === 'strobe' && !strobesOn
@@ -727,10 +980,14 @@ const frame = (now: number): void => {
   renderer.info.reset();
   post.render();
 
-  waveform.render(songTime);
   arrangement.setSongTime(songTime);
-  ui.rulerPlayhead.style.left = `${songTime * arrangement.zoomLevel}px`;
-  adjustResolution();
+  const playheadX = songTime * arrangement.zoomLevel;
+  setRulerPlayhead(playheadX);
+  setWaveformPlayhead(playheadX);
+
+  const cpuMs = performance.now() - workStart;
+  smoothedCpuMs += (cpuMs - smoothedCpuMs) * 0.08;
+  adjustResolution(delta, smoothedCpuMs, now);
   updateStats(now, states, songTime);
 
   requestAnimationFrame(frame);

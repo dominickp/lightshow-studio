@@ -58,18 +58,51 @@ export class Arrangement {
   private pendingAction: CueAction | null = null;
   private pendingColorIndex: number | null = null;
   private preview: { fixtureId: string; startSec: number; endSec: number } | null = null;
+  private hoverGhost: HTMLElement | null = null;
+  private playheadLine: HTMLElement | null = null;
+  private clipElements: HTMLElement[] = [];
+  private visibilityFrame = 0;
+  private readonly overlay: HTMLCanvasElement;
+  private readonly overlayCtx: CanvasRenderingContext2D;
+  private overlayFrame = 0;
+  private hoveredCueId: string | null = null;
+  private trackWidth = TRACK_LABEL_WIDTH;
+  private rowsHeight = 0;
 
   constructor(
     private readonly root: HTMLElement,
+    private readonly scroller: HTMLElement,
     fixtures: FixturePlacement[],
     private readonly onChange: (cues: readonly Cue[]) => void,
     private readonly onSelection: (fixture: FixturePlacement | null, cue: Cue | null) => void,
   ) {
     this.fixtures = fixtures;
+    const overlay = document.createElement('canvas');
+    overlay.className = 'arrangement-clips';
+    overlay.setAttribute('aria-hidden', 'true');
+    const overlayCtx = overlay.getContext('2d');
+    if (overlayCtx === null) throw new Error('2d canvas unavailable');
+    this.overlay = overlay;
+    this.overlayCtx = overlayCtx;
+    this.root.appendChild(overlay);
+
     this.root.addEventListener('pointerdown', (event) => this.pointerDown(event));
+    scroller.addEventListener('scroll', () => {
+      this.scheduleClipVisibility();
+      this.scheduleDraw();
+    }, { passive: true });
+    new ResizeObserver(() => {
+      this.scheduleClipVisibility();
+      this.scheduleDraw();
+    }).observe(scroller);
     window.addEventListener('pointermove', (event) => this.pointerMove(event));
     window.addEventListener('pointerup', (event) => this.pointerUp(event));
     window.addEventListener('pointercancel', () => this.cancelGesture());
+    this.root.addEventListener('pointermove', (event) => this.pointerHover(event));
+    this.root.addEventListener('pointerleave', () => {
+      this.hideHover();
+      this.setHoveredCue(null);
+    });
   }
 
   get selectedFixture(): FixturePlacement | null {
@@ -135,12 +168,19 @@ export class Arrangement {
     this.renderRows();
   }
 
+  /**
+   * One composited line covers every track. Moving 32 per-row playheads made
+   * Firefox repaint the whole timeline layer on each frame.
+   */
   setSongTime(songTime: number): void {
     this.songTime = songTime;
-    const x = `${this.songTime * this.pixelsPerSecond}px`;
-    for (const playhead of this.root.querySelectorAll<HTMLElement>('.arrangement-playhead')) {
-      playhead.style.left = x;
+    if (this.playheadLine === null) {
+      this.playheadLine = this.root.querySelector<HTMLElement>('.arrangement-playhead.global');
     }
+    this.playheadLine?.style.setProperty(
+      'transform',
+      `translate3d(calc(var(--track-width) + ${this.songTime * this.pixelsPerSecond}px), 0, 0)`,
+    );
   }
 
   selectFixture(fixtureId: string): void {
@@ -284,7 +324,7 @@ export class Arrangement {
         startSec: start,
         endSec: dragged - start >= MIN_CLIP_SEC ? dragged : start + this.defaultLength(),
       };
-      this.renderRows();
+      this.scheduleDraw();
       return;
     }
 
@@ -310,7 +350,7 @@ export class Arrangement {
       const startSec = clamp(time, 0, cue.endSec - MIN_CLIP_SEC);
       this.cues = this.cues.map((item) => item.id === cue.id ? { ...item, startSec } : item);
     }
-    this.renderRows();
+    this.scheduleDraw();
   }
 
   private pointerUp(_event: PointerEvent): void {
@@ -371,32 +411,87 @@ export class Arrangement {
     this.notifySelection();
   }
 
+  private pointerHover(event: PointerEvent): void {
+    if (this.gesture !== null || this.timeline === null || event.shiftKey) {
+      this.hideHover();
+      return;
+    }
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      this.hideHover();
+      return;
+    }
+    const clipElement = target.closest<HTMLElement>('.arrangement-clip');
+    this.setHoveredCue(clipElement?.dataset.cueId ?? null);
+    if (clipElement !== null || target.closest('.track-name') !== null) {
+      this.hideHover();
+      return;
+    }
+    const lane = target.closest<HTMLElement>('.fixture-lane');
+    const fixtureId = lane?.parentElement?.dataset.fixtureId;
+    const fixture = this.fixtures.find((item) => item.id === fixtureId);
+    if (lane === null || fixture === undefined) {
+      this.hideHover();
+      return;
+    }
+
+    const startSec = this.snap(this.xToTime(event.clientX, lane));
+    const length = Math.max(MIN_CLIP_SEC, Math.min(
+      this.defaultLength(),
+      this.timeline.durationSec - startSec,
+    ));
+    const action = this.defaultAction(fixture);
+    const color = CUE_COLORS[this.suggestedColorIndex] ?? CUE_COLORS[0];
+
+    let ghost = this.hoverGhost;
+    if (ghost === null || !ghost.isConnected) {
+      ghost = document.createElement('div');
+      ghost.className = 'arrangement-ghost';
+      this.hoverGhost = ghost;
+    }
+    if (ghost.parentElement !== lane) lane.appendChild(ghost);
+    ghost.style.left = `${startSec * this.pixelsPerSecond}px`;
+    ghost.style.width = `${Math.max(2, length * this.pixelsPerSecond)}px`;
+    ghost.textContent = `${action} · ${color.name}`;
+  }
+
+  private hideHover(): void {
+    this.hoverGhost?.remove();
+    this.hoverGhost = null;
+  }
+
   private renderRows(): void {
     const timeline = this.timeline;
     if (timeline === null) return;
+    this.hoverGhost = null;
     const secondsWidth = timeline.durationSec * this.pixelsPerSecond;
     const beatWidth = timeline.bpm !== null && timeline.bpm > 0
       ? (60 / timeline.bpm) * this.pixelsPerSecond
       : null;
+    const barWidth = beatWidth === null ? null : beatWidth * timeline.beatsPerBar;
+    const gridMode = beatWidth === null
+      ? 'none'
+      : beatWidth / 4 >= 6
+        ? 'sixteenths'
+        : beatWidth >= 8
+          ? 'beats'
+          : barWidth !== null && barWidth >= 12 ? 'bars' : 'none';
+    this.root.dataset.grid = gridMode;
     const rows = this.fixtures.map((fixture) => {
       const selected = fixture.id === this.selectedFixtureId;
       const clips = this.cues
         .filter((cue) => cue.fixtureId === fixture.id)
         .map((cue) => {
           const color = CUE_COLORS[cue.colorIndex % CUE_COLORS.length] ?? CUE_COLORS[0];
-          const selectedCue = cue.id === this.selectedCueId;
           const left = cue.startSec * this.pixelsPerSecond;
           const width = (cue.endSec - cue.startSec) * this.pixelsPerSecond;
-          return `<div class="arrangement-clip${selectedCue ? ' selected' : ''}" data-cue-id="${cue.id}" style="left:${left}px;width:${width}px;--clip-color:${color.css}" title="${cue.action} · ${color.name}">
-            <span class="clip-resize start"></span><span class="clip-label">${cue.action} · ${color.name}</span><span class="clip-resize end"></span>
+          return `<div class="arrangement-clip" data-cue-id="${cue.id}" data-start-px="${left}" data-end-px="${left + width}" style="left:${left}px;width:${width}px" title="${cue.action} · ${color.name}">
+            <span class="clip-resize start"></span><span class="clip-resize end"></span>
           </div>`;
         }).join('');
-      const ghost = this.preview !== null && this.preview.fixtureId === fixture.id
-        ? `<div class="arrangement-clip preview" style="left:${this.preview.startSec * this.pixelsPerSecond}px;width:${Math.max(2, (this.preview.endSec - this.preview.startSec) * this.pixelsPerSecond)}px"></div>`
-        : '';
       const gridStyle = beatWidth === null
         ? ''
-        : `--sixteenth-width:${beatWidth / 4}px;--beat-width:${beatWidth}px;--bar-width:${beatWidth * timeline.beatsPerBar}px;`;
+        : `--sixteenth-width:${beatWidth / 4}px;--beat-width:${beatWidth}px;--bar-width:${beatWidth * timeline.beatsPerBar}px;--grid-offset-x:${timeline.firstBeatSec * this.pixelsPerSecond}px;`;
       const loopMarkup = this.loopMarkup(timeline, secondsWidth);
       return `<div class="fixture-row${selected ? ' selected' : ''}" data-fixture-id="${fixture.id}">
         <button type="button" class="track-name" title="${fixture.profile.name}">
@@ -404,11 +499,150 @@ export class Arrangement {
           <span class="track-copy"><b>${fixture.id}</b><small>${this.kindLabel(fixture.profile.kind)} · ${this.capabilitySummary(fixture)}</small></span>
         </button>
         <div class="fixture-lane" style="width:${secondsWidth}px;${gridStyle}">
-          ${loopMarkup}${clips}${ghost}<span class="arrangement-playhead" style="left:${this.songTime * this.pixelsPerSecond}px"></span>
+          ${loopMarkup}${clips}
         </div>
       </div>`;
     }).join('');
-    this.root.innerHTML = rows;
+    this.root.innerHTML = `${rows}<span class="arrangement-playhead global" aria-hidden="true"></span>`;
+    this.root.appendChild(this.overlay);
+    this.playheadLine = this.root.querySelector<HTMLElement>('.arrangement-playhead.global');
+    this.clipElements = [...this.root.querySelectorAll<HTMLElement>('.arrangement-clip')];
+    this.trackWidth = this.root.querySelector<HTMLElement>('.track-name')?.offsetWidth ?? TRACK_LABEL_WIDTH;
+    this.rowsHeight = this.root.offsetHeight;
+    this.setSongTime(this.songTime);
+    this.updateClipVisibility();
+    this.drawClips();
+  }
+
+  private setHoveredCue(cueId: string | null): void {
+    if (this.hoveredCueId === cueId) return;
+    this.hoveredCueId = cueId;
+    this.scheduleDraw();
+  }
+
+  private scheduleDraw(): void {
+    if (this.overlayFrame !== 0) return;
+    this.overlayFrame = requestAnimationFrame(() => {
+      this.overlayFrame = 0;
+      this.drawClips();
+    });
+  }
+
+  /** Paint the visible clips for every track into one canvas overlay. */
+  private drawClips(): void {
+    const timeline = this.timeline;
+    const canvas = this.overlay;
+    if (timeline === null) {
+      canvas.width = 1;
+      canvas.height = 1;
+      return;
+    }
+    const width = Math.max(1, this.scroller.clientWidth - this.trackWidth);
+    const height = Math.max(1, this.rowsHeight || this.root.offsetHeight);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    const scrollLeft = this.scroller.scrollLeft;
+    canvas.style.transform = `translate3d(${scrollLeft}px, 0, 0)`;
+    const pixelWidth = Math.round(width * dpr);
+    const pixelHeight = Math.round(height * dpr);
+    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+      canvas.width = pixelWidth;
+      canvas.height = pixelHeight;
+    }
+    const ctx = this.overlayCtx;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+
+    const pps = this.pixelsPerSecond;
+    const rowHeight = height / Math.max(1, this.fixtures.length);
+    const byFixture = new Map<string, Cue[]>();
+    for (const cue of this.cues) {
+      const list = byFixture.get(cue.fixtureId);
+      if (list === undefined) byFixture.set(cue.fixtureId, [cue]);
+      else list.push(cue);
+    }
+
+    ctx.font = '9px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+    ctx.textBaseline = 'middle';
+
+    for (const [index, fixture] of this.fixtures.entries()) {
+      const cues = byFixture.get(fixture.id);
+      if (cues === undefined) continue;
+      const y = index * rowHeight + 4;
+      const h = Math.max(2, rowHeight - 8);
+      for (const cue of cues) {
+        const x = cue.startSec * pps - scrollLeft;
+        const w = (cue.endSec - cue.startSec) * pps;
+        if (x + w < 0 || x > width) continue;
+        const color = CUE_COLORS[cue.colorIndex % CUE_COLORS.length] ?? CUE_COLORS[0];
+        const selected = cue.id === this.selectedCueId;
+        const hovered = cue.id === this.hoveredCueId;
+        ctx.beginPath();
+        ctx.roundRect(x, y, Math.max(2, w), h, 4);
+        ctx.fillStyle = color.css;
+        ctx.fill();
+        if (hovered) {
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+          ctx.fill();
+        }
+        ctx.lineWidth = selected ? 1.5 : 1;
+        ctx.strokeStyle = selected ? '#ffffff' : 'rgba(255, 255, 255, 0.22)';
+        ctx.stroke();
+        if (w >= 54) {
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+          ctx.fillText(`${cue.action} · ${color.name}`, x + 6, y + h / 2, Math.max(1, w - 10));
+        }
+      }
+    }
+
+    const preview = this.preview;
+    if (preview !== null) {
+      const index = this.fixtures.findIndex((fixture) => fixture.id === preview.fixtureId);
+      if (index >= 0) {
+        const x = preview.startSec * pps - scrollLeft;
+        const w = Math.max(2, (preview.endSec - preview.startSec) * pps);
+        const y = index * rowHeight + 4;
+        const h = Math.max(2, rowHeight - 8);
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, 4);
+        ctx.fillStyle = 'rgba(122, 209, 255, 0.18)';
+        ctx.fill();
+        ctx.setLineDash([4, 3]);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(122, 209, 255, 0.9)';
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+  }
+
+  private scheduleClipVisibility(): void {
+    if (this.visibilityFrame !== 0) return;
+    this.visibilityFrame = requestAnimationFrame(() => {
+      this.visibilityFrame = 0;
+      this.updateClipVisibility();
+    });
+  }
+
+  /**
+   * Hundreds of clips are authored on the grid, but only ~one screen of song is
+   * visible. Hiding the rest keeps Firefox from rasterising the whole lane
+   * every time the timeline repaints.
+   */
+  private updateClipVisibility(): void {
+    if (this.clipElements.length === 0) return;
+    const scrollLeft = this.scroller.scrollLeft;
+    const margin = this.scroller.clientWidth * 0.5;
+    const from = scrollLeft - margin;
+    const to = scrollLeft + this.scroller.clientWidth + margin;
+    for (const element of this.clipElements) {
+      const startPx = Number(element.dataset.startPx);
+      const endPx = Number(element.dataset.endPx);
+      const visible = endPx >= from && startPx <= to;
+      const display = visible ? '' : 'none';
+      if (element.style.display !== display) element.style.display = display;
+    }
   }
 
   private loopMarkup(timeline: CueTimeline, width: number): string {
@@ -618,8 +852,10 @@ export function createRuler(
     ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
     ctx.fillRect(Math.round(x), 14, 1, 14);
     if (bar % labelEvery !== 0) continue;
+    const label = String(bar + 1);
+    if (x + 4 + ctx.measureText(label).width > width) continue;
     ctx.fillStyle = '#aeb8ca';
-    ctx.fillText(String(bar + 1), x + 4, 8);
+    ctx.fillText(label, x + 4, 8);
   }
 }
 

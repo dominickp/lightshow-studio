@@ -44,6 +44,21 @@ The lower dock is an FL Studio-style **Playlist / Arrangement view**: a pinned t
 
 This is a design and behavior prototype, not a finished editor. Clip data is still in-memory and is discarded when another audio file is loaded; there is no save/load, undo/redo, multi-select, copy/paste, track reordering, or per-attribute keyframe inspector. BPM/offset editing and beat analysis remain open.
 
+### Frame-cost fixes (2026-10-18)
+
+The user reported ~42 fps in Firefox (WebGPU active) while Chromium held 144 fps. Firefox measured a **20.8 ms median / 27.8 ms p95** rAF interval at 34 ms output latency, so the timeline was CPU/paint-bound, not backend-bound. Changes made to the spike:
+
+- The waveform is painted only on resize, zoom, peaks, or loop/timeline changes; the playhead is a DOM element. Previously a song-wide canvas was cleared and re-blitted every frame (5,929 CSS px at 100% zoom, ~59,500 px at 1000%).
+- Lane playheads share one inherited `--playhead-x` custom property instead of 32 per-row `style.left` writes per frame.
+- Follow mode reads cached scroll metrics (updated from `scroll`/`ResizeObserver`) instead of reading `scrollLeft`/`clientWidth` after style writes, which forced a synchronous layout of the sticky timeline every frame.
+- Cues are indexed by fixture, so evaluation no longer filters the full cue list once per fixture per frame.
+- Clips are painted into one canvas overlay instead of hundreds of DOM nodes. The DOM keeps invisible, positioned hit boxes for selection, move, and resize, so gestures are unchanged. This was the decisive Firefox fix: with the demo's 580 clip elements hidden, playback went from ~49 to ~143 fps; after moving their visuals to the canvas, Firefox holds 144 fps during playback. The demo's 29-second loop is dense enough that hiding only off-screen clips was not sufficient.
+- Adaptive resolution now only downscales when the main thread is not the bottleneck and never resizes while paused. The old controller treated any slow rAF interval as GPU load and stepped `renderer.setSize()` every 45 frames; pausing removed the follow-scroll cost, so it climbed back in steps, which read as the lights blinking after pause.
+
+Also added: playback volume (gain ramp, mute, persisted), arrow-key seeking (1/16, Shift = measure), lane hover ghosts, a timeline time/measure tooltip, zoom-density grid lines anchored to `firstBeatSec`, and user-facing "measure" terminology (1 measure = 1 bar of 4 beats).
+
+Chromium remained at 144 fps (6.9 ms, ~0.9 ms JS per frame) after the changes; the waveform now performs zero canvas draws during playback. Firefox must still be re-measured.
+
 See `docs/agent_docs/ux-lighting-controls.md` for the evaluated control surface and phased feature plan.
 
 ### Measured track facts

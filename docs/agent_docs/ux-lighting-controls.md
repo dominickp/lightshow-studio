@@ -106,6 +106,26 @@ This product is a **song-first timecode arranger**, not a theatre cue-list conso
 - Save/load/autosave, undo/redo, show name, export.
 - Camera/view controls and fixture-count/debug HUD stay outside the authoring surface.
 
+## Fixture control layers and behavior
+
+Separate **fixture setup**, **static look controls**, and **time-varying behavior** so the same direction control does not mean different things depending on context:
+
+1. **Placement / mount:** fixture position and mounting orientation in the loaded venue. Fixed fixtures use this yaw/pitch to point; truss or venue attachment points can constrain placement. This belongs to the fixture/venue editor and is saved with the show.
+2. **Look / clip values:** dimmer, color, beam angle, focus, strobe, and rotation where supported. Use physical units in the inspector: percent, RGB/white, full beam angle in degrees, focus, Hz or musical rate, and degrees/rate. A clip captures values over a song-time range.
+3. **Motion behavior:** pan/tilt fixtures have a static aim target and optional animated movement relative to their mount. The user chooses target/path or a shape (sweep, circle, figure-8, bounce), range, speed in cycles/beat or seconds, direction, and phase. Fixed fixtures have no animated pan/tilt; the user changes their placement aim instead.
+4. **Atmosphere:** venue-wide haze is a persistent scene setting; positioned fog machines emit local atmosphere that can be triggered/faded by song-time clips, with density, coverage, and decay. Atmosphere is not a fixture beam and should be independently controllable.
+
+### Prototype now in the lighting spike
+
+The selected-fixture preview panel exposes render-only test output, mount/aim yaw and pitch offsets, and beam angle for zoom-capable profiles. Test output is an explicit override so a fixture can be inspected while its arrangement lane is dark. This is for visual iteration only: settings are not saved and do not alter clips or the show document. Beam angle is mapped through the profile's spread range. The demo sweep remains a hard-coded canned action, not an editable movement-pattern authoring system.
+
+### User-facing control behavior by fixture family
+
+- **Moving head / spot:** mount orientation stays fixed; pan/tilt set the static aim or animate around it. Beam angle/zoom, focus, dimmer, color, strobe, gobo/prism, and rotation appear only when supported by the profile. The first full editor should use a 2D aim pad, with range bounds and an optional movement-pattern editor rather than raw normalized sliders.
+- **Wash:** mount/aim and pan/tilt behave like moving heads; beam angle controls coverage. Prefer broad area/color controls; do not invent a separate softness parameter unless the renderer models it.
+- **Fixed PAR / blinder / strobe / LED strip:** position and mount angle set direction; no pan/tilt animation unless the physical profile supports it. Expose beam/field angle only if zoom is supported. Strobe controls should distinguish rate from on-time/shutter width; wide LED emitters need shape-aware output rather than a round spotlight proxy.
+- **Laser:** mount/aim plus constrained pan/tilt, pattern and rotation controls; retain a show-level safety enable/blackout and warning. Laser patterns require a distinct rendering model; do not treat a laser as an ordinary wide cone.
+
 ## Interaction and navigation spec
 
 - **Snapping.** Default 1/16; options Off/Bar/Beat/1/8/1/16. Snap relative to `beatGrid.offsetSec`, never to zero. Snap both clip edges and moves; Alt/Cmd bypasses. Show the snapped bar.beat in a tooltip while dragging.
@@ -135,7 +155,7 @@ Severity reflects user impact on the next authoring pass.
 | Gap | Evidence | Severity |
 |---|---|---|
 | Authoring model is a coarse preset, not an envelope editor | `Cue` in `arrangement.ts` stores only `action` + `colorIndex`; `toClip()` hardcodes dimmer/pan/tilt/strobe keyframes. | **High** |
-| Only action and colour are editable | `syncCueInspector` in `src/main.ts` builds two selects; no fade, strobe rate, zoom, focus, pan/tilt, white. | **High** |
+| Clip inspector only edits action and colour | `syncCueInspector` in `src/main.ts` builds two selects; the new fixture preview panel is render-only and does not author clip values. No clip fade, strobe rate, zoom, focus, pan/tilt target, or white control exists. | **High** |
 | No per-clip fade editing; fixed values | `toClip()` sets `fadeInSec` 0/0.04 and `fadeOutSec` 0.08; `evaluate.ts` only applies fade when a dimmer envelope exists. | **High** |
 | Strobe is one fixed value, no rate/duration | `toClip()` sets `strobe: [{ at: 0, value: 0.78 }]`; `evaluateFixture` maps it to Hz continuously. | **High** |
 | No undo/redo, multi-select, clipboard, split, duplicate | `arrangement.ts` mutates `this.cues` directly in `pointerMove`, `createCue`, `deleteSelected`; `pointerDown` tracks one selection only. | **High** |

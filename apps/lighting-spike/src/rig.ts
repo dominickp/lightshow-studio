@@ -14,6 +14,14 @@ import type { FixturePlacement, FixtureState } from '@dmxsim/show-model';
 
 const DEG = Math.PI / 180;
 
+export interface FixturePreview {
+  outputEnabled: boolean;
+  intensity: number;
+  yawOffsetDeg: number;
+  pitchOffsetDeg: number;
+  spreadDeg: number;
+}
+
 const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x15171d, roughness: 0.6, metalness: 0.65 });
 const yokeMaterial = new THREE.MeshStandardMaterial({ color: 0x0e1014, roughness: 0.45, metalness: 0.8 });
 
@@ -79,6 +87,10 @@ export class FixtureRig {
   private readonly yoke = new THREE.Group();
   private readonly head = new THREE.Group();
   private readonly beam: THREE.Mesh;
+  private readonly beamGeometry: THREE.CylinderGeometry;
+  private readonly beamPositions: Float32Array;
+  private readonly beamUnitPositions: Float32Array;
+  private readonly apertureRadius: number;
   private readonly beamMaterial: ReturnType<typeof createBeamMaterial>;
   private readonly pool: THREE.Mesh;
   private readonly poolMaterial: ReturnType<typeof createPoolMaterial>;
@@ -86,6 +98,7 @@ export class FixtureRig {
   private readonly lensColor = uniform(new THREE.Color(0x000000));
   private readonly lensGlow = uniform(0);
   private readonly beamLength: number;
+  private lastFarRadius = Number.NaN;
   private readonly color = new THREE.Color();
   private readonly beamOrigin = new THREE.Vector3();
   private readonly beamDirection = new THREE.Vector3();
@@ -154,15 +167,18 @@ export class FixtureRig {
 
     this.lensMaterial = new THREE.MeshBasicNodeMaterial({ side: THREE.DoubleSide });
     this.lensMaterial.colorNode = this.lensColor.mul(this.lensGlow);
-    const lens = new THREE.Mesh(new THREE.CircleGeometry(0.17, 16), this.lensMaterial);
+    this.apertureRadius = profile.beam.apertureDiameterM / 2;
+    const lens = new THREE.Mesh(new THREE.CircleGeometry(this.apertureRadius, 20), this.lensMaterial);
     lens.position.y = -0.23;
     lens.rotation.x = Math.PI / 2;
     this.head.add(lens);
 
-    const cone = new THREE.ConeGeometry(1, 1, 30, 1, true);
-    cone.translate(0, -0.5, 0);
+    this.beamGeometry = new THREE.CylinderGeometry(1, 1, 1, 30, 1, true);
+    this.beamGeometry.translate(0, -0.5, 0);
+    this.beamPositions = this.beamGeometry.attributes.position.array as Float32Array;
+    this.beamUnitPositions = this.beamPositions.slice();
     this.beamMaterial = createBeamMaterial();
-    this.beam = new THREE.Mesh(cone, this.beamMaterial.material);
+    this.beam = new THREE.Mesh(this.beamGeometry, this.beamMaterial.material);
     this.beam.position.y = -0.24;
     this.beam.renderOrder = 2;
     this.beam.visible = false;
@@ -191,16 +207,21 @@ export class FixtureRig {
     if (!visible) this.pool.visible = false;
   }
 
-  update(state: FixtureState, timeSec: number, volumetrics: boolean): void {
-    const yaw = this.placement.yawDeg + state.panDeg;
+  update(
+    state: FixtureState,
+    timeSec: number,
+    volumetrics: boolean,
+    preview?: Partial<FixturePreview>,
+  ): void {
+    const yaw = this.placement.yawDeg + state.panDeg + (preview?.yawOffsetDeg ?? 0);
     this.yoke.rotation.y = yaw * DEG;
-    this.head.rotation.x = -state.tiltDeg * DEG;
+    this.head.rotation.x = -(state.tiltDeg + (preview?.pitchOffsetDeg ?? 0)) * DEG;
 
     const strobeOn = state.strobeHz > 0 ? Math.floor(timeSec * state.strobeHz) % 2 === 0 : true;
-    const level = state.intensity * (strobeOn ? 1 : 0);
+    const level = (preview?.outputEnabled ? preview.intensity : state.intensity) * (strobeOn ? 1 : 0);
 
     const color = this.color.setRGB(state.color.r, state.color.g, state.color.b, THREE.SRGBColorSpace);
-    const spread = Math.max(0.2, state.spreadDeg);
+    const spread = Math.max(0.2, preview?.spreadDeg ?? state.spreadDeg);
     const isLaser = this.placement.profile.kind === 'laser';
     const gain = isLaser ? 9 : 1;
 
@@ -230,8 +251,20 @@ export class FixtureRig {
     }
 
     const length = Math.min(this.beamLength, Math.max(0.6, hitDistance));
-    const radius = Math.tan((spread * DEG) / 2) * length;
-    this.beam.scale.set(radius, length, radius);
+    const farRadius = Math.max(this.apertureRadius, Math.tan((spread * DEG) / 2) * length);
+    if (!Number.isFinite(this.lastFarRadius) || Math.abs(farRadius - this.lastFarRadius) > 0.01) {
+      for (let index = 0; index < this.beamPositions.length; index += 3) {
+        const y = this.beamUnitPositions[index + 1]!;
+        const distance = -y;
+        const radius = this.apertureRadius + (farRadius - this.apertureRadius) * distance;
+        this.beamPositions[index] = this.beamUnitPositions[index]! * radius;
+        this.beamPositions[index + 2] = this.beamUnitPositions[index + 2]! * radius;
+      }
+      this.beamGeometry.attributes.position.needsUpdate = true;
+      this.beamGeometry.computeBoundingSphere();
+      this.lastFarRadius = farRadius;
+    }
+    this.beam.scale.set(1, length, 1);
     this.beam.visible = this.enabled && volumetrics && level > 0.004;
 
     if (this.enabled && level > 0.004 && Number.isFinite(hitDistance) && hitDistance > 0.5) {

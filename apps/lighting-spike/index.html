@@ -88,11 +88,34 @@
       #controls button em { font-style: normal; color: var(--dim); }
       #controls button.on, #transport button.on { border-color: rgba(122, 209, 255, 0.55); color: var(--accent); }
 
+      #fixture-preview {
+        position: fixed;
+        right: 12px;
+        bottom: calc(42vh + 12px);
+        z-index: 5;
+        width: min(260px, calc(100vw - 24px));
+        background: var(--panel);
+        border: 1px solid var(--edge);
+        border-radius: 8px;
+        backdrop-filter: blur(8px);
+        padding: 9px 11px;
+      }
+      #fixture-preview summary { color: var(--accent); cursor: pointer; }
+      #fixture-preview .preview-note { color: var(--dim); font-size: 10px; margin: 4px 0 8px; }
+      #fixture-preview label { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; margin-top: 6px; }
+      #fixture-preview input { grid-column: 1 / span 2; width: 100%; accent-color: var(--accent); }
+      #fixture-preview output { color: var(--ink); font-variant-numeric: tabular-nums; }
+      #fixture-preview [hidden] { display: none; }
+
       #timeline-dock {
         position: fixed;
         left: 0;
         right: 0;
         bottom: 0;
+        /* Keep the dock on its own compositor layer. In Firefox it otherwise
+           shares a raster layer with the WebGPU canvas and is repainted every
+           frame, even though its content is static. */
+        will-change: transform;
         height: 42vh;
         min-height: 310px;
         display: grid;
@@ -122,6 +145,10 @@
 
       #transport button { min-width: 78px; cursor: pointer; white-space: nowrap; }
       #transport button:disabled, #clip-inspector select:disabled { opacity: 0.45; cursor: not-allowed; }
+
+      #volume-control { display: flex; align-items: center; gap: 6px; }
+      #btn-mute { min-width: 34px; padding: 5px 7px; text-align: center; }
+      #volume { width: 92px; accent-color: var(--accent); cursor: pointer; }
 
       #transport-meta {
         display: grid;
@@ -200,6 +227,7 @@
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         cursor: pointer;
       }
+      .track-name:hover { background: #17212e; }
 
       .track-name b, .track-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .track-name b { color: #dbe3f3; font-size: 11px; font-weight: 500; }
@@ -207,7 +235,7 @@
       .track-copy small { color: #778398; font-size: 9px; line-height: 1.2; }
       .track-indicator { width: 3px; height: 19px; flex: 0 0 3px; border-radius: 2px; background: var(--track-color); }
 
-      #timeline-ruler-row { position: sticky; top: 0; z-index: 6; height: 28px; }
+      #timeline-ruler-row { position: sticky; top: 0; z-index: 6; height: 28px; will-change: transform; }
       #timeline-ruler-label {
         height: 28px;
         justify-content: flex-start;
@@ -256,7 +284,7 @@
       #btn-follow.on { color: var(--accent); border-color: rgba(122, 209, 255, 0.55); background: rgba(122, 209, 255, 0.1); }
       #btn-loop.on { color: var(--accent); border-color: rgba(122, 209, 255, 0.55); background: rgba(122, 209, 255, 0.1); }
 
-      #waveform-row { position: sticky; top: 28px; z-index: 5; height: 62px; background: #080b11; }
+      #waveform-row { position: sticky; top: 28px; z-index: 5; height: 62px; background: #080b11; will-change: transform; }
       #waveform-label { height: 62px; color: #aab5c8; background: #0f151e; }
       #waveform {
         display: block;
@@ -279,8 +307,41 @@
           linear-gradient(to right, rgba(255,255,255,0.075) 1px, transparent 1px),
           linear-gradient(to right, rgba(122,209,255,0.09) 1px, transparent 1px);
         background-size: var(--sixteenth-width, 12px) 100%, var(--beat-width, 48px) 100%, var(--bar-width, 192px) 100%;
+        /* Grid lines follow the beat offset, so they line up with the ruler. */
+        background-position: var(--grid-offset-x, 0px) 0;
         cursor: crosshair;
         touch-action: none;
+      }
+
+      #arrangement-rows[data-grid="beats"] .fixture-lane {
+        background-image:
+          linear-gradient(to right, rgba(255,255,255,0.075) 1px, transparent 1px),
+          linear-gradient(to right, rgba(122,209,255,0.09) 1px, transparent 1px);
+        background-size: var(--beat-width, 48px) 100%, var(--bar-width, 192px) 100%;
+      }
+      #arrangement-rows[data-grid="bars"] .fixture-lane {
+        background-image: linear-gradient(to right, rgba(122,209,255,0.09) 1px, transparent 1px);
+        background-size: var(--bar-width, 192px) 100%;
+      }
+      #arrangement-rows[data-grid="none"] .fixture-lane { background-image: none; }
+
+      .arrangement-ghost {
+        position: absolute;
+        top: 4px;
+        bottom: 4px;
+        z-index: 0;
+        min-width: 2px;
+        overflow: hidden;
+        border: 1px dashed rgba(122, 209, 255, 0.55);
+        border-radius: 4px;
+        background: rgba(122, 209, 255, 0.1);
+        color: #cfe9ff;
+        font-size: 9px;
+        line-height: 16px;
+        padding: 2px 6px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        pointer-events: none;
       }
 
       .fixture-row:nth-of-type(even) .fixture-lane { background-color: #0e141d; }
@@ -305,6 +366,9 @@
         pointer-events: none;
       }
 
+      /* Clips are invisible hit-test boxes; their visuals are painted into one
+         canvas (#arrangement-clips). Hundreds of painted clip divs made Firefox
+         re-rasterise the whole timeline layer on every repaint. */
       .arrangement-clip {
         position: absolute;
         top: 4px;
@@ -312,30 +376,71 @@
         z-index: 1;
         min-width: 5px;
         overflow: hidden;
-        border: 1px solid color-mix(in srgb, var(--clip-color), white 20%);
-        border-radius: 4px;
-        background: linear-gradient(180deg, color-mix(in srgb, var(--clip-color), white 12%), var(--clip-color));
-        box-shadow: inset 0 1px rgba(255,255,255,0.15), 0 1px 5px rgba(0,0,0,0.3);
-        color: white;
+        background: none;
+        border: 0;
+        box-shadow: none;
+        color: transparent;
         cursor: grab;
         touch-action: none;
       }
 
-      .arrangement-clip.selected { z-index: 2; outline: 1px solid white; outline-offset: 1px; }
-      .arrangement-clip.preview {
+      .arrangement-clips {
+        position: absolute;
+        top: 0;
+        left: var(--track-width);
         z-index: 2;
-        border-style: dashed;
-        border-color: rgba(122, 209, 255, 0.85);
-        background: rgba(122, 209, 255, 0.18);
-        box-shadow: none;
-        opacity: 0.9;
         pointer-events: none;
       }
-      .clip-label { display: block; padding: 2px 7px; overflow: hidden; font-size: 9px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
       .clip-resize { position: absolute; top: 0; bottom: 0; z-index: 2; width: 6px; cursor: ew-resize; }
+      .clip-resize:hover { background: rgba(255, 255, 255, 0.22); }
       .clip-resize.start { left: 0; }
       .clip-resize.end { right: 0; }
-      .arrangement-playhead { position: absolute; top: 0; bottom: 0; z-index: 3; width: 1px; background: #f3fbff; box-shadow: 0 0 4px #7ad1ff; pointer-events: none; }
+      .arrangement-playhead {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 3;
+        width: 1px;
+        background: #f3fbff;
+        box-shadow: 0 0 4px #7ad1ff;
+        pointer-events: none;
+        will-change: transform;
+      }
+      /* One composited line for every track; 32 per-row playheads forced a
+         repaint of the whole timeline layer each frame in Firefox. */
+      #arrangement-rows { position: relative; contain: paint; }
+      .arrangement-playhead.global { z-index: 4; }
+
+      .timeline-hover-line {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 2;
+        width: 1px;
+        background: repeating-linear-gradient(
+          to bottom,
+          rgba(122, 209, 255, 0.75) 0 4px,
+          transparent 4px 8px
+        );
+        pointer-events: none;
+        will-change: transform;
+      }
+
+      #timeline-tooltip {
+        position: fixed;
+        z-index: 20;
+        padding: 4px 8px;
+        border: 1px solid var(--edge);
+        border-radius: 5px;
+        background: rgba(8, 11, 17, 0.94);
+        color: #d7e2f4;
+        font-size: 10px;
+        white-space: nowrap;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+        pointer-events: none;
+      }
 
       #cue-status { min-width: 0; overflow: hidden; color: var(--dim); text-overflow: ellipsis; white-space: nowrap; }
 
@@ -385,6 +490,7 @@
       @media (max-width: 1000px) {
         #stage-viewport { bottom: 50vh; }
         #timeline-dock { height: 50vh; }
+        #fixture-preview { bottom: calc(50vh + 12px); }
         #clip-inspector { gap: 5px; padding: 5px 8px; }
         #selected-fixture { max-width: 80px; }
         #fixture-capabilities { display: none; }
@@ -402,6 +508,7 @@
         #selected-fixture { display: none; }
         #zoom-tools { right: 8px; bottom: 8px; gap: 4px; padding: 4px 6px; }
         #zoom-tools input { width: 64px; }
+        #volume { width: 64px; }
         #zoom-percent { display: none; }
         #hint { display: none; }
         :root { --track-width: 145px; }
@@ -420,7 +527,7 @@
         <div class="row"><span>resolution</span><b id="stat-res">–</b></div>
         <div class="row"><span>backend</span><b id="stat-backend">–</b></div>
         <div class="row"><span>fixtures</span><b id="stat-fixtures">–</b></div>
-        <div class="row"><span>bar.beat</span><b id="stat-time">–</b></div>
+        <div class="row"><span>measure.beat</span><b id="stat-time">–</b></div>
         <div class="row"><span>latency</span><b id="stat-latency">–</b></div>
         <div class="row"><span>loop</span><b id="stat-loop">–</b></div>
       </div>
@@ -435,17 +542,35 @@
         <button id="btn-count">Fixture count <em>[ ]</em></button>
       </div>
 
+      <details id="fixture-preview">
+        <summary id="fixture-preview-title">Fixture preview · select a track</summary>
+        <p class="preview-note">Live render-only tuning; not stored in clips or the show.</p>
+        <label><span>Test output <input id="preview-output-enabled" type="checkbox" aria-label="Enable test output" disabled /></span><output id="preview-intensity-value">50%</output>
+          <input id="preview-intensity" type="range" min="0" max="100" step="1" value="50" aria-label="Fixture test output level" disabled />
+        </label>
+        <label id="preview-yaw-row">Mount / aim pan <output id="preview-yaw-value">0°</output>
+          <input id="preview-yaw" type="range" min="-180" max="180" step="1" value="0" aria-label="Fixture mount or aim pan offset" disabled />
+        </label>
+        <label id="preview-pitch-row">Mount / aim tilt <output id="preview-pitch-value">0°</output>
+          <input id="preview-pitch" type="range" min="-90" max="90" step="1" value="0" aria-label="Fixture mount or aim tilt offset" disabled />
+        </label>
+        <label id="preview-spread-row">Beam angle <output id="preview-spread-value">—</output>
+          <input id="preview-spread" type="range" min="0" max="100" step="1" value="50" aria-label="Fixture beam angle" disabled />
+        </label>
+      </details>
+
       <details id="hint">
         <summary>Controls &amp; shortcuts</summary>
         <div>
-          <b>Space</b> play/pause · drag the ruler or waveform to scrub · <b>L</b> loop ·
+          <b>Space</b> play/pause · <b>← →</b> seek 1/16 (Shift = measure) · <b>M</b> mute ·
+          drag the ruler or waveform to scrub · <b>L</b> loop ·
           <b>1</b> beams <b>2</b> bloom <b>3</b> shadows <b>4</b> grade <b>5</b> strobes ·
           <b>C</b> camera · <b>[ ]</b> fixture count<br />
           <b>Ctrl/⌘ + wheel</b> zoom at pointer · <b>Ctrl/⌘ +/-</b> zoom · <b>Ctrl/⌘ 0</b> fit ·
           drag a lane to draw a clip, drag a clip to move, drag its edge to resize<br />
           <b>Shift + drag anywhere in the timeline</b> to draw a loop · drag the cyan loop edges to adjust it ·
           <b>L</b> or the Loop button toggles looping · Fit loop zooms to it<br />
-          Playback loops bars 41–56; scrubbing before the loop plays the intro through to the loop end.
+          Playback loops measures 41–56 (1 measure = 1 bar of 4 beats); scrubbing before the loop plays the intro through to the loop end.
           <span class="warn">Strobes are opt-in (key 5). Flashing effects can affect photosensitive viewers.</span>
         </div>
       </details>
@@ -456,6 +581,10 @@
         <button id="btn-play" disabled>▶ Play</button>
         <button id="btn-audio" type="button">Load audio</button>
         <input id="audio-file" type="file" accept="audio/*" aria-label="Choose an audio file" />
+        <div id="volume-control">
+          <button id="btn-mute" type="button" aria-label="Mute playback" aria-pressed="false" title="Mute (M)">🔊</button>
+          <input id="volume" type="range" min="0" max="100" step="1" value="100" aria-label="Playback volume" title="Playback volume" />
+        </div>
         <div id="transport-meta">
           <b id="transport-time">–</b>
           <span id="transport-track">The Koto Chill — zircon · 130 BPM</span>
@@ -476,18 +605,22 @@
       <div id="arrangement-scroll" tabindex="0" aria-label="Scrollable fixture tracks and timeline">
         <div id="arrangement-content">
           <div id="timeline-ruler-row">
-            <div class="track-name" id="timeline-ruler-label">
+            <div class="track-name" id="timeline-ruler-label" title="1 measure = 1 bar of 4 beats">
               <span>ARRANGEMENT</span>
-              <span class="ruler-mode">BARS</span>
+              <span class="ruler-mode">MEASURES</span>
             </div>
             <div class="ruler-track">
-              <canvas id="timeline-ruler" aria-label="Bar ruler"></canvas>
+              <canvas id="timeline-ruler" aria-label="Measure ruler"></canvas>
               <span class="arrangement-playhead" id="ruler-playhead"></span>
             </div>
           </div>
           <div id="waveform-row">
             <div class="track-name" id="waveform-label">♫ &nbsp; AUDIO</div>
-            <canvas id="waveform" aria-label="Waveform and playhead"></canvas>
+            <div class="ruler-track">
+              <canvas id="waveform" aria-label="Waveform and playhead"></canvas>
+              <span id="waveform-hover" class="timeline-hover-line" hidden></span>
+              <span class="arrangement-playhead" id="waveform-playhead"></span>
+            </div>
           </div>
           <div id="arrangement-rows"></div>
         </div>
@@ -505,6 +638,7 @@
       </div>
     </section>
 
+    <div id="timeline-tooltip" role="tooltip" hidden></div>
     <div id="loading">initialising renderer…</div>
     <script type="module" src="/src/main.ts"></script>
   </body>

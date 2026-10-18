@@ -23,7 +23,7 @@ const profile: FixtureProfile = {
     tiltDeg: [-135, 135],
     strobeHz: [1, 25],
   },
-  beam: { spreadDeg: [6, 45], throwM: 12 },
+  beam: { spreadDeg: [6, 45], apertureDiameterM: 0.12, throwM: 12 },
 };
 
 const fixture: FixturePlacement = {

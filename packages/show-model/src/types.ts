@@ -72,6 +72,8 @@ export interface FixtureProfile {
   beam: {
     /** Full-angle spread range in degrees, narrow -> wide. */
     spreadDeg: [number, number];
+    /** Approximate diameter of the emitting aperture, in metres. */
+    apertureDiameterM: number;
     /** Nominal throw used for haze rendering, in metres. */
     throwM: number;
   };

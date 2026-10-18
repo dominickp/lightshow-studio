@@ -76,8 +76,12 @@ export class AudioClock {
     this.anchorSongSec = this.loopIsEnabled && this.loopRegion !== null ? this.loopRegion.startSec : 0;
   }
 
+  /** Ramp rather than jump, so level changes do not click. */
   setVolume(value: number): void {
-    this.gain.gain.value = clamp(value, 0, 1);
+    const target = clamp(value, 0, 1);
+    const now = this.context.currentTime;
+    this.gain.gain.cancelScheduledValues(now);
+    this.gain.gain.setTargetAtTime(target, now, 0.015);
   }
 
   setLoop(region: LoopRegion, enabled = this.loopIsEnabled): void {

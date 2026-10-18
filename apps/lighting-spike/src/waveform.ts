@@ -49,32 +49,30 @@ const WAVE = 'rgba(122, 209, 255, 0.42)';
 const WAVE_OUTSIDE = 'rgba(122, 209, 255, 0.16)';
 const BEAT_TICK = 'rgba(255, 255, 255, 0.05)';
 const BAR_TICK = 'rgba(255, 255, 255, 0.13)';
-const PLAYHEAD = '#7ad1ff';
 
-/** Canvas transport strip: waveform, beat/bar ticks, loop region, playhead. */
+/**
+ * Canvas transport strip: waveform, beat/bar ticks and loop region.
+ *
+ * The layer is painted only when its inputs change (resize, zoom, peaks,
+ * timeline). The playhead is a DOM element, so playback does not copy a
+ * song-wide canvas every frame.
+ */
 export class WaveformStrip {
   private readonly ctx: CanvasRenderingContext2D;
-  private readonly layer: HTMLCanvasElement;
-  private readonly layerCtx: CanvasRenderingContext2D;
   private peaks: Peaks | null = null;
   private timeline: Timeline | null = null;
   private width = 0;
   private height = 0;
-  private dpr = 1;
-  private dirty = true;
   private dragging = false;
+  private paintQueued = false;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
     private readonly onSeek: (songSec: number) => void,
   ) {
     const ctx = canvas.getContext('2d');
-    const layer = document.createElement('canvas');
-    const layerCtx = layer.getContext('2d');
-    if (ctx === null || layerCtx === null) throw new Error('2d canvas unavailable');
+    if (ctx === null) throw new Error('2d canvas unavailable');
     this.ctx = ctx;
-    this.layer = layer;
-    this.layerCtx = layerCtx;
 
     canvas.addEventListener('pointerdown', (event) => {
       this.dragging = true;
@@ -91,68 +89,54 @@ export class WaveformStrip {
     };
     canvas.addEventListener('pointerup', end);
     canvas.addEventListener('pointercancel', end);
+
+    new ResizeObserver(() => this.paint()).observe(canvas);
   }
 
   setPeaks(peaks: Peaks): void {
     this.peaks = peaks;
-    this.dirty = true;
   }
 
   setTimeline(timeline: Timeline): void {
     this.timeline = timeline;
-    this.dirty = true;
   }
 
-  render(songSec: number): void {
-    const resized = this.resize();
-    if (resized || this.dirty) this.paintLayer();
-    if (this.width === 0) return;
-
-    this.ctx.clearRect(0, 0, this.width, this.height);
-    this.ctx.drawImage(this.layer, 0, 0, this.width, this.height);
-
-    const timeline = this.timeline;
-    if (timeline === null) return;
-
-    const x = this.timeToX(songSec);
-    this.ctx.fillStyle = 'rgba(122, 209, 255, 0.10)';
-    this.ctx.fillRect(this.timeToX(timeline.loopStartSec), 0, Math.max(0, x - this.timeToX(timeline.loopStartSec)), this.height);
-
-    this.ctx.fillStyle = PLAYHEAD;
-    this.ctx.fillRect(Math.round(x) - 0.5, 0, 1.5, this.height);
-    this.ctx.beginPath();
-    this.ctx.moveTo(x - 4, 0);
-    this.ctx.lineTo(x + 4, 0);
-    this.ctx.lineTo(x, 6);
-    this.ctx.closePath();
-    this.ctx.fill();
+  /** Repaint the static strip. Call on resize, zoom, peaks or timeline changes. */
+  paint(): void {
+    this.resize();
+    this.paintLayer();
   }
 
-  private resize(): boolean {
+  /** Coalesced repaint for high-frequency inputs such as slider/loop drags. */
+  requestPaint(): void {
+    if (this.paintQueued) return;
+    this.paintQueued = true;
+    requestAnimationFrame(() => {
+      this.paintQueued = false;
+      this.paint();
+    });
+  }
+
+  private resize(): void {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const width = this.canvas.clientWidth;
     const height = this.canvas.clientHeight;
-    if (width === 0 || height === 0) return false;
+    if (width === 0 || height === 0) return;
 
     const pixelWidth = Math.round(width * dpr);
     const pixelHeight = Math.round(height * dpr);
-    if (this.canvas.width === pixelWidth && this.canvas.height === pixelHeight) return false;
-
-    this.canvas.width = pixelWidth;
-    this.canvas.height = pixelHeight;
-    this.layer.width = pixelWidth;
-    this.layer.height = pixelHeight;
+    if (this.canvas.width !== pixelWidth || this.canvas.height !== pixelHeight) {
+      this.canvas.width = pixelWidth;
+      this.canvas.height = pixelHeight;
+    }
     this.width = width;
     this.height = height;
-    this.dpr = dpr;
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    this.layerCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    return true;
   }
 
   private paintLayer(): void {
     const { width, height } = this;
-    const ctx = this.layerCtx;
+    const ctx = this.ctx;
     ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = '#080b11';
     ctx.fillRect(0, 0, width, height);
@@ -194,8 +178,6 @@ export class WaveformStrip {
     ctx.fillStyle = LOOP_EDGE;
     ctx.fillRect(Math.round(loopX0), 0, 1, height);
     ctx.fillRect(Math.round(loopX1) - 1, 0, 1, height);
-
-    this.dirty = false;
   }
 
   private paintTicks(ctx: CanvasRenderingContext2D, timeline: Timeline): void {

@@ -3,7 +3,7 @@ import { float, floor, mix, mx_noise_float, sin, smoothstep, uniform, uv, vec2, 
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { FixtureState, Show } from '@dmxsim/show-model';
 import { secondsPerBeat } from '@dmxsim/show-model';
-import { FixtureRig } from './rig';
+import { FixtureRig, type FixturePreview } from './rig';
 
 const VIEWS: { position: [number, number, number]; target: [number, number, number] }[] = [
   { position: [0, 6.5, 16], target: [0, 3.2, -3] },
@@ -117,6 +117,7 @@ export class Stage {
   readonly controls: OrbitControls;
 
   private readonly rigs: FixtureRig[] = [];
+  private readonly fixturePreviews = new Map<string, Partial<FixturePreview>>();
   private readonly pointLights: THREE.PointLight[] = [];
   private readonly spot: THREE.SpotLight;
   private readonly ledUniforms = { time: uniform(0), energy: uniform(0.4) };
@@ -236,6 +237,14 @@ export class Stage {
     this.rigs.forEach((rig, index) => rig.setVisible(index < count));
   }
 
+  setFixturePreview(fixtureId: string, preview: Partial<FixturePreview>): void {
+    this.fixturePreviews.set(fixtureId, { ...this.fixturePreviews.get(fixtureId), ...preview });
+  }
+
+  clearFixturePreview(fixtureId: string): void {
+    this.fixturePreviews.delete(fixtureId);
+  }
+
   setView(index: number, immediate = false): void {
     this.viewIndex = ((index % VIEWS.length) + VIEWS.length) % VIEWS.length;
     const view = VIEWS[this.viewIndex]!;
@@ -256,7 +265,8 @@ export class Stage {
 
     for (const rig of this.rigs) {
       const state = byId.get(rig.placement.id);
-      if (state) rig.update(state, timeSec, options.volumetrics);
+      if (!state) continue;
+      rig.update(state, timeSec, options.volumetrics, this.fixturePreviews.get(rig.placement.id));
     }
 
     this.controls.update();

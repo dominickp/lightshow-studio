@@ -17,11 +17,13 @@ user_docs/        # User-authored docs — never modify
 ## Dependency rules
 
 ```
-show-model  <-  renderer, app, spike, fixtures(types only)
-fixtures    <-  renderer, app
-renderer    <-  app, spike
-show-model  must never import three, DOM, or WebAudio.
+apps/web, apps/spike -> packages/renderer -> packages/show-model
+apps/web, apps/spike -> packages/show-model
+apps/web, apps/spike -> packages/fixtures -> packages/show-model (types only)
+show-model must never import three, DOM, or WebAudio.
 ```
+
+The current spike keeps its scene implementation in `apps/spike`; extract stable renderer pieces to `packages/renderer` after the visual/performance experiments.
 
 Enforce with an ESLint `no-restricted-imports` rule in `packages/show-model`.
 
@@ -36,6 +38,7 @@ Enforce with an ESLint `no-restricted-imports` rule in `packages/show-model`.
 
 **fixtures**
 - Profile shape: `id`, `name`, ordered DMX channel slots (explicit coarse/fine slots for 16-bit attributes), `capabilities`, physical limits
+- Seed profiles are generic approximations; manufacturer-specific profiles need sourced channel tables and validation.
 - Physical limits used for UI validation and later DMX compile
 - Seed profiles: generic moving head, wash, strobe, laser, PAR, blinder, LED strip
 

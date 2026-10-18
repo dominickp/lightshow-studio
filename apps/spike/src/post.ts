@@ -18,7 +18,7 @@ export class Post {
   constructor(renderer: THREE.WebGPURenderer, scene: THREE.Scene, camera: THREE.Camera) {
     const scenePass = pass(scene, camera);
     const sceneColor = scenePass.getTextureNode();
-    const bloomPass = bloom(sceneColor, 0.55, 0.55, 1.0);
+    const bloomPass = bloom(sceneColor, 0.55, 0.35, 1.0);
 
     this.withoutBloom = this.grade(sceneColor);
     this.withBloom = this.grade(sceneColor.add(bloomPass));

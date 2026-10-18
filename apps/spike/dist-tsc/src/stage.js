@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { float, mix, sin, smoothstep, uniform, uv, vec3 } from 'three/tsl';
+import { float, floor, mix, mx_noise_float, sin, smoothstep, uniform, uv, vec2, vec3 } from 'three/tsl';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { secondsPerBeat } from '@dmxsim/show-model';
 import { FixtureRig } from './rig';
@@ -134,12 +134,19 @@ export class Stage {
     }
     addLeds() {
         const wallMaterial = new THREE.MeshBasicNodeMaterial();
-        const p = uv();
-        const wave = sin(p.x.mul(13).add(this.ledUniforms.time.mul(1.2))).mul(0.5).add(0.5);
-        const scan = sin(p.y.mul(24).sub(this.ledUniforms.time.mul(2.6))).mul(0.5).add(0.5);
-        const hue = smoothstep(0, 1, p.x);
-        const base = mix(vec3(0.02, 0.04, 0.16), vec3(0.32, 0.06, 0.62), hue);
-        wallMaterial.colorNode = base.mul(wave.mul(0.7).add(0.45)).mul(scan.mul(0.45).add(0.55)).mul(this.ledUniforms.energy).mul(2.4);
+        const grid = vec2(26, 14);
+        const pixel = floor(uv().mul(grid)).add(0.5).div(grid);
+        const wave = sin(pixel.x.mul(34).add(this.ledUniforms.time.mul(1.6))).mul(0.5).add(0.5);
+        const scan = sin(pixel.y.mul(46).sub(this.ledUniforms.time.mul(3.4))).mul(0.5).add(0.5);
+        const sparkle = mx_noise_float(vec3(pixel.mul(26), this.ledUniforms.time.mul(0.8))).mul(0.5).add(0.5);
+        const hue = smoothstep(0, 1, pixel.x.add(sin(pixel.y.mul(3).add(this.ledUniforms.time)).mul(0.2)));
+        const base = mix(vec3(0.01, 0.03, 0.16), vec3(0.5, 0.05, 0.65), hue);
+        wallMaterial.colorNode = base
+            .mul(wave.mul(0.6).add(0.35))
+            .mul(scan.mul(0.5).add(0.5))
+            .mul(sparkle.mul(0.5).add(0.65))
+            .mul(this.ledUniforms.energy)
+            .mul(2.1);
         wallMaterial.fog = false;
         const wall = new THREE.Mesh(new THREE.PlaneGeometry(13.5, 6.2), wallMaterial);
         wall.position.set(0, 4.9, -11.85);

@@ -11,8 +11,8 @@ The beams are additive cone meshes with animated TSL noise and scene fog. They a
 - WebGPU backend active in the integrated Chrome browser.
 - 32 fixtures shown, 28 active at the sampled loop position.
 - At 100% resolution: about **6.9–7.0 ms rAF interval**, reported as ~143–144 fps; display refresh appears to cap the result.
-- About **316 draw calls** and **23k triangles** in the sampled frame with beams, bloom, and shadows enabled.
-- Disabling beams reduced the sampled draw calls to about 248; disabling bloom reduced it to about 246; disabling shadows reduced it further to about 231.
+- About **278–316 draw calls** and **21–23k triangles** in the sampled frame with beams, bloom, and shadows enabled. This uses `renderer.info.render.drawCalls`, reset once per app frame.
+- Disabling beam cones, bloom, or shadows each reduced the sampled draw call count (to roughly 248, 246, and 231 in one comparison) without changing the refresh-capped interval.
 - The interval stayed near 7 ms as toggles changed, so this environment did not expose the actual performance ceiling. These are prototype observations, not a device-support claim or GPU-time measurement.
 
 ## Visual finding

@@ -64,7 +64,7 @@ function movingHeadClips(index, of) {
                 dimmer,
                 pan,
                 tilt,
-                zoom: constAttr(0.16 + ((index + seg) % 4) * 0.05),
+                zoom: constAttr(0.1 + ((index + seg) % 4) * 0.04),
                 ...colorAttributes(color),
             },
         });
@@ -85,17 +85,17 @@ function washClips(index) {
             easing: 'sine',
             attributes: {
                 dimmer: [
-                    { at: 0, value: 0.12 },
-                    { at: 0.2, value: 0.85 },
-                    { at: 0.65, value: 0.4 },
-                    { at: 1, value: 0.12 },
+                    { at: 0, value: 0.08 },
+                    { at: 0.2, value: 0.55 },
+                    { at: 0.65, value: 0.3 },
+                    { at: 1, value: 0.08 },
                 ],
                 pan: [
-                    { at: 0, value: dir > 0 ? 0.3 : 0.7 },
-                    { at: 1, value: dir > 0 ? 0.7 : 0.3 },
+                    { at: 0, value: dir > 0 ? 0.32 : 0.68 },
+                    { at: 1, value: dir > 0 ? 0.68 : 0.32 },
                 ],
                 tilt: constAttr(0.55),
-                zoom: constAttr(0.85),
+                zoom: constAttr(0.68),
                 ...colorAttributes(color),
             },
         });

@@ -74,7 +74,6 @@ const ui = {
 
 const backend = (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend ? 'WebGPU' : 'WebGL2';
 ui.backend.textContent = backend;
-ui.loop.textContent = `${TRACK.loopStartBar}–${TRACK.loopStartBar + TRACK.loopBars - 1}`;
 
 const waveform = new WaveformStrip(ui.waveform, (songSec) => clock.seek(songSec));
 
@@ -91,6 +90,7 @@ const formatClock = (seconds: number): string => {
 const syncButtons = (): void => {
   ui.play.classList.toggle('on', clock.playing);
   ui.play.textContent = clock.playing ? '❚❚ Pause' : '▶ Play';
+  ui.loop.textContent = `${TRACK.loopStartBar}–${TRACK.loopStartBar + TRACK.loopBars - 1} ${clock.loopEnabled ? 'on' : 'off'}`;
   ui.vol.classList.toggle('on', volumetrics);
   ui.bloom.classList.toggle('on', bloomOn);
   ui.shadow.classList.toggle('on', shadowsOn);
@@ -210,6 +210,7 @@ const adjustResolution = (): void => {
 const updateStats = (now: number, states: ReturnType<typeof evaluateFixtureStates>, songTime: number): void => {
   if (now - lastStats < 250) return;
   lastStats = now;
+  syncButtons();
 
   const info = renderer.info.render;
   ui.fps.textContent = (1000 / smoothedFrameMs).toFixed(0);
@@ -264,6 +265,7 @@ try {
   const buffer = await clock.decode(await response.arrayBuffer());
   clock.load(buffer);
   clock.seek(loopStartSec);
+  ui.play.disabled = false;
 
   waveform.setTimeline({
     durationSec: buffer.duration,

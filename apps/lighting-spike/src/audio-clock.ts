@@ -73,7 +73,7 @@ export class AudioClock {
     this.pause();
     this.stopSource();
     this.buffer = buffer;
-    this.anchorSongSec = 0;
+    this.anchorSongSec = this.loopIsEnabled && this.loopRegion !== null ? this.loopRegion.startSec : 0;
   }
 
   setVolume(value: number): void {
@@ -97,8 +97,7 @@ export class AudioClock {
   async play(): Promise<void> {
     if (this.buffer === null || this.isPlaying) return;
     if (this.context.state !== 'running') await this.context.resume();
-    this.isPlaying = true;
-    this.startSource(this.anchorSongSec);
+    this.isPlaying = this.startSource(this.anchorSongSec);
   }
 
   pause(): void {
@@ -116,14 +115,21 @@ export class AudioClock {
 
   seek(songSec: number): void {
     if (this.buffer === null) return;
-    const target = clamp(songSec, 0, this.duration);
-    if (this.isPlaying) this.startSource(target);
+    let target = clamp(songSec, 0, this.duration);
+    const loop = this.loopIsEnabled ? this.loopRegion : null;
+    if (loop !== null && loop.endSec > loop.startSec) {
+      target = clamp(target, loop.startSec, loop.endSec - 0.002);
+    }
+    if (this.isPlaying) this.isPlaying = this.startSource(target);
     else this.anchorSongSec = target;
   }
 
   private reanchor(songSec: number): void {
-    if (this.isPlaying) this.startSource(songSec);
-    else this.anchorSongSec = this.loopIsEnabled ? this.wrap(songSec) : songSec;
+    if (this.isPlaying) {
+      this.isPlaying = this.startSource(songSec);
+      return;
+    }
+    this.anchorSongSec = this.loopIsEnabled ? this.wrap(songSec) : songSec;
   }
 
   private wrap(songSec: number): number {
@@ -134,9 +140,9 @@ export class AudioClock {
     return loop.startSec + (((songSec - loop.startSec) % length) + length) % length;
   }
 
-  private startSource(songSec: number): void {
+  private startSource(songSec: number): boolean {
     const buffer = this.buffer;
-    if (buffer === null) return;
+    if (buffer === null) return false;
 
     this.stopSource();
 
@@ -155,16 +161,27 @@ export class AudioClock {
       offset = clamp(songSec, 0, Math.max(0, buffer.duration - 0.002));
     }
 
+    // Anchors move before `start`, so a rejected start still leaves the clock
+    // reporting the position the user asked for instead of jumping.
+    this.anchorContextSec = this.context.currentTime;
+    this.anchorSongSec = offset;
+
+    try {
+      source.start(0, offset);
+    } catch (error) {
+      console.error('AudioClock: could not start playback', error);
+      source.disconnect();
+      return false;
+    }
+
     source.onended = () => {
       if (this.source !== source) return;
       this.source = null;
       this.isPlaying = false;
       this.anchorSongSec = buffer.duration;
     };
-    source.start(0, offset);
     this.source = source;
-    this.anchorContextSec = this.context.currentTime;
-    this.anchorSongSec = offset;
+    return true;
   }
 
   private stopSource(): void {

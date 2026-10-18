@@ -4,11 +4,13 @@ Phase gates are about proving the risky thing before building the expensive thin
 
 ## Phase 0 — Spikes (throwaway code allowed)
 
-- **Lighting spike** (`apps/lighting-spike`): procedural venue, mixed fixture types, additive TSL beam-cone proxies, fog, bloom, floor pools, perf HUD, dynamic resolution. Compare against true half-resolution volumetrics before deciding the renderer path. Answer: does the look work, and what fixture count holds 60 fps?
-- **Audio clock prototype**: song time from `AudioContext` with latency compensation; waveform peaks; beat grid from BPM + offset.
-- **Beat detection evaluation**: compare `web-audio-beat-detector` / `essentia.js` results against manually tapped BPM.
+- **Lighting spike** (`apps/lighting-spike`): procedural venue, mixed fixture types, additive TSL beam-cone proxies, fog, bloom, floor pools, perf HUD, dynamic resolution. Visual look and basic frame budget are documented; still compare half-resolution volumetrics and test on a 60 Hz / mid-range GPU before choosing the renderer path.
+- **Audio clock prototype** (`apps/lighting-spike/src/audio-clock.ts`): implemented against the sample track with `AudioContext` time, output-latency compensation, audio loop points, waveform peaks/grid, play/pause/scrub. This validates the clock/transport path, but audio selection and import are not implemented.
+- **Beat detection evaluation**: compare `web-audio-beat-detector` / `essentia.js` results against manually tapped BPM. Not started — the current track's 130 BPM / 0.02 s offset was measured offline and hard-coded in `src/track.ts`.
 
-Exit criteria: a documented frame budget in `docs/agent_docs/spike-notes.md`, and a look that is worth iterating on.
+Exit criteria: a documented frame budget in `docs/agent_docs/spike-notes.md`, a look worth iterating on, and enough audio-sync evidence to proceed into the vertical slice. The first two have promising evidence; target-hardware performance and automated beat analysis remain open.
+
+Recommended next: begin the Phase 1 authoring slice on top of the working clock—local audio selection, editable BPM/offset, then waveform beat grid and a minimal clip lane with scrub/playback. Keep the current fixture set; more fixture/effect types are later-phase work. In parallel, validate the renderer on a 60 Hz / mid-range GPU and compare proxy beams with half-resolution volumetrics.
 
 ## Phase 1 — Vertical slice
 

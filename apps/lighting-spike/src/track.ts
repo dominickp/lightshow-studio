@@ -1,8 +1,10 @@
+import trackUrl from '../../../resources/sample_audio/The Koto Chill.ogg?url';
+
 /**
  * Offline analysis of the sample track, not import-time detection: an
  * onset-flux envelope plus a DP beat tracker put it at 130.00 BPM with the
- * first beat at 0.02 s. Bars 41–56 are a clean 16-bar phrase right before the
- * breakdown, so that is the default loop.
+ * first beat at 0.02 s. Bars 41–56 are a high-energy 16-bar window, so that
+ * is the default loop.
  *
  * ADR-003 wants analysis to be a real, correctable import step. These numbers
  * are a hand-off placeholder until that exists.
@@ -17,6 +19,8 @@ export const TRACK = {
   loopStartBar: 41,
   loopBars: 16,
 } as const;
+
+export const TRACK_URL = trackUrl;
 
 export const beatSec = 60 / TRACK.bpm;
 export const barSec = beatSec * TRACK.beatsPerBar;

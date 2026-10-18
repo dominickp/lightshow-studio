@@ -131,7 +131,7 @@
         right: 12px;
         bottom: 12px;
         display: grid;
-        grid-template-columns: auto auto minmax(0, 1fr) auto;
+        grid-template-columns: auto minmax(0, 1fr) auto;
         align-items: center;
         gap: 12px;
         padding: 8px 10px;
@@ -246,13 +246,11 @@
     </div>
 
     <div class="panel" id="transport">
-      <button id="btn-load">Load audio</button>
       <button id="btn-play" disabled>▶ Play</button>
-      <input id="audio-file" type="file" accept="audio/*" hidden />
       <canvas id="waveform" aria-label="Waveform, beat grid and playhead"></canvas>
       <div id="transport-meta">
         <b id="transport-time">–</b>
-        <span id="transport-track">No audio loaded · expected 130 BPM</span>
+        <span id="transport-track">The Koto Chill — zircon · 130 BPM · bars 41–56</span>
       </div>
     </div>
 

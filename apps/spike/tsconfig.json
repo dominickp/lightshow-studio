@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist-tsc",
+    "rootDir": ".",
+    "types": ["vite/client"],
+    "composite": true
+  },
+  "include": ["src/**/*.ts", "vite.config.ts"],
+  "references": [
+    { "path": "../../packages/show-model" },
+    { "path": "../../packages/fixtures" }
+  ]
+}

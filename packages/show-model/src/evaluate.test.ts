@@ -1,0 +1,128 @@
+import { describe, expect, it } from 'vitest';
+import { barToTime, evaluateFixture, evaluateFixtureStates, secondsPerBeat, snapToGrid, timeToBeat } from './index';
+import type { Clip, FixtureProfile, FixturePlacement, Show } from './index';
+
+const profile: FixtureProfile = {
+  id: 'test-head',
+  name: 'Test Head',
+  kind: 'moving-head',
+  channels: ['pan', 'panFine', 'tilt', 'tiltFine', 'dimmer', 'red', 'green', 'blue', 'strobe'],
+  capabilities: {
+    dimmer: true,
+    color: 'rgb',
+    panTilt: true,
+    zoom: false,
+    focus: false,
+    strobe: true,
+    gobo: false,
+    prism: false,
+    rotation: false,
+  },
+  limits: {
+    panDeg: [-270, 270],
+    tiltDeg: [-135, 135],
+    strobeHz: [1, 25],
+  },
+  beam: { spreadDeg: [6, 45], throwM: 12 },
+};
+
+const fixture: FixturePlacement = {
+  id: 'fx-1',
+  profile,
+  position: { x: 0, y: 8, z: 0 },
+  yawDeg: 0,
+};
+
+const clip = (overrides: Partial<Clip> = {}): Clip => ({
+  id: 'clip-1',
+  startSec: 10,
+  endSec: 20,
+  attributes: {
+    dimmer: [{ at: 0, value: 0.25 }, { at: 1, value: 1 }],
+    red: [{ at: 0, value: 1 }],
+    green: [{ at: 0, value: 0 }],
+    blue: [{ at: 0, value: 0 }],
+  },
+  ...overrides,
+});
+
+describe('beat grid', () => {
+  it('converts beats and bars to seconds', () => {
+    const grid = { bpm: 120, offsetSec: 0, beatsPerBar: 4 };
+    expect(secondsPerBeat(grid)).toBeCloseTo(0.5);
+    expect(barToTime(grid, 2)).toBeCloseTo(4);
+    expect(timeToBeat(grid, 1.25)).toBeCloseTo(2.5);
+  });
+
+  it('snaps to the nearest grid division', () => {
+    const grid = { bpm: 120, offsetSec: 0, beatsPerBar: 4 };
+    expect(snapToGrid(grid, 0.13, 4)).toBeCloseTo(0.125);
+    expect(snapToGrid(grid, 0.6, 4)).toBeCloseTo(0.625);
+  });
+
+  it('honours the audio offset', () => {
+    const grid = { bpm: 120, offsetSec: 0.25, beatsPerBar: 4 };
+    expect(timeToBeat(grid, 0.75)).toBeCloseTo(1);
+  });
+});
+
+describe('evaluateFixture', () => {
+  it('returns silence outside every clip', () => {
+    const state = evaluateFixture(fixture, [clip()], 5);
+    expect(state.intensity).toBe(0);
+    expect(state.active).toBe(false);
+  });
+
+  it('interpolates envelopes linearly', () => {
+    const state = evaluateFixture(fixture, [clip()], 15);
+    expect(state.intensity).toBeCloseTo(0.625);
+    expect(state.color).toEqual({ r: 1, g: 0, b: 0 });
+  });
+
+  it('applies fade in and out to the dimmer', () => {
+    const faded = clip({ fadeInSec: 2, fadeOutSec: 2 });
+    expect(evaluateFixture(fixture, [faded], 11).intensity).toBeCloseTo(0.5 * 0.325, 5);
+    expect(evaluateFixture(fixture, [faded], 19).intensity).toBeCloseTo(0.5 * 0.925, 5);
+  });
+
+  it('maps normalized values into physical units', () => {
+    const centered = evaluateFixture(
+      fixture,
+      [clip({ attributes: { pan: [{ at: 0, value: 0.5 }], tilt: [{ at: 0, value: 0.75 }] } })],
+      15,
+    );
+    expect(centered.panDeg).toBeCloseTo(0);
+    expect(centered.tiltDeg).toBeCloseTo(67.5);
+
+    const strobing = evaluateFixture(
+      fixture,
+      [clip({ attributes: { dimmer: [{ at: 0, value: 1 }], strobe: [{ at: 0, value: 0.5 }] } })],
+      15,
+    );
+    expect(strobing.strobeHz).toBeCloseTo(13);
+  });
+
+  it('lets a later clip win per attribute', () => {
+    const base = clip({ attributes: { dimmer: [{ at: 0, value: 0.2 }] } });
+    const override = clip({ id: 'clip-2', startSec: 12, endSec: 14, attributes: { dimmer: [{ at: 0, value: 0.9 }] } });
+    expect(evaluateFixture(fixture, [base, override], 13).intensity).toBeCloseTo(0.9);
+    expect(evaluateFixture(fixture, [base, override], 11).intensity).toBeCloseTo(0.2);
+  });
+});
+
+describe('evaluateFixtureStates', () => {
+  const show: Show = {
+    version: 1,
+    name: 'test',
+    beatGrid: { bpm: 128, offsetSec: 0, beatsPerBar: 4 },
+    fixtures: [fixture],
+    tracks: [{ id: 'track-1', name: 'Track 1', fixtureIds: ['fx-1'], clips: [clip()] }],
+  };
+
+  it('evaluates every fixture in the show', () => {
+    const states = evaluateFixtureStates(show, 15);
+    expect(states).toHaveLength(1);
+    expect(states[0]?.fixtureId).toBe('fx-1');
+    expect(states[0]?.intensity).toBeCloseTo(0.625);
+  });
+});

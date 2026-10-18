@@ -1,0 +1,8 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/show-model" },
+    { "path": "./packages/fixtures" },
+    { "path": "./apps/spike" }
+  ]
+}

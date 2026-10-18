@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>dmx-sim · lighting spike</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --ink: #cfd6e6;
+        --dim: #7a8399;
+        --accent: #7ad1ff;
+        --panel: rgba(10, 13, 20, 0.72);
+        --edge: rgba(122, 209, 255, 0.22);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #04060a;
+        color: var(--ink);
+        font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+
+      #app {
+        position: fixed;
+        inset: 0;
+      }
+
+      #app canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      .panel {
+        position: fixed;
+        background: var(--panel);
+        border: 1px solid var(--edge);
+        border-radius: 8px;
+        backdrop-filter: blur(8px);
+        padding: 10px 12px;
+        user-select: none;
+      }
+
+      #stats {
+        top: 12px;
+        left: 12px;
+        min-width: 172px;
+      }
+
+      #stats .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+      }
+
+      #stats .row span {
+        color: var(--dim);
+      }
+
+      #stats .row b {
+        font-weight: 500;
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+      }
+
+      #controls {
+        top: 12px;
+        right: 12px;
+        display: grid;
+        gap: 6px;
+        min-width: 190px;
+      }
+
+      #controls button {
+        appearance: none;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 5px;
+        color: var(--ink);
+        font: inherit;
+        text-align: left;
+        padding: 5px 8px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      #controls button:hover {
+        border-color: var(--edge);
+        background: rgba(122, 209, 255, 0.08);
+      }
+
+      #controls button em {
+        font-style: normal;
+        color: var(--dim);
+      }
+
+      #controls button.on {
+        border-color: rgba(122, 209, 255, 0.55);
+        box-shadow: inset 0 0 0 1px rgba(122, 209, 255, 0.2);
+      }
+
+      #controls button.on em {
+        color: var(--accent);
+      }
+
+      #hint {
+        bottom: 12px;
+        left: 12px;
+        color: var(--dim);
+        max-width: 640px;
+        line-height: 1.7;
+      }
+
+      #hint b {
+        color: var(--ink);
+        font-weight: 500;
+      }
+
+      #loading {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: #04060a;
+        color: var(--dim);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        z-index: 10;
+      }
+
+      #loading[hidden] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <div id="loading">initialising renderer…</div>
+
+    <div class="panel" id="stats">
+      <div class="row"><span>fps</span><b id="stat-fps">–</b></div>
+      <div class="row"><span>frame (rAF)</span><b id="stat-ms">–</b></div>
+      <div class="row"><span>draw calls</span><b id="stat-calls">–</b></div>
+      <div class="row"><span>triangles</span><b id="stat-tris">–</b></div>
+      <div class="row"><span>resolution</span><b id="stat-res">–</b></div>
+      <div class="row"><span>backend</span><b id="stat-backend">–</b></div>
+      <div class="row"><span>fixtures</span><b id="stat-fixtures">–</b></div>
+      <div class="row"><span>show time</span><b id="stat-time">–</b></div>
+    </div>
+
+    <div class="panel" id="controls">
+      <button id="btn-play" class="on">Play / pause <em>space</em></button>
+      <button id="btn-vol" class="on">Beam cones <em>1</em></button>
+      <button id="btn-bloom" class="on">Bloom <em>2</em></button>
+      <button id="btn-shadow" class="on">Shadows <em>3</em></button>
+      <button id="btn-lofi">Lo-fi grade <em>4</em></button>
+      <button id="btn-strobe">Strobes <em id="strobe-status">off</em><em>5</em></button>
+      <button id="btn-view">Camera <em>c</em></button>
+      <button id="btn-count">Fixture count <em>[ ]</em></button>
+    </div>
+
+    <div class="panel" id="hint">
+      <b>Lighting spike.</b> 16-bar demo at 128 BPM, 32 fixtures. Drag to orbit, scroll to zoom.
+      Strobe flashes are opt-in (key 5); flashing effects may affect photosensitive viewers.
+      Watch fps while toggling beams and bloom — that is the number that decides the Phase 1 budget.
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

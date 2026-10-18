@@ -1,6 +1,8 @@
 # Lighting spike (`@dmxsim/lighting-spike`)
 
-Phase 0 renderer/performance experiment for dmx-sim. It renders a procedural club/stage venue with a beat-synced 32-fixture demo show to answer two questions: does the lighting look work, and what fixture budget can we afford? The spike's renderer code is disposable; stable pieces get extracted into `packages/renderer` later.
+Phase 0 renderer/performance experiment for dmx-sim. It renders a procedural club/stage venue with a 32-fixture rig driven by an editable arrangement to answer two questions: does the lighting look work, and what fixture budget can we afford? The spike's renderer code is disposable; stable pieces get extracted into `packages/renderer` later.
+
+The stage has no hard-coded lighting effects. The rig ([src/demo-rig.ts](src/demo-rig.ts)) contains fixtures only; the default track ships with a seeded arrangement ([src/demo-arrangement.ts](src/demo-arrangement.ts)) that fills the 16-bar loop with clips on every fixture lane. Playback evaluates exactly those clips, so moving, resizing, or deleting a clip changes the light on screen.
 
 Playback is driven by the audio clock prototype ([src/audio-clock.ts](src/audio-clock.ts)): song time comes from `AudioContext`, not from frame deltas, and the transport strip scrubs a real waveform with the beat grid drawn on it.
 
@@ -20,9 +22,9 @@ Open the Vite URL in a WebGPU-capable browser. Uses three.js `WebGPURenderer` wi
 
 ## Controls
 
-- **Space**: play/pause the audio and the 16-bar lighting loop
+- **Space**: play/pause the audio and the lighting arrangement
 - **Click / drag the waveform**: scrub
-- **L**: toggle audio looping (the choreography always loops on its bar grid)
+- **L**: toggle audio looping (clips play at their absolute song times)
 - **1**: toggle beam cones (mesh-based haze proxy, not true raymarched volumetrics)
 - **2**: toggle bloom
 - **3**: toggle shadows
@@ -31,5 +33,7 @@ Open the Vite URL in a WebGPU-capable browser. Uses three.js `WebGPURenderer` wi
 - **C**: cycle camera presets
 - **[ / ]**: cycle fixture counts
 - Mouse drag / scroll: orbit and zoom
+
+Drag a lane to add a clip, drag a clip to move it, drag its edge to resize it, or select a clip and press **Delete** to remove it. The demo arrangement is ordinary clip data; edit it freely.
 
 The HUD reports requestAnimationFrame timing, per-frame draw calls/triangles, resolution scale, backend, active fixtures, song position in bars/beats, measured output latency, and the loop bars. rAF timing follows the display refresh rate; it is not a GPU timestamp.

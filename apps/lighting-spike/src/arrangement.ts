@@ -6,6 +6,8 @@ export const CUE_COLORS = [
   { name: 'magenta', css: '#ff3380', rgb: [1, 0.1, 0.5] },
   { name: 'cyan', css: '#16d9cc', rgb: [0.05, 0.85, 0.8] },
   { name: 'amber', css: '#ff8a18', rgb: [1, 0.42, 0.05] },
+  { name: 'red', css: '#ff2f2f', rgb: [1, 0.08, 0.08] },
+  { name: 'white', css: '#f2f6ff', rgb: [1, 1, 1] },
 ] as const;
 
 export type CueAction = 'hold' | 'fade' | 'pulse' | 'sweep' | 'strobe';
@@ -17,6 +19,8 @@ export interface Cue {
   endSec: number;
   colorIndex: number;
   action: CueAction;
+  /** Overrides the default 40 ms fade-in when the cue starts (seconds). */
+  fadeInSec?: number;
 }
 
 export interface CueTimeline {
@@ -113,6 +117,17 @@ export class Arrangement {
     this.notifySelection();
   }
 
+  /** Replace the authored clips, e.g. with a seeded demo arrangement. */
+  setCues(cues: readonly Cue[]): void {
+    this.cues = cues.map((cue) => ({ ...cue }));
+    this.cues = this.cues.filter((cue) => this.fixtures.some((fixture) => fixture.id === cue.fixtureId));
+    this.selectedCueId = null;
+    this.preview = null;
+    this.renderRows();
+    this.notifyChange();
+    this.notifySelection();
+  }
+
   /** Update the loop markers without clearing authored clips. */
   setLoop(startSec: number, endSec: number): void {
     if (this.timeline === null) return;
@@ -188,47 +203,7 @@ export class Arrangement {
   }
 
   toClip(cue: Cue): Clip {
-    const fixture = this.fixtures.find((item) => item.id === cue.fixtureId);
-    const caps = fixture?.profile.capabilities;
-    const color = CUE_COLORS[cue.colorIndex % CUE_COLORS.length] ?? CUE_COLORS[0];
-    const attrs: Clip['attributes'] = {
-      dimmer: cue.action === 'fade'
-        ? [{ at: 0, value: 0 }, { at: 1, value: 0.9 }]
-        : cue.action === 'pulse'
-          ? [
-              { at: 0, value: 0.9 },
-              { at: 0.12, value: 0.08 },
-              { at: 0.24, value: 0.9 },
-              { at: 0.36, value: 0.08 },
-              { at: 0.48, value: 0.9 },
-              { at: 0.6, value: 0.08 },
-              { at: 0.72, value: 0.9 },
-              { at: 0.84, value: 0.08 },
-              { at: 1, value: 0.9 },
-            ]
-          : [{ at: 0, value: 0.9 }],
-    };
-
-    if (caps?.color) {
-      attrs.red = [{ at: 0, value: color.rgb[0] }];
-      attrs.green = [{ at: 0, value: color.rgb[1] }];
-      attrs.blue = [{ at: 0, value: color.rgb[2] }];
-    }
-    if (cue.action === 'sweep' && caps?.panTilt) {
-      attrs.pan = [{ at: 0, value: 0.15 }, { at: 0.5, value: 0.85 }, { at: 1, value: 0.15 }];
-      attrs.tilt = [{ at: 0, value: 0.42 }, { at: 0.5, value: 0.66 }, { at: 1, value: 0.42 }];
-    }
-    if (cue.action === 'strobe' && caps?.strobe) attrs.strobe = [{ at: 0, value: 0.78 }];
-
-    return {
-      id: cue.id,
-      startSec: cue.startSec,
-      endSec: cue.endSec,
-      fadeInSec: cue.action === 'fade' ? 0 : 0.04,
-      fadeOutSec: cue.action === 'fade' ? 0.08 : 0.08,
-      easing: cue.action === 'sweep' ? 'sine' : cue.action === 'pulse' ? 'step' : 'linear',
-      attributes: attrs,
-    };
+    return cueToClip(this.fixtures.find((item) => item.id === cue.fixtureId), cue);
   }
 
   private actionsFor(fixture: FixturePlacement): CueAction[] {
@@ -503,6 +478,53 @@ export class Arrangement {
       caps.strobe ? 'Strobe' : null,
     ].filter((value) => value !== null).join(' · ');
   }
+}
+
+/**
+ * Converts one arrangement cue into the evaluator's clip form. Pure so the
+ * stage and headless tests share exactly the same interpretation of a cue.
+ */
+export function cueToClip(fixture: FixturePlacement | undefined, cue: Cue): Clip {
+  const caps = fixture?.profile.capabilities;
+  const color = CUE_COLORS[cue.colorIndex % CUE_COLORS.length] ?? CUE_COLORS[0];
+  const attrs: Clip['attributes'] = {
+    dimmer: cue.action === 'fade'
+      ? [{ at: 0, value: 0 }, { at: 1, value: 0.9 }]
+      : cue.action === 'pulse'
+        ? [
+            { at: 0, value: 0.9 },
+            { at: 0.12, value: 0.08 },
+            { at: 0.24, value: 0.9 },
+            { at: 0.36, value: 0.08 },
+            { at: 0.48, value: 0.9 },
+            { at: 0.6, value: 0.08 },
+            { at: 0.72, value: 0.9 },
+            { at: 0.84, value: 0.08 },
+            { at: 1, value: 0.9 },
+          ]
+        : [{ at: 0, value: 0.9 }],
+  };
+
+  if (caps?.color) {
+    attrs.red = [{ at: 0, value: color.rgb[0] }];
+    attrs.green = [{ at: 0, value: color.rgb[1] }];
+    attrs.blue = [{ at: 0, value: color.rgb[2] }];
+  }
+  if (cue.action === 'sweep' && caps?.panTilt) {
+    attrs.pan = [{ at: 0, value: 0.15 }, { at: 0.5, value: 0.85 }, { at: 1, value: 0.15 }];
+    attrs.tilt = [{ at: 0, value: 0.42 }, { at: 0.5, value: 0.66 }, { at: 1, value: 0.42 }];
+  }
+  if (cue.action === 'strobe' && caps?.strobe) attrs.strobe = [{ at: 0, value: 0.78 }];
+
+  return {
+    id: cue.id,
+    startSec: cue.startSec,
+    endSec: cue.endSec,
+    fadeInSec: cue.fadeInSec ?? (cue.action === 'fade' ? 0 : 0.04),
+    fadeOutSec: 0.08,
+    easing: cue.action === 'sweep' ? 'sine' : cue.action === 'pulse' ? 'step' : 'linear',
+    attributes: attrs,
+  };
 }
 
 export function createRuler(

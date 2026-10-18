@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
-import { evaluateFixture, evaluateFixtureStates, timeToBeat } from '@dmxsim/show-model';
-import { createDemoShow } from './demo-show';
+import { evaluateFixture, timeToBeat, type FixtureState } from '@dmxsim/show-model';
+import { createDemoRig } from './demo-rig';
+import { createDemoCues } from './demo-arrangement';
 import { AudioClock } from './audio-clock';
 import { loopEndSec, loopStartSec, TRACK, TRACK_URL } from './track';
 import { computePeaks, WaveformStrip } from './waveform';
@@ -18,7 +19,7 @@ import {
 import { Stage } from './stage';
 import { Post } from './post';
 
-const show = createDemoShow(loopStartSec, TRACK.bpm);
+const show = createDemoRig(loopStartSec, TRACK.bpm);
 const counts = [10, 16, 22, 26, 32].filter((n) => n <= show.fixtures.length);
 
 const container = document.getElementById('app');
@@ -665,7 +666,7 @@ const adjustResolution = (): void => {
   }
 };
 
-const updateStats = (now: number, states: ReturnType<typeof evaluateFixtureStates>, songTime: number): void => {
+const updateStats = (now: number, states: readonly FixtureState[], songTime: number): void => {
   if (now - lastStats < 250) return;
   lastStats = now;
   syncButtons();
@@ -711,33 +712,15 @@ const frame = (now: number): void => {
     }
   }
   const showAt = showTime(songTime);
-  const demoStates = evaluateFixtureStates(show, showAt);
-  const states = show.fixtures.map((fixture, index) => {
-    const demoState = demoStates[index];
-    if (demoState === undefined) return demoState;
-    const trackCues = cues.filter((cue) =>
-      cue.fixtureId === fixture.id && songTime >= cue.startSec && songTime <= cue.endSec,
-    );
-    const trackClips = trackCues.map((cue) => arrangement.toClip(cue));
-    if (trackClips.length === 0) return demoState;
-    const cueState = evaluateFixture(fixture, trackClips, songTime);
-    return {
-      ...demoState,
-      intensity: cueState.intensity,
-      active: cueState.active,
-      ...(fixture.profile.capabilities.color ? { color: cueState.color } : {}),
-      ...(trackCues.some((cue) => cue.action === 'sweep')
-        ? { panDeg: cueState.panDeg, tiltDeg: cueState.tiltDeg }
-        : {}),
-      ...(trackCues.some((cue) => cue.action === 'strobe')
-        ? { strobeHz: cueState.strobeHz }
-        : {}),
-    };
-  }).filter((state) => state !== undefined).map((state) =>
-    state.kind === 'strobe' && !strobesOn
+  const states = show.fixtures.map((fixture) => {
+    const trackClips = cues
+      .filter((cue) => cue.fixtureId === fixture.id && songTime >= cue.startSec && songTime <= cue.endSec)
+      .map((cue) => arrangement.toClip(cue));
+    const state = evaluateFixture(fixture, trackClips, songTime);
+    return fixture.profile.kind === 'strobe' && !strobesOn
       ? { ...state, intensity: 0, active: false, strobeHz: 0 }
-      : state,
-  );
+      : state;
+  });
 
   stage.update(states, showAt, { volumetrics });
   post.setTime(showAt);
@@ -796,6 +779,7 @@ try {
   ui.loopFit.disabled = false;
   setZoom(PIXELS_PER_SECOND);
   applyLoop();
+  arrangement.setCues(createDemoCues(show.fixtures, timeline));
   ui.arrangementScroll.scrollLeft = Math.max(0, loopStartSec * PIXELS_PER_SECOND);
   ui.transportTime.textContent = `${formatClock(loopStartSec)} / ${formatClock(buffer.duration)}`;
 } catch (error) {

@@ -9,7 +9,7 @@ The beams are additive cone meshes with animated TSL noise and scene fog. They a
 ## Observed in the current dev environment
 
 - WebGPU backend active in the integrated Chrome browser.
-- 32 fixtures shown, 28 active at the sampled loop position.
+- 32 fixtures shown, 22 active on the paused frame at the seeded loop start (the intro's colour fades start from black).
 - At 100% resolution: about **6.9–7.0 ms rAF interval**, reported as ~143–144 fps; display refresh appears to cap the result.
 - About **278–316 draw calls** and **21–23k triangles** in the sampled frame with beams, bloom, and shadows enabled. This uses `renderer.info.render.drawCalls`, reset once per app frame.
 - Disabling beam cones, bloom, or shadows each reduced the sampled draw call count (to roughly 248, 246, and 231 in one comparison) without changing the refresh-capped interval.
@@ -26,9 +26,9 @@ The low-poly venue plus saturated moving beams is visually promising. Additive f
 - Latency compensation uses `outputLatency` (40 ms in the integrated Chrome here), so visuals follow the sample that is actually audible.
 - Looping uses the source node's `loopStart`/`loopEnd`, which is sample-accurate; the visual clock wraps on the same region.
 - A loop is a brace, not a cage: seeking or starting before the loop is allowed, so the song intro plays through and then wraps at the loop end. Only positions at/past the loop end fold back inside it. The arrangement shades the loop region so clips that cannot play are visible.
-- The loop is editable: drag the cyan grips on the ruler to move the in/out points, Shift+drag anywhere in the timeline (ruler, waveform, or a lane) to draw a new loop, `Loop` toggles looping, and `Fit loop` zooms to it. The demo choreography keeps running over its authored 16-bar loop so the stage never goes dark when the audio loop moves.
+- The loop is editable: drag the cyan grips on the ruler to move the in/out points, Shift+drag anywhere in the timeline (ruler, waveform, or a lane) to draw a new loop, `Loop` toggles looping, and `Fit loop` zooms to it. The demo arrangement is authored inside the default loop; if the loop is moved away from it, those clips simply no longer play.
 - The ruler is scrubbable as well as the waveform, so getting back before the loop does not depend on the horizontal scrollbar.
-- Choreography is evaluated against the loop's bar grid even when audio looping is off, so the lights never stop or fall out of phase with the beat.
+- Choreography is arrangement data: the stage evaluates the same cues the timeline draws, at absolute song time. Nothing is hard-coded in the renderer, and editing a clip changes the light immediately. Outside authored cues the rig is dark.
 - The transport strip draws waveform peaks (min/max per pixel, computed once after decode), beat and bar ticks, the loop region, and a playhead.
 
 ## Timeline and notefield design prototype
@@ -40,7 +40,7 @@ The lower dock is an FL Studio-style **Playlist / Arrangement view**: a pinned t
 - Loop clarity: the ruler and every lane shade the region outside the transport loop (bars 41–56 by default). Because the audio clock clamps seeks to the active loop, clips drawn outside it never play; the shading makes that constraint visible rather than surprising.
 - Authoring: drag in a lane to draw a clip with a live dashed preview; a plain click adds a default-length clip at the playhead. Drag a clip body to move it; drag either edge to resize that edge (left/right edge gestures are distinct). Snapping is 1/16 note when a BPM grid exists.
 - Inspector: the selected fixture's capabilities are listed (Dimmer, RGB/W, Pan/Tilt, Zoom, Strobe rate, Gobo, Prism, Rotation). Hold, fade, and pulse are available generally; pan/tilt fixtures add sweep and strobe-capable fixtures add strobe. Colour is editable for colour-mixing fixtures. When no clip is selected, the action/colour pickers set the default for the next clip, so drag-created clips inherit the user's intent.
-- Fixture response: clip action resolves into the existing show-model envelopes and overrides only its target fixture during playback/scrubbing.
+- Fixture response: each cue resolves into the existing show-model envelopes and drives only its target fixture. The default track ships with a seeded demo arrangement (`src/demo-arrangement.ts`) filling the 16-bar loop; before that, the demo was a separate hard-coded show and cues only overrode it when present.
 
 This is a design and behavior prototype, not a finished editor. Clip data is still in-memory and is discarded when another audio file is loaded; there is no save/load, undo/redo, multi-select, copy/paste, track reordering, or per-attribute keyframe inspector. BPM/offset editing and beat analysis remain open.
 

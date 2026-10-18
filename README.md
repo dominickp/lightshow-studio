@@ -18,7 +18,7 @@ Phase 0 — the lighting/perf spike ([apps/lighting-spike](./apps/lighting-spike
 ```sh
 npm install
 npm run dev        # runs the lighting spike
-npm test           # show-model unit tests
+npm test           # unit tests
 npm run typecheck
 npm run build
 ```

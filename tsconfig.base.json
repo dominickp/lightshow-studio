@@ -17,9 +17,9 @@
     "declarationMap": true,
     "sourceMap": true,
     "composite": true,
-    "baseUrl": ".",
     "paths": {
-      "@dmxsim/show-model": ["./packages/show-model/src/index.ts"]
+      "@dmxsim/show-model": ["./packages/show-model/src/index.ts"],
+      "@dmxsim/fixtures": ["./packages/fixtures/src/index.ts"]
     }
   }
 }

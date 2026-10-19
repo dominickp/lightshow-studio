@@ -126,7 +126,7 @@
       #side-panel {
         position: relative;
         grid-column: 2;
-        grid-row: 2 / span 2;
+        grid-row: 2;
         display: flex;
         flex-direction: column;
         min-width: 0;
@@ -354,7 +354,7 @@
         min-height: 180px;
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
-        grid-template-rows: auto auto minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr);
         background: #0a0d13;
         border-top: 1px solid rgba(122, 209, 255, 0.3);
         box-shadow: 0 -12px 34px rgba(0, 0, 0, 0.35);
@@ -365,7 +365,6 @@
         min-height: 0;
         grid-template-rows: auto;
       }
-      #timeline-dock.collapsed #clip-inspector,
       #timeline-dock.collapsed #arrangement-scroll,
       #timeline-dock.collapsed #side-panel,
       #timeline-dock.collapsed #zoom-tools { display: none; }
@@ -445,248 +444,9 @@
       #audio-file { display: none; }
       #project-file { display: none; }
 
-      #clip-inspector {
-        position: relative;
-        grid-column: 1;
-        grid-row: 2;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        min-width: 0;
-        padding: 5px 12px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        background: #0e141c;
-      }
-      #clip-inspector .inspector-title {
-        flex: 0 0 auto;
-        padding-right: 10px;
-        border-right: 1px solid rgba(255, 255, 255, 0.09);
-        color: #7f8ca1;
-        font-size: 9px;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-      }
-      #clip-inspector .inspector-target {
-        display: flex;
-        flex: 0 0 auto;
-        align-items: center;
-        gap: 5px;
-        min-width: 0;
-      }
-      #selected-fixture {
-        max-width: 135px;
-        overflow: hidden;
-        color: var(--accent);
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      #selected-fixture.empty { color: var(--dim); font-style: italic; }
-      #clip-inspector .clip-field {
-        display: flex;
-        flex: 0 0 auto;
-        align-items: center;
-        gap: 5px;
-        min-width: 0;
-      }
-      #clip-inspector .clip-field-label {
-        flex: 0 0 auto;
-        color: #5f6b80;
-        font-size: 9px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-      #clip-inspector .clip-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
-      #clip-inspector button {
-        appearance: none;
-        padding: 4px 10px;
-        border: 1px solid rgba(255, 255, 255, 0.11);
-        border-radius: 5px;
-        background: rgba(255, 255, 255, 0.04);
-        color: var(--ink);
-        font: inherit;
-        white-space: nowrap;
-        cursor: pointer;
-      }
-      #clip-inspector button:disabled { opacity: 0.4; cursor: not-allowed; }
-      #btn-cue-add:not(:disabled) {
-        border-color: rgba(122, 209, 255, 0.45);
-        color: var(--accent);
-      }
-      #btn-cue-add:not(:disabled):hover { background: rgba(122, 209, 255, 0.12); border-color: var(--accent); }
-      #btn-cue-delete:not(:disabled) {
-        border-color: rgba(255, 155, 155, 0.28);
-        color: #ff9b9b;
-      }
-      #btn-cue-delete:not(:disabled):hover { background: rgba(255, 90, 90, 0.12); border-color: rgba(255, 155, 155, 0.6); }
-
-      /* The bar shows the current color plus the picker button. All palettes
-         and recent colors live in the popover, so the bar never grows. */
-      #cue-color { display: flex; align-items: center; gap: 6px; }
-      #cue-color[data-disabled='true'] { opacity: 0.4; }
-      /* Both bar swatches share one size/shape so they read as a pair. */
-      #cue-color .color-swatch {
-        width: 24px;
-        height: 24px;
-        border-radius: 5px;
-        border-color: rgba(255, 255, 255, 0.3);
-      }
-      #cue-color .color-swatch:not(:disabled):hover { transform: none; filter: brightness(1.15); }
-      .cp-palette { display: flex; flex-wrap: wrap; gap: 5px; }
-      .cp-palette .color-swatch { width: 20px; height: 20px; border-radius: 50%; }
-      .color-swatch {
-        position: relative;
-        width: 18px;
-        height: 18px;
-        padding: 0;
-        border: 1px solid rgba(255, 255, 255, 0.22);
-        border-radius: 50%;
-        /* ID-qualified so the generic `#clip-inspector button` background
-           cannot override the swatch color. */
-        background: var(--swatch) !important;
-        cursor: pointer;
-      }
-      .color-swatch:not(:disabled):hover { transform: scale(1.12); }
-      .color-swatch:disabled { cursor: not-allowed; }
-      .color-swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-      .color-swatch.selected {
-        border-color: #f3fbff;
-        box-shadow: 0 0 0 2px rgba(4, 6, 10, 0.9), 0 0 0 3px var(--accent);
-        transform: scale(1.08);
-      }
-      /* The custom swatch advertises "anything else": a conic rainbow until a
-         custom color is applied, then it shows that color. */
-      .color-swatch.custom {
-        background: conic-gradient(#ff2f2f, #ff8a18, #16d9cc, #397cff, #8c35ff, #ff3380, #ff2f2f) !important;
-      }
-      .color-swatch.custom[data-has-custom='true'] { background: var(--swatch) !important; }
-      /* Recent colors learned from custom picks sit after the palette. */
-      .color-swatch.user { border-radius: 4px; }
-
-      /* --- Custom color picker popover ------------------------------- */
-      #color-picker {
-        position: absolute;
-        top: calc(100% - 2px);
-        left: 220px;
-        z-index: 12;
-        width: 268px;
-        padding: 10px 12px 12px;
-        border: 1px solid var(--edge);
-        border-radius: 8px;
-        background: #0b1017;
-        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
-      }
-      #color-picker[hidden] { display: none; }
-      #color-picker .cp-head {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        margin-bottom: 8px;
-      }
-      #color-picker .cp-title {
-        color: #7f8ca1;
-        font-size: 9px;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-      }
-      #cp-close {
-        margin-left: auto;
-        padding: 0 5px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 4px;
-        background: transparent;
-        color: var(--dim);
-        cursor: pointer;
-      }
-      #cp-close:hover { color: var(--accent); border-color: var(--edge); }
-      #cp-preview {
-        width: 22px;
-        height: 22px;
-        flex: 0 0 auto;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        border-radius: 50%;
-        background: #397cff;
-      }
-      #color-picker label {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: #a9b4c7;
-        font-size: 10px;
-      }
-      /* Native color input: the browser supplies a full HSV picker, so users
-         pick visually instead of typing codes. */
-      #cp-color {
-        flex: 1 1 auto;
-        width: 100%;
-        height: 26px;
-        padding: 2px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        border-radius: 5px;
-        background: #111720;
-        cursor: pointer;
-      }
-      #cp-color::-webkit-color-swatch-wrapper { padding: 0; }
-      #cp-color::-webkit-color-swatch { border: none; border-radius: 3px; }
-      #cp-color::-moz-color-swatch { border: none; border-radius: 3px; }
-      #color-picker .cp-hue-grid { display: flex; gap: 4px; margin-top: 6px; }
-      #color-picker .cp-hue-grid button {
-        flex: 1 1 auto;
-        height: 16px;
-        padding: 0;
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        border-radius: 3px;
-        background: var(--swatch);
-        cursor: pointer;
-      }
-      #color-picker .cp-hue-grid button:hover { border-color: #f3fbff; }
-      #color-picker .cp-section {
-        margin-top: 10px;
-        padding-top: 9px;
-        border-top: 1px solid rgba(255, 255, 255, 0.07);
-      }
-      #color-picker .cp-row {
-        display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        gap: 8px;
-        margin-bottom: 5px;
-        color: #a9b4c7;
-        font-size: 10px;
-      }
-
-      /* Native select popups take their panel color from the control's own
-         background. Keep it opaque (not translucent white) and style the
-         options explicitly so the list stays dark and readable in browsers
-         that force/auto-apply dark mode. */
-      #clip-inspector select {
-        max-width: 95px;
-        cursor: pointer;
-        color-scheme: dark;
-        background-color: #111720;
-        color: var(--ink);
-      }
-
-      #clip-inspector select option {
-        background-color: #111720;
-        color: var(--ink);
-      }
-
-      #clip-inspector select option:disabled { color: var(--dim); }
-
-      #clip-inspector select option:checked,
-      #clip-inspector select option:hover {
-        background-color: #1d4f6b;
-        color: #f3fbff;
-      }
-
-      #clip-inspector select:focus-visible {
-        outline: 2px solid var(--accent);
-        outline-offset: 1px;
-      }
-
       #arrangement-scroll {
         grid-column: 1;
-        grid-row: 3;
+        grid-row: 2;
         min-height: 0;
         overflow: auto;
         overscroll-behavior: contain;
@@ -745,17 +505,55 @@
       .fixture-row.selected .track-name { box-shadow: inset 3px 0 0 var(--accent); }
 
       #timeline-ruler-row { position: sticky; top: 0; z-index: 6; height: 28px; will-change: transform; }
+      /* The ruler's label cell holds the track filter, so the filter lives in
+         the left gutter instead of spanning the timeline. */
       #timeline-ruler-label {
         height: 28px;
-        justify-content: flex-start;
-        gap: 7px;
-        color: #8f9bb0;
-        font-size: 10px;
-        letter-spacing: 0.08em;
+        padding: 0 6px;
         cursor: default;
         background: #0f151e;
       }
-      #timeline-ruler-label .ruler-mode { color: #5f6b80; font-size: 9px; letter-spacing: 0; }
+      #timeline-ruler-label:hover { background: #0f151e; }
+      #track-filter {
+        flex: 1 1 auto;
+        min-width: 0;
+        height: 20px;
+        padding: 0 3px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 4px;
+        background: #111720;
+        color: var(--ink);
+        font: inherit;
+        font-size: 10px;
+        cursor: pointer;
+        color-scheme: dark;
+      }
+      #track-filter:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+      #track-filter:disabled { opacity: 0.5; cursor: not-allowed; }
+      #track-filter option { background: #111720; color: var(--ink); }
+      /* "Hide others": collapses the scene to the filtered fixture kind. */
+      #btn-hide-unfiltered {
+        flex: 0 0 20px;
+        width: 20px;
+        height: 20px;
+        padding: 0;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 4px;
+        background: #111720;
+        color: #7d8a9e;
+        font: inherit;
+        font-size: 11px;
+        line-height: 1;
+        cursor: pointer;
+      }
+      #btn-hide-unfiltered:hover:not(:disabled) { border-color: var(--edge); color: var(--accent); }
+      #btn-hide-unfiltered:disabled { opacity: 0.4; cursor: not-allowed; }
+      #btn-hide-unfiltered.on {
+        border-color: rgba(122, 209, 255, 0.55);
+        background: rgba(122, 209, 255, 0.12);
+        color: var(--accent);
+      }
+      #btn-hide-unfiltered:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
       .ruler-track { position: relative; width: max-content; }
       #timeline-ruler { display: block; height: 28px; cursor: ew-resize; touch-action: none; }
 
@@ -999,17 +797,6 @@
         pointer-events: none;
       }
 
-      #cue-status {
-        flex: 1 1 auto;
-        min-width: 0;
-        margin-left: auto;
-        overflow: hidden;
-        color: var(--dim);
-        font-size: 10px;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
       #hint {
         position: absolute;
         left: 12px;
@@ -1054,9 +841,6 @@
 
       @media (max-width: 1000px) {
         :root { --dock-height: 50vh; --side-panel-width: 244px; }
-        #clip-inspector { gap: 6px; padding: 5px 8px; }
-        #clip-inspector .inspector-title { display: none; }
-        #selected-fixture { max-width: 80px; }
         #transport-meta { column-gap: 8px; }
       }
 
@@ -1068,11 +852,6 @@
         #transport { gap: 5px; padding: 5px; }
         #transport button { min-width: 0; padding: 5px; }
         #transport-meta { display: none; }
-        #clip-inspector #btn-cue-delete, #cue-status { display: none; }
-        #clip-inspector .clip-field-label, #selected-fixture { display: none; }
-        #clip-inspector .clip-field { gap: 0; }
-        .color-swatch { width: 14px; height: 14px; }
-        #cue-color .color-swatch { width: 20px; height: 20px; }
         #zoom-tools { right: 8px; bottom: 8px; gap: 4px; padding: 4px 6px; }
         #zoom-tools input { width: 64px; }
         #volume { width: 64px; }
@@ -1155,56 +934,15 @@
         <button id="btn-dock" type="button" title="Collapse or expand the timeline dock">Collapse timeline</button>
       </div>
 
-      <div id="clip-inspector" aria-label="Clip inspector">
-        <span class="inspector-title" title="Clip inspector">Clip inspector</span>
-        <span class="inspector-target">
-          <span class="clip-field-label">Track</span>
-          <span id="selected-fixture" class="empty">None selected</span>
-        </span>
-        <label class="clip-field">
-          <span class="clip-field-label">Action</span>
-          <select id="cue-action" aria-label="Clip action" disabled></select>
-        </label>
-        <div class="clip-field">
-          <span class="clip-field-label" id="cue-color-label">Color</span>
-          <div id="cue-color" class="color-swatches" role="radiogroup" aria-labelledby="cue-color-label" data-disabled="true"></div>
-        </div>
-        <!-- The bar shows only the current color + the picker button; the
-             palette and recent colors live inside the popover. -->
-        <span class="clip-actions">
-          <button id="btn-cue-add" type="button" title="Add a clip at the playhead on the selected track" disabled>+ Add clip</button>
-          <button id="btn-cue-delete" type="button" title="Delete the selected clip (Backspace)" disabled>Delete clip</button>
-        </span>
-        <span id="cue-status" role="status">Load audio to arrange clips</span>
-        <div id="color-picker" role="dialog" aria-label="Custom clip color" hidden>
-          <div class="cp-head">
-            <span id="cp-preview" aria-hidden="true"></span>
-            <span class="cp-title">Custom color</span>
-            <button id="cp-close" type="button" title="Close color picker (Esc)" aria-label="Close color picker">×</button>
-          </div>
-          <label>Pick a color <input id="cp-color" type="color" value="#7ad1ff" aria-label="Pick a custom color" /></label>
-          <div class="cp-hue-grid" id="cp-hue-grid" role="group" aria-label="Quick colors">
-            <button type="button" style="--swatch:#ff2f2f" title="Red" aria-label="Quick red"></button>
-            <button type="button" style="--swatch:#ff8a18" title="Orange" aria-label="Quick orange"></button>
-            <button type="button" style="--swatch:#ffe21f" title="Yellow" aria-label="Quick yellow"></button>
-            <button type="button" style="--swatch:#35e05a" title="Green" aria-label="Quick green"></button>
-            <button type="button" style="--swatch:#397cff" title="Blue" aria-label="Quick blue"></button>
-            <button type="button" style="--swatch:#8c35ff" title="Violet" aria-label="Quick violet"></button>
-            <button type="button" style="--swatch:#ff3380" title="Pink" aria-label="Quick pink"></button>
-          </div>
-          <div class="cp-section">
-            <div class="cp-row"><span>Palette &amp; recent</span></div>
-            <div id="cp-palette" class="color-swatches cp-palette" role="radiogroup" aria-label="Palette and recent colors"></div>
-          </div>
-        </div>
-      </div>
-
       <div id="arrangement-scroll" tabindex="0" aria-label="Scrollable fixture tracks and timeline">
         <div id="arrangement-content">
           <div id="timeline-ruler-row">
             <div class="track-name" id="timeline-ruler-label" title="1 measure = 1 bar of 4 beats">
-              <span>ARRANGEMENT</span>
-              <span class="ruler-mode">MEASURES</span>
+              <select id="track-filter" aria-label="Filter tracks by fixture type" title="Show only tracks of one fixture type">
+                <option value="">All tracks</option>
+              </select>
+              <button id="btn-hide-unfiltered" type="button" aria-pressed="false" disabled
+                title="Hide other fixture types in the 3D viewport" aria-label="Hide other fixture types in the 3D viewport">◌</button>
             </div>
             <div class="ruler-track">
               <canvas id="timeline-ruler" aria-label="Measure ruler"></canvas>

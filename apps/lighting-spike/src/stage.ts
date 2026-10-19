@@ -60,6 +60,12 @@ export class Stage {
 
   private readonly rigs: (FixtureRig | LaserRig)[] = [];
   private readonly hiddenFixtures = new Set<string>();
+  /**
+   * When set, rigs whose fixture kind does not match are hidden from the
+   * scene. Driven by the timeline's track filter + "hide others" toggle, so
+   * it layers on top of per-fixture visibility rather than replacing it.
+   */
+  private kindFilter: string | null = null;
   private readonly selectionMarker = new THREE.Group();
   private selectedFixtureId: string | null = null;
   private activeCount = Number.POSITIVE_INFINITY;
@@ -307,6 +313,16 @@ export class Stage {
     this.applyVisibility();
   }
 
+  /**
+   * Hide every rig whose fixture kind differs from `kind` (`null` shows all).
+   * This is the scene half of the track filter's "hide others" toggle.
+   */
+  setKindFilter(kind: string | null): void {
+    if (this.kindFilter === kind) return;
+    this.kindFilter = kind;
+    this.applyVisibility();
+  }
+
   setSelectedFixture(fixtureId: string | null): void {
     this.selectedFixtureId = fixtureId;
     const rig = this.rigs.find((item) => item.placement.id === fixtureId);
@@ -322,9 +338,16 @@ export class Stage {
     this.rigs.forEach((rig, index) => {
       const inCount = index < this.activeCount;
       const hidden = this.hiddenFixtures.has(rig.placement.id);
-      rig.setVisible(inCount && !hidden);
+      const filtered = this.kindFilter !== null
+        && rig.placement.profile.kind !== this.kindFilter;
+      rig.setVisible(inCount && !hidden && !filtered);
     });
-    if (this.selectedFixtureId !== null && this.hiddenFixtures.has(this.selectedFixtureId)) {
+    const selectedHidden = this.selectedFixtureId !== null
+      && (this.hiddenFixtures.has(this.selectedFixtureId)
+        || (this.kindFilter !== null
+          && this.rigs.find((rig) => rig.placement.id === this.selectedFixtureId)
+            ?.placement.profile.kind !== this.kindFilter));
+    if (selectedHidden) {
       this.selectionMarker.visible = false;
     } else {
       this.setSelectedFixture(this.selectedFixtureId);

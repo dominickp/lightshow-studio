@@ -60,7 +60,7 @@ function createLaserBeamMaterial(halfWidthM: number) {
    * not alias. The floor is ~3 px of half-width at typical FOV: at 1 px the
    * ribbon under-samples and breaks into dashes. Bloom supplies the glow on
    * top of this. */
-  const halfWidth = float(halfWidthM).max(distance.mul(0.0022));
+  const halfWidth = float(halfWidthM).max(distance.mul(0.0032));
 
   material.positionNode = world.add(side.mul(aW.mul(halfWidth)));
   material.fog = true;
@@ -75,8 +75,10 @@ function createLaserBeamMaterial(halfWidthM: number) {
    * neighbours into a continuous line. */
   const across = float(1).sub(vW.mul(vW));
   const core = across.mul(across).mul(across);
-  const halo = across.mul(across).mul(1.6).add(across.mul(0.35));
-  const beamColor = mix(uColor, vec3(1), 0.55).mul(core.mul(1.4)).add(uColor.mul(halo.mul(0.45)));
+  /* A linear halo term (not another power) keeps the wider ribbon readable
+   * after the bloom pass instead of collapsing back to a hairline. */
+  const halo = across.mul(0.65).add(across.mul(across).mul(0.9));
+  const beamColor = mix(uColor, vec3(1), 0.55).mul(core.mul(1.4)).add(uColor.mul(halo));
   /* A laser stays bright across the room; only a shallow axial falloff. */
   const axial = mix(1, 0.55, vT);
   /* A beam with nowhere to land dissolves over the tail instead of ending in
@@ -347,7 +349,9 @@ export class LaserRig {
     const color = this.color.setRGB(state.color.r, state.color.g, state.color.b, THREE.SRGBColorSpace);
 
     this.beamMaterial.uColor.value.copy(color);
-    this.beamMaterial.uIntensity.value = level * 1.1;
+    /* Above 1.0 so the beam clears the bloom threshold and picks up a glow
+     * instead of rendering as a flat bright line. */
+    this.beamMaterial.uIntensity.value = level * 2.4;
     this.beamMaterial.uHaze.value = Math.max(0, options.haze);
     this.dotMaterial.uColor.value.copy(color);
     this.dotMaterial.uIntensity.value = level * 2.2;

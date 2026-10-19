@@ -37,17 +37,14 @@ import {
 } from './project-file';
 import {
   Arrangement,
-  CUE_COLORS,
   MAX_PIXELS_PER_SECOND,
   MIN_PIXELS_PER_SECOND,
   PIXELS_PER_SECOND,
   TRACK_LABEL_WIDTH,
   type Cue,
-  type CueColorOverride,
   type CueTimeline,
   createRuler,
 } from './arrangement';
-import { kelvinToCss, kelvinToRgb } from './kelvin';
 import { Stage } from './stage';
 import { Post } from './post';
 
@@ -214,17 +211,8 @@ const ui = {
   arrangement: element('arrangement-rows'),
   arrangementScroll: element('arrangement-scroll'),
   ruler: element<HTMLCanvasElement>('timeline-ruler'),
-  cueAdd: element<HTMLButtonElement>('btn-cue-add'),
-  cueAction: element<HTMLSelectElement>('cue-action'),
-  cueColor: element('cue-color'),
-  cueDelete: element<HTMLButtonElement>('btn-cue-delete'),
-  colorPicker: element<HTMLElement>('color-picker'),
-  colorPalette: element<HTMLElement>('cp-palette'),
-  colorPickerClose: element<HTMLButtonElement>('cp-close'),
-  colorPreview: element('cp-preview'),
-  colorInput: element<HTMLInputElement>('cp-color'),
-  hueGrid: element<HTMLElement>('cp-hue-grid'),
-  cueStatus: element('cue-status'),
+  trackFilter: element<HTMLSelectElement>('track-filter'),
+  hideUnfiltered: element<HTMLButtonElement>('btn-hide-unfiltered'),
   zoomIn: element<HTMLButtonElement>('btn-zoom-in'),
   zoomOut: element<HTMLButtonElement>('btn-zoom-out'),
   zoomFit: element<HTMLButtonElement>('btn-zoom-fit'),
@@ -234,7 +222,6 @@ const ui = {
   loopFit: element<HTMLButtonElement>('btn-loop-fit'),
   follow: element<HTMLButtonElement>('btn-follow'),
   rulerPlayhead: element('ruler-playhead'),
-  selectedFixture: element('selected-fixture'),
   loading: element('loading'),
   setupDimmer: element<HTMLInputElement>('setup-dimmer'),
   setupDimmerValue: element('setup-dimmer-value'),
@@ -369,10 +356,7 @@ const syncPanelHeader = (fixture: Fixture | null): void => {
     : `${mountLabel(fixture)} · ${fixture.profile.channels.length} DMX channels`;
 };
 
-const syncCueInspector = (fixture: (typeof show.fixtures)[number] | null, cue: Cue | null): void => {
-  const label = fixture === null ? null : arrangement.labelFor(fixture);
-  ui.selectedFixture.textContent = label ?? 'None selected';
-  ui.selectedFixture.classList.toggle('empty', label === null);
+const syncCueInspector = (fixture: (typeof show.fixtures)[number] | null, _cue: Cue | null): void => {
   syncPanelHeader(fixture);
   renderPanelCapabilities(fixture);
   if (sidePanelOpen) sidePanelFixtureId = fixture?.id ?? null;
@@ -438,23 +422,6 @@ const syncCueInspector = (fixture: (typeof show.fixtures)[number] | null, cue: C
   }
   refreshPanelClipStats();
   renderRigList();
-
-  const available = arrangement.selectedActions;
-  ui.cueAction.replaceChildren(...available.map((action) => {
-    const option = document.createElement('option');
-    option.value = action;
-    option.textContent = action[0]!.toUpperCase() + action.slice(1);
-    return option;
-  }));
-  ui.cueAction.disabled = fixture === null;
-  ui.cueAction.value = cue?.action ?? arrangement.suggestedAction;
-  const colorEnabled = fixture !== null && Boolean(fixture.profile.capabilities.color);
-  const override = cue?.colorOverride ?? (cue === null ? arrangement.suggestedColorOverride ?? undefined : undefined);
-  syncColorSwatches(cue?.colorIndex ?? arrangement.suggestedColorIndex, override, colorEnabled);
-  ui.cueDelete.disabled = cue === null;
-  ui.cueAdd.disabled = fixture === null || clock.duration <= 0;
-  const count = cues.length;
-  ui.cueStatus.textContent = `${count} clip${count === 1 ? '' : 's'} · click or drag a lane to add`;
   syncActiveFixture();
 };
 
@@ -470,172 +437,6 @@ const syncActiveFixture = (): void => {
   stage.setSelectedFixture(activeId);
   arrangement.setActiveFixture(activeId);
 };
-
-/**
- * The bar keeps only the current color swatch plus the picker button; the
- * palette and recent colors live inside the popover, so the bar stays one row
- * no matter how many colors the user collects.
- */
-const currentSwatch = document.createElement('button');
-currentSwatch.type = 'button';
-currentSwatch.className = 'color-swatch current';
-currentSwatch.style.setProperty('--swatch', CUE_COLORS[0]!.css);
-currentSwatch.setAttribute('role', 'radio');
-currentSwatch.setAttribute('aria-checked', 'true');
-currentSwatch.setAttribute('aria-label', 'Current clip color');
-currentSwatch.disabled = true;
-currentSwatch.tabIndex = -1;
-currentSwatch.title = CUE_COLORS[0]!.name;
-const CUSTOM_COLOR_INDEX = CUE_COLORS.length;
-const customSwatch = document.createElement('button');
-customSwatch.type = 'button';
-customSwatch.className = 'color-swatch custom';
-customSwatch.dataset.colorIndex = String(CUSTOM_COLOR_INDEX);
-customSwatch.title = 'Custom color…';
-customSwatch.setAttribute('role', 'radio');
-customSwatch.setAttribute('aria-label', 'Custom color');
-customSwatch.setAttribute('aria-checked', 'false');
-customSwatch.setAttribute('aria-haspopup', 'dialog');
-customSwatch.disabled = true;
-customSwatch.tabIndex = -1;
-
-/** CSS for an override, used by the swatch, preview and hex field. */
-const toHexByte = (value: number): string =>
-  Math.round(value * 255).toString(16).padStart(2, '0');
-const colorOverrideCss = (override: CueColorOverride): string => {
-  if (override.kind === 'white') return kelvinToCss(override.cct);
-  return `#${toHexByte(override.r)}${toHexByte(override.g)}${toHexByte(override.b)}`;
-};
-
-/**
- * Recent colors learned from custom picks, shown as a row inside the picker
- * popover (most recent first) so frequent custom colors become one click.
- * Persisted per browser.
- */
-const USER_COLORS_KEY = 'dmxsim.recentColors';
-const USER_COLORS_MAX = 7;
-const sameColor = (a: CueColorOverride, b: CueColorOverride): boolean =>
-  JSON.stringify(a) === JSON.stringify(b);
-const loadUserColors = (): CueColorOverride[] => {
-  try {
-    const raw = localStorage.getItem(USER_COLORS_KEY);
-    if (raw === null) return [];
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item): item is CueColorOverride => {
-      if (typeof item !== 'object' || item === null) return false;
-      const c = item as Record<string, unknown>;
-      return (c.kind === 'rgb' && ['r', 'g', 'b'].every((k) => typeof c[k] === 'number'))
-        || (c.kind === 'white' && typeof c.cct === 'number');
-    }).slice(0, USER_COLORS_MAX);
-  } catch {
-    return [];
-  }
-};
-let userColors: CueColorOverride[] = loadUserColors();
-const paletteSwatches: HTMLButtonElement[] = CUE_COLORS.map((color, index) => {
-  const swatch = document.createElement('button');
-  swatch.type = 'button';
-  swatch.className = 'color-swatch';
-  swatch.dataset.colorIndex = String(index);
-  swatch.style.setProperty('--swatch', color.css);
-  swatch.title = color.name[0]!.toUpperCase() + color.name.slice(1);
-  swatch.setAttribute('role', 'radio');
-  swatch.setAttribute('aria-label', `${swatch.title} color`);
-  swatch.setAttribute('aria-checked', 'false');
-  swatch.tabIndex = -1;
-  return swatch;
-});
-ui.cueColor.replaceChildren(currentSwatch, customSwatch);
-const userSwatches: HTMLButtonElement[] = [];
-const renderUserSwatches = (): void => {
-  userSwatches.length = 0;
-  for (const [index, override] of userColors.entries()) {
-    const swatch = document.createElement('button');
-    swatch.type = 'button';
-    swatch.className = 'color-swatch user';
-    swatch.dataset.userIndex = String(index);
-    swatch.style.setProperty('--swatch', colorOverrideCss(override));
-    swatch.title = override.kind === 'white'
-      ? `White · ${Math.round(override.cct)} K`
-      : colorOverrideCss(override).toUpperCase();
-    swatch.setAttribute('role', 'radio');
-    swatch.setAttribute('aria-label', `Recent color ${index + 1}: ${swatch.title}`);
-    swatch.setAttribute('aria-checked', 'false');
-    swatch.tabIndex = -1;
-    userSwatches.push(swatch);
-  }
-  ui.colorPalette.replaceChildren(...paletteSwatches, ...userSwatches);
-};
-renderUserSwatches();
-const rememberUserColor = (override: CueColorOverride): void => {
-  userColors = [override, ...userColors.filter((c) => !sameColor(c, override))].slice(0, USER_COLORS_MAX);
-  try { localStorage.setItem(USER_COLORS_KEY, JSON.stringify(userColors)); } catch { /* private mode */ }
-  renderUserSwatches();
-};
-
-/** Which color the bar's current swatch reflects, with its label. */
-type CurrentColor = { override?: CueColorOverride; colorIndex: number; label: string };
-let currentColor: CurrentColor = { colorIndex: 0, label: CUE_COLORS[0]!.name };
-
-/** Reflect the selected color on the bar's current swatch and the picker. */
-function syncColorSwatches(
-  selectedIndex: number,
-  override: CueColorOverride | undefined,
-  enabled: boolean,
-): void {
-  ui.cueColor.dataset.disabled = String(!enabled);
-  const selected = Math.min(Math.max(0, selectedIndex), CUE_COLORS.length - 1);
-  const userIndex = override === undefined ? -1 : userColors.findIndex((c) => sameColor(c, override));
-  for (const [index, swatch] of paletteSwatches.entries()) {
-    const isSelected = override === undefined && index === selected;
-    swatch.classList.toggle('selected', isSelected);
-    swatch.setAttribute('aria-checked', String(isSelected));
-  }
-  for (const [index, swatch] of userSwatches.entries()) {
-    const isSelected = index === userIndex;
-    swatch.classList.toggle('selected', isSelected);
-    swatch.setAttribute('aria-checked', String(isSelected));
-  }
-  const customSelected = override !== undefined && userIndex === -1;
-  customSwatch.classList.toggle('selected', customSelected);
-  customSwatch.setAttribute('aria-checked', String(customSelected));
-  if (override === undefined || userIndex !== -1) {
-    customSwatch.removeAttribute('data-has-custom');
-    customSwatch.removeAttribute('style');
-    customSwatch.title = 'Custom color…';
-  } else {
-    const css = colorOverrideCss(override);
-    customSwatch.dataset.hasCustom = 'true';
-    customSwatch.style.setProperty('--swatch', css);
-    customSwatch.title = override.kind === 'white'
-      ? `Custom white · ${Math.round(override.cct)} K`
-      : `Custom color · ${css.toUpperCase()}`;
-  }
-  // The bar's current swatch always mirrors what a new/selected clip uses.
-  currentColor = override === undefined
-    ? { colorIndex: selected, label: CUE_COLORS[selected]!.name }
-    : { override, colorIndex: CUSTOM_COLOR_INDEX, label: customSwatch.title };
-  const [cr, cg, cb] = override === undefined
-    ? CUE_COLORS[selected]!.rgb
-    : override.kind === 'rgb'
-      ? [override.r, override.g, override.b]
-      : kelvinToRgb(override.cct);
-  currentSwatch.style.setProperty('--swatch', `#${toHexByte(cr)}${toHexByte(cg)}${toHexByte(cb)}`);
-  currentSwatch.title = currentColor.label;
-  currentSwatch.disabled = !enabled;
-  customSwatch.disabled = !enabled;
-  currentSwatch.tabIndex = enabled ? 0 : -1;
-  customSwatch.tabIndex = enabled ? 0 : -1;
-  if (!ui.colorPicker.hidden) syncColorPicker(override);
-}
-
-/** Keep the popover's preview and color input in step with the override. */
-function syncColorPicker(override: CueColorOverride | undefined): void {
-  const css = override === undefined ? undefined : colorOverrideCss(override);
-  ui.colorPreview.style.background = css ?? 'conic-gradient(#ff2f2f, #ff8a18, #16d9cc, #397cff, #8c35ff, #ff3380, #ff2f2f)';
-  if (override?.kind === 'rgb') ui.colorInput.value = css!.toUpperCase();
-}
 
 let cuesByFixture = new Map<string, readonly Cue[]>();
 const indexCues = (): void => {
@@ -673,6 +474,67 @@ arrangement.setSubtitleResolver(
   (fixture) => `${mountLabel(fixture)} · ${kindLabel(fixture.profile.kind)}`,
 );
 
+/** Plural, user-facing names for the track filter's fixture kinds. */
+const TRACK_FILTER_LABELS: Record<string, string> = {
+  'moving-head': 'Moving heads',
+  wash: 'Washes',
+  strobe: 'Strobes',
+  laser: 'Lasers',
+  par: 'Pars',
+  blinder: 'Blinders',
+  'led-strip': 'LED strips',
+};
+
+/**
+ * "Hide others" for the scene. Off by default so filtering tracks never
+ * changes what the venue looks like until the user asks for it.
+ */
+let hideUnfiltered = false;
+
+/**
+ * Apply the track filter to both halves of the UI: the lanes in the
+ * arrangement, and (when "hide others" is on) the fixtures in the 3D scene.
+ */
+const applyTrackFilter = (): void => {
+  const kind = ui.trackFilter.value;
+  const filtering = kind !== '';
+  arrangement.setKindFilter(filtering ? kind : null);
+  if (!filtering) hideUnfiltered = false;
+  const canHide = filtering && show.fixtures.length > 0;
+  ui.hideUnfiltered.disabled = !canHide;
+  ui.hideUnfiltered.classList.toggle('on', hideUnfiltered);
+  ui.hideUnfiltered.setAttribute('aria-pressed', String(hideUnfiltered));
+  ui.hideUnfiltered.textContent = hideUnfiltered ? '◉' : '◌';
+  ui.hideUnfiltered.title = hideUnfiltered
+    ? 'Showing only the filtered fixture type in the 3D viewport'
+    : 'Hide fixture types that are filtered out of the 3D viewport';
+  stage.setKindFilter(hideUnfiltered && canHide ? kind : null);
+};
+
+/**
+ * Rebuild the track filter from the fixtures currently in the rig, keeping a
+ * still-valid choice. The filter only hides lanes; clips are untouched.
+ */
+const rebuildTrackFilter = (): void => {
+  const kinds = [...new Set<string>(show.fixtures.map((fixture) => fixture.profile.kind))];
+  const previous = ui.trackFilter.value;
+  const allOption = document.createElement('option');
+  allOption.value = '';
+  allOption.textContent = 'All tracks';
+  const kindOptions = kinds.map((kind) => {
+    const option = document.createElement('option');
+    option.value = kind;
+    option.textContent = TRACK_FILTER_LABELS[kind] ?? `${kindLabel(kind)}s`;
+    return option;
+  });
+  ui.trackFilter.replaceChildren(allOption, ...kindOptions);
+  const active = kinds.includes(previous) ? previous : '';
+  ui.trackFilter.value = active;
+  applyTrackFilter();
+};
+
+rebuildTrackFilter();
+ui.trackFilter.disabled = show.fixtures.length === 0;
 
 /**
  * Apply a rig change. `show.fixtures` is the document's source of truth, so
@@ -684,6 +546,8 @@ const applyRig = (fixtures: FixturePlacement[], rebuildRigs: boolean): void => {
   show.fixtures = fixtures;
   if (rebuildRigs) stage.setShow(show);
   arrangement.setFixtures(fixtures);
+  rebuildTrackFilter();
+  ui.trackFilter.disabled = fixtures.length === 0;
   clampActiveCount();
   renderRigList();
 };
@@ -1704,128 +1568,13 @@ window.addEventListener('keydown', (event) => {
     arrangement.redo();
   }
 });
-const selectedAction = () => arrangement.selectedActions.find((action) => action === ui.cueAction.value)
-  ?? arrangement.suggestedAction;
-ui.cueAdd.addEventListener('click', () => arrangement.addAt(clock.time, selectedAction()));
-ui.cueAction.addEventListener('change', () => {
-  const action = selectedAction();
-  arrangement.setPendingAction(action);
-  arrangement.setSelectedAction(action);
+ui.trackFilter.addEventListener('change', () => {
+  applyTrackFilter();
 });
-const chooseColor = (colorIndex: number, override?: CueColorOverride): void => {
-  arrangement.setPendingColor(colorIndex, override);
-  arrangement.setSelectedColor(colorIndex, override);
-};
-// The bar's current swatch opens the picker (it doubles as the palette entry
-// point); the custom swatch does too.
-ui.cueColor.addEventListener('click', (event) => {
-  const target = (event.target as HTMLElement).closest<HTMLElement>('.color-swatch');
-  if (target === null || target.hasAttribute('disabled')) return;
-  openColorPicker();
+ui.hideUnfiltered.addEventListener('click', () => {
+  hideUnfiltered = !hideUnfiltered;
+  applyTrackFilter();
 });
-ui.colorPalette.addEventListener('click', (event) => {
-  const target = (event.target as HTMLElement).closest<HTMLElement>('.color-swatch');
-  if (target === null) return;
-  const userIndex = target.dataset.userIndex;
-  if (userIndex !== undefined) {
-    const override = userColors[Number(userIndex)];
-    if (override !== undefined) chooseColor(CUSTOM_COLOR_INDEX, override);
-    return;
-  }
-  chooseColor(Number(target.dataset.colorIndex));
-});
-// Arrow keys move within the popover's palette, matching a select's keyboard
-// behaviour; Escape closes back to the bar.
-ui.colorPalette.addEventListener('keydown', (event) => {
-  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-  const list = [...paletteSwatches, ...userSwatches];
-  const currentElement = list.find((swatch) => swatch.classList.contains('selected')) ?? list[0]!;
-  const current = list.indexOf(currentElement);
-  const step = event.key === 'ArrowRight' ? 1 : -1;
-  const next = (current + step + list.length) % list.length;
-  event.preventDefault();
-  const target = list[next]!;
-  const userIndex = target.dataset.userIndex;
-  if (userIndex !== undefined) {
-    const override = userColors[Number(userIndex)];
-    if (override !== undefined) chooseColor(CUSTOM_COLOR_INDEX, override);
-  } else {
-    chooseColor(Number(target.dataset.colorIndex));
-  }
-  target.focus();
-});
-
-function openColorPicker(): void {
-  if (customSwatch.disabled) return;
-  if (!ui.colorPicker.hidden) return;
-  const selected = arrangement.selectedCue ?? null;
-  const override = selected?.colorOverride ?? arrangement.suggestedColorOverride ?? undefined;
-  syncColorPicker(override);
-  ui.colorPicker.hidden = false;
-  customSwatch.setAttribute('aria-expanded', 'true');
-  ui.colorInput.focus();
-}
-
-function closeColorPicker(): void {
-  if (ui.colorPicker.hidden) return;
-  ui.colorPicker.hidden = true;
-  customSwatch.removeAttribute('aria-expanded');
-}
-ui.colorPickerClose.addEventListener('click', () => {
-  closeColorPicker();
-  customSwatch.focus();
-});
-// Clicking elsewhere in the app dismisses the popover, as a menu would.
-document.addEventListener('pointerdown', (event) => {
-  const target = event.target;
-  if (ui.colorPicker.hidden || !(target instanceof Node)) return;
-  if (ui.colorPicker.contains(target) || ui.cueColor.contains(target)) return;
-  closeColorPicker();
-});
-ui.colorPicker.addEventListener('keydown', (event) => {
-  if (event.key !== 'Escape') return;
-  event.preventDefault();
-  closeColorPicker();
-  customSwatch.focus();
-});
-
-/** Hex string (`#rrggbb`) to a 0..1 rgb override. */
-const parseHex = (value: string): CueColorOverride | null => {
-  const match = /^#?([0-9a-f]{6})$/i.exec(value.trim());
-  if (match === null) return null;
-  const hex = match[1]!;
-  return {
-    kind: 'rgb',
-    r: parseInt(hex.slice(0, 2), 16) / 255,
-    g: parseInt(hex.slice(2, 4), 16) / 255,
-    b: parseInt(hex.slice(4, 6), 16) / 255,
-  };
-};
-const applyHex = (hex: string): void => {
-  const override = parseHex(hex);
-  if (override === null) return;
-  rememberUserColor(override);
-  chooseColor(CUSTOM_COLOR_INDEX, override);
-};
-/** Quick swatches compute to `rgb(...)`; normalise to hex for the override. */
-const rgbTextToHex = (text: string): string => {
-  const [r, g, b] = text.match(/\d+/g)?.slice(0, 3).map(Number) ?? [0, 0, 0];
-  return `#${[r, g, b].map((v) => (v ?? 0).toString(16).padStart(2, '0')).join('')}`;
-};
-// The browser's HSV picker does the visual work. Dragging previews live but
-// only commits on `change`, so one pick is one undo step.
-ui.colorInput.addEventListener('input', () => {
-  ui.colorPreview.style.background = ui.colorInput.value;
-});
-ui.colorInput.addEventListener('change', () => applyHex(ui.colorInput.value));
-ui.hueGrid.addEventListener('click', (event) => {
-  const target = (event.target as HTMLElement).closest<HTMLElement>('button');
-  if (target === null) return;
-  const hex = rgbTextToHex(getComputedStyle(target).backgroundColor);
-  ui.colorInput.value = hex;
-  applyHex(hex);
-});
-ui.cueDelete.addEventListener('click', () => arrangement.deleteSelected());
 ui.chooseAudio.addEventListener('click', () => ui.audioFile.click());
 ui.audioFile.addEventListener('change', () => {
   const file = ui.audioFile.files?.[0];

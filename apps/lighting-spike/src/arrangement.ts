@@ -174,6 +174,8 @@ export class Arrangement {
   private trackWidth = TRACK_LABEL_WIDTH;
   private rowsHeight = 0;
   private subtitleResolver: ((fixture: FixturePlacement) => string) | null = null;
+  /** When set, only tracks whose fixture profile has this `kind` are drawn. */
+  private kindFilter: string | null = null;
 
   constructor(
     private readonly root: HTMLElement,
@@ -278,6 +280,26 @@ export class Arrangement {
   setSubtitleResolver(resolver: ((fixture: FixturePlacement) => string) | null): void {
     this.subtitleResolver = resolver;
     this.renderRows();
+  }
+
+  /**
+   * Show only tracks of one fixture kind (`laser`, `wash`, …), or all tracks
+   * with `null`. Clips and the playhead are unaffected; only rows are hidden.
+   */
+  setKindFilter(kind: string | null): void {
+    if (this.kindFilter === kind) return;
+    this.kindFilter = kind;
+    this.renderRows();
+  }
+
+  /**
+   * Fixtures currently drawn as lanes. The DOM rows and the shared clip canvas
+   * must both use this list so clip positions line up with their lanes.
+   */
+  private visibleFixtures(): FixturePlacement[] {
+    return this.kindFilter === null
+      ? this.fixtures
+      : this.fixtures.filter((fixture) => fixture.profile.kind === this.kindFilter);
   }
 
   /** Friendly label for a fixture: its name when set, otherwise its id. */
@@ -733,7 +755,8 @@ export class Arrangement {
           ? 'beats'
           : barWidth !== null && barWidth >= 12 ? 'bars' : 'none';
     this.root.dataset.grid = gridMode;
-    const rows = this.fixtures.map((fixture) => {
+    const visibleFixtures = this.visibleFixtures();
+    const rows = visibleFixtures.map((fixture) => {
       const selected = fixture.id === this.activeFixtureId;
       const hidden = this.hiddenFixtureIds.has(fixture.id);
       const clips = this.cues
@@ -817,7 +840,8 @@ export class Arrangement {
     ctx.clearRect(0, 0, width, height);
 
     const pps = this.pixelsPerSecond;
-    const rowHeight = height / Math.max(1, this.fixtures.length);
+    const visibleFixtures = this.visibleFixtures();
+    const rowHeight = height / Math.max(1, visibleFixtures.length);
     const byFixture = new Map<string, Cue[]>();
     for (const cue of this.cues) {
       const list = byFixture.get(cue.fixtureId);
@@ -828,7 +852,7 @@ export class Arrangement {
     ctx.font = '9px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
     ctx.textBaseline = 'middle';
 
-    for (const [index, fixture] of this.fixtures.entries()) {
+    for (const [index, fixture] of visibleFixtures.entries()) {
       const cues = byFixture.get(fixture.id);
       if (cues === undefined) continue;
       // Row content is dimmed via CSS, but clips live in this shared canvas.
@@ -871,7 +895,7 @@ export class Arrangement {
 
     const preview = this.preview;
     if (preview !== null) {
-      const index = this.fixtures.findIndex((fixture) => fixture.id === preview.fixtureId);
+      const index = visibleFixtures.findIndex((fixture) => fixture.id === preview.fixtureId);
       if (index >= 0) {
         const x = preview.startSec * pps - scrollLeft;
         const w = Math.max(2, (preview.endSec - preview.startSec) * pps);

@@ -561,9 +561,11 @@ export class FixtureRig {
       const footprint = 1.18 + options.haze * 0.17;
       this.pool.scale.set(radius * stretch * footprint, radius * footprint, 1);
       /* At low haze the volume is gone, so the pool carries the fixture: it
-       * brightens as the air clears (see `poolHazeGain`). */
+       * brightens as the air clears (see `poolHazeGain`). The decal is the
+       * primary floor light for every fixture, so the look is identical for
+       * identical fixtures regardless of the real-light budget. */
       this.poolMaterial.uIntensity.value =
-        (level * spreadGain * 0.42 * poolHazeGain(options.haze))
+        (level * spreadGain * 0.55 * poolHazeGain(options.haze))
         / ((1 + hit.distance * 0.1) * stretch);
       this.pool.visible = true;
     } else {

@@ -22,8 +22,10 @@ interface CameraView {
  * Every fixture used to render only additive geometry, so the room itself was
  * lit by one hardcoded warm spot and four point lights parked at arbitrary
  * coordinates. This pool instead promotes the brightest fixtures that are
- * actually on, and adds a few fill lights where their beams land. That is what
- * turns beams into lighting: floor washes, truss highlights, crowd silhouettes.
+ * actually on. That is what turns beams into lighting: truss highlights and
+ * crowd silhouettes. The floor itself is lit per fixture by the additive pool
+ * decal, so identical fixtures always look identical no matter which four won
+ * a slot in this budget.
  */
 /* Dynamic lights are the main GPU cost of lighting the room, so the budget is
  * explicit (ADR-007). Both pools are selected evenly across the rig, never as
@@ -31,10 +33,6 @@ interface CameraView {
  * recompiles every material when the visible light count changes, which shows
  * up as a ~1 s freeze exactly when a cue adds or drops a fixture. */
 const LIGHT_POOL_SIZE = 4;
-const BOUNCE_LIGHTS = 2;
-/** Short range: the fill must light the surface it bounces off, not reach up
- * to the truss and put a fake reflection on nearby fixture bodies. */
-const BOUNCE_RANGE = 7;
 
 interface PoolLight {
   light: THREE.SpotLight;
@@ -65,7 +63,6 @@ export class Stage {
   private selectedFixtureId: string | null = null;
   private activeCount = Number.POSITIVE_INFINITY;
   private readonly poolLights: PoolLight[] = [];
-  private readonly bounceLights: THREE.PointLight[] = [];
   private readonly ambient: THREE.AmbientLight;
   private shadowsEnabled = true;
   private readonly ledUniforms = { time: uniform(0), energy: uniform(0.4) };
@@ -125,14 +122,6 @@ export class Stage {
       this.scene.add(light, target);
       light.target = target;
       this.poolLights.push({ light, target });
-    }
-
-    for (let i = 0; i < BOUNCE_LIGHTS; i += 1) {
-      const light = new THREE.PointLight(0xffffff, 0, 18, 2);
-      /* Same reason as the spot pool: a fixed light count, intensity 0 to idle. */
-      light.visible = true;
-      this.scene.add(light);
-      this.bounceLights.push(light);
     }
 
     this.ambient = new THREE.AmbientLight(0x2a3550, 0.16);
@@ -468,7 +457,10 @@ export class Stage {
       const { info } = entry;
       const halfAngle = THREE.MathUtils.degToRad(Math.min(info.spreadDeg, 140) / 2);
       /* Narrow beams land more candela per steradian at the same dimmer
-       * level, which is why a tight spot looks hotter than a wide wash. */
+       * level, which is why a tight spot looks hotter than a wide wash.
+       * Keep this low: the per-fixture floor decals carry the floor look, and
+       * a bright spot here would give the four promoted fixtures a halo the
+       * rest of the rig can never match. */
       const concentration = THREE.MathUtils.clamp(22 / info.spreadDeg, 0.35, 3.2);
       const isWide = entry.kind === 'blinder' || entry.kind === 'strobe' || entry.kind === 'led-strip';
 
@@ -477,43 +469,9 @@ export class Stage {
       slot.light.penumbra = isWide ? 1 : 0.55;
       slot.light.decay = 2;
       slot.light.distance = Math.min(46, info.length * 1.35 + 6);
-      slot.light.intensity = info.level * (isWide ? 26 : 105) * concentration;
+      slot.light.intensity = info.level * (isWide ? 12 : 34) * concentration;
       slot.light.position.copy(info.origin);
       slot.target.position.copy(info.origin).addScaledVector(info.direction, Math.max(0.5, info.length));
-    });
-
-    /* A shadowless fill at a few promoted fixtures' beam hits stands in for
-     * the single bounce we can afford. It is what stops the floor from reading
-     * as a flat decal and puts colour back into the air and onto the truss.
-     * Take them with an even stride so the fills are spread over the stage
-     * instead of clustering where the first hits happen to be. */
-    const allHits = chosen.filter((entry) => entry.info.hit !== null);
-    const hits: typeof allHits = [];
-    const stride = Math.max(1, Math.ceil(allHits.length / BOUNCE_LIGHTS));
-    for (let i = 0; i < allHits.length && hits.length < BOUNCE_LIGHTS; i += stride) {
-      hits.push(allHits[i]!);
-    }
-
-    this.bounceLights.forEach((light, index) => {
-      const entry = hits[index];
-      const hit = entry?.info.hit;
-      if (entry === undefined || hit === null || hit === undefined) {
-        light.intensity = 0;
-        return;
-      }
-      const source = entry.info;
-      const spreadArea = Math.max(0.25, Math.tan(THREE.MathUtils.degToRad(source.spreadDeg / 2)) * source.length);
-      light.color.copy(source.color);
-      /* Lift the fill off the surface. At ~0.3 m the inverse-square falloff
-       * makes a blown-out hotspot that reads as a fake spot reflection on the
-       * floor and on any fixture body nearby. */
-      light.position.copy(hit.point).addScaledVector(hit.normal, 1.1);
-      /* Clear air loses less light to scattering before it reaches the surface,
-       * so more of it bounces. Without this the room goes pitch black at haze 0
-       * even though the floor pools are at full brightness. */
-      const clearAir = 1 + (1 - this.haze) * 0.6;
-      light.intensity = source.level * (5 + spreadArea * 3) * clearAir;
-      light.distance = BOUNCE_RANGE;
     });
   }
 

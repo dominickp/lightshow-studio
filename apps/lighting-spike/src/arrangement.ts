@@ -69,6 +69,12 @@ export class Arrangement {
   private cues: Cue[] = [];
   private fixtures: FixturePlacement[];
   private selectedFixtureId: string | null = null;
+  /**
+   * Fixture whose settings are open in the side panel. The row highlight and
+   * the 3D selection marker follow this, not plain selection, so both turn on
+   * and off with the panel.
+   */
+  private activeFixtureId: string | null = null;
   private selectedCueId: string | null = null;
   private readonly hiddenFixtureIds = new Set<string>();
   private gesture: Gesture | null = null;
@@ -150,6 +156,16 @@ export class Arrangement {
   }
 
   /**
+   * Mark which fixture is open in the side panel. Passing `null` (or closing
+   * the panel) clears the row highlight; selection for editing is unaffected.
+   */
+  setActiveFixture(fixtureId: string | null): void {
+    if (this.activeFixtureId === fixtureId) return;
+    this.activeFixtureId = fixtureId;
+    this.renderRows();
+  }
+
+  /**
    * Replace the rig (add/remove/reorder). Cues for fixtures that still exist
    * are kept verbatim; cues for removed fixtures are dropped, matching the
    * project schema's rule against dangling `fixtureId` references.
@@ -167,6 +183,9 @@ export class Arrangement {
     if (this.selectedFixtureId !== null && !ids.has(this.selectedFixtureId)) {
       this.selectedFixtureId = fixtures[0]?.id ?? null;
       this.selectedCueId = null;
+    }
+    if (this.activeFixtureId !== null && !ids.has(this.activeFixtureId)) {
+      this.activeFixtureId = null;
     }
     for (const fixtureId of [...this.hiddenFixtureIds]) {
       if (!ids.has(fixtureId)) this.hiddenFixtureIds.delete(fixtureId);
@@ -631,7 +650,7 @@ export class Arrangement {
           : barWidth !== null && barWidth >= 12 ? 'bars' : 'none';
     this.root.dataset.grid = gridMode;
     const rows = this.fixtures.map((fixture) => {
-      const selected = fixture.id === this.selectedFixtureId;
+      const selected = fixture.id === this.activeFixtureId;
       const hidden = this.hiddenFixtureIds.has(fixture.id);
       const clips = this.cues
         .filter((cue) => cue.fixtureId === fixture.id)

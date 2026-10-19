@@ -121,6 +121,8 @@ container.appendChild(renderer.domElement);
 await renderer.init();
 
 const stage = new Stage(renderer.domElement, show, activeVenue);
+// TEMP DEBUG
+(window as unknown as { __stage: Stage }).__stage = stage;
 // The renderer draws into #stage-viewport (window minus the timeline dock), not
 // the whole window, so the initial projection must use the viewport's aspect.
 stage.camera.aspect = viewport.clientWidth / Math.max(1, viewport.clientHeight);
@@ -361,7 +363,6 @@ const syncPanelHeader = (fixture: Fixture | null): void => {
 
 const syncCueInspector = (fixture: (typeof show.fixtures)[number] | null, cue: Cue | null): void => {
   const label = fixture === null ? null : arrangement.labelFor(fixture);
-  stage.setSelectedFixture(fixture?.id ?? null);
   ui.selectedFixture.textContent = label ?? 'Select a fixture track';
   syncPanelHeader(fixture);
   renderPanelCapabilities(fixture);
@@ -444,6 +445,20 @@ const syncCueInspector = (fixture: (typeof show.fixtures)[number] | null, cue: C
   ui.cueAdd.disabled = fixture === null || clock.duration <= 0;
   const count = cues.length;
   ui.cueStatus.textContent = `${count} clip${count === 1 ? '' : 's'} · click or drag a lane to add`;
+  syncActiveFixture();
+};
+
+/**
+ * The 3D marker and the timeline row highlight only appear while the fixture
+ * settings are open in the side panel. The rig pane and a closed panel clear
+ * both, while selection for editing is left untouched.
+ */
+const syncActiveFixture = (): void => {
+  const activeId = sidePanelOpen && sidePanelMode === 'fixture'
+    ? sidePanelFixtureId
+    : null;
+  stage.setSelectedFixture(activeId);
+  arrangement.setActiveFixture(activeId);
 };
 
 ui.cueColor.replaceChildren(...CUE_COLORS.map((color, index) => {
@@ -1088,6 +1103,7 @@ const applySidePanel = (): void => {
   ui.rigMenu.setAttribute('aria-pressed', String(rigMode));
   ui.dock.classList.toggle('has-panel', sidePanelOpen);
   syncPanelHeader(arrangement.selectedFixture);
+  syncActiveFixture();
   requestAnimationFrame(() => {
     refreshScrollMetrics();
     waveform.requestPaint();

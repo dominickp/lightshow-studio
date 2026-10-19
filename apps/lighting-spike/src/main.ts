@@ -185,6 +185,8 @@ const ui = {
   lofi: element<HTMLButtonElement>('btn-lofi'),
   strobe: element<HTMLButtonElement>('btn-strobe'),
   strobeStatus: element('strobe-status'),
+  haze: element<HTMLInputElement>('haze'),
+  hazeValue: element('haze-value'),
   view: element<HTMLButtonElement>('btn-view'),
   count: element<HTMLButtonElement>('btn-count'),
     stats: element<HTMLButtonElement>('btn-stats'),
@@ -808,6 +810,9 @@ interface StoredRenderSettings {
   strobes?: boolean;
   activeFixtureCount?: number;
   cameraView?: number;
+  /** Scene haze 0..1. A render preference, not a project setting: it changes
+   * how the room is *shown*, not what the show does. */
+  haze?: number;
 }
 
 const readStoredRender = (): StoredRenderSettings => {
@@ -829,6 +834,7 @@ const snapshotRender = (): StoredRenderSettings => ({
   strobes: strobesOn,
   activeFixtureCount: activeCount,
   cameraView: stage.view,
+  haze: stage.hazeLevel,
 });
 
 let persistedRender = '';
@@ -850,6 +856,8 @@ const syncButtons = (): void => {
   ui.lofi.classList.toggle('on', lofi);
   ui.strobe.classList.toggle('on', strobesOn);
   ui.strobeStatus.textContent = strobesOn ? 'on' : 'off';
+  ui.haze.value = String(Math.round(stage.hazeLevel * 100));
+  ui.hazeValue.textContent = String(Math.round(stage.hazeLevel * 100));
   ui.count.querySelector('em')!.textContent = String(activeCount);
   persistRender();
 };
@@ -1603,6 +1611,11 @@ ui.strobe.addEventListener('click', () => {
   strobesOn = !strobesOn;
   syncButtons();
 });
+ui.haze.addEventListener('input', () => {
+  stage.setHaze(Number(ui.haze.value) / 100);
+  ui.hazeValue.textContent = ui.haze.value;
+  persistRender();
+});
 ui.view.addEventListener('click', () => {
   stage.nextView();
   persistRender();
@@ -1654,6 +1667,12 @@ window.addEventListener('keydown', (event) => {
     updateLoopUi();
   } else if (event.key === 'c' || event.key === 'C') {
     stage.nextView();
+  } else if (event.key === 'h' || event.key === 'H') {
+    /* Cycle haze: clear → light → club → heavy, so the beam/pool balance can
+     * be compared without opening the panel. */
+    const next = [0, 0.3, 0.65, 1].find((value) => value > stage.hazeLevel + 0.01) ?? 0;
+    stage.setHaze(next);
+    syncButtons();
   } else if (event.key === '[' || event.key === ']') {
     const step = event.key === ']' ? 1 : -1;
     const presets = countPresets();
@@ -1844,6 +1863,8 @@ const applyProjectSettings = (settings: ProjectSettings, source: 'project' | 'de
     ? Math.min(local.activeFixtureCount ?? settings.render.activeFixtureCount, show.fixtures.length)
     : show.fixtures.length;
   setActiveCount(requested);
+  /* Local haze wins; otherwise start from the venue's own atmosphere. */
+  stage.setHaze(local.haze ?? stage.hazeLevel);
   const presets = countPresets();
   const presetIndex = presets.indexOf(requested);
   countIndex = presetIndex >= 0 ? presetIndex : presets.length - 1;

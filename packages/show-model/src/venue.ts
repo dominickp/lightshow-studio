@@ -38,7 +38,7 @@ export interface VenueBounds {
  * `bounds` clips it to the physical object.
  */
 export interface VenueSurface {
-  kind: 'floor' | 'wall' | 'riser' | 'led';
+  kind: 'floor' | 'wall' | 'riser' | 'led' | 'ceiling';
   axis: 'x' | 'y' | 'z';
   value: number;
   bounds: VenueBounds | null;
@@ -411,6 +411,7 @@ export const CLUB_STAGE: VenueTemplate = {
   surfaces: [
     { kind: 'floor', axis: 'y', value: 0, bounds: null, decalOffset: 0.012 },
     { kind: 'riser', axis: 'y', value: 0.3, bounds: { x: [-12, 12], y: [0.3, 0.3], z: [-12, -2.6] }, decalOffset: 0.012 },
+    { kind: 'ceiling', axis: 'y', value: 12, bounds: { x: [-20, 20], y: [12, 12], z: [-14, 20] }, decalOffset: 0.02 },
     { kind: 'wall', axis: 'z', value: -11.9, bounds: { x: [-20, 20], y: [0, 14], z: [-12, -11.8] }, decalOffset: 0.02 },
     { kind: 'led', axis: 'z', value: -11.85, bounds: { x: [-6.75, 6.75], y: [1.8, 8], z: [-11.9, -11.8] }, decalOffset: 0.03 },
     { kind: 'wall', axis: 'x', value: -16.9, bounds: { x: [-17, -16.8], y: [0, 14], z: [-14, 20] }, decalOffset: 0.02 },

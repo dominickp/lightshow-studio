@@ -16,6 +16,31 @@ interface CameraView {
   target: [number, number, number];
 }
 
+/**
+ * Real lights driven by the rig.
+ *
+ * Every fixture used to render only additive geometry, so the room itself was
+ * lit by one hardcoded warm spot and four point lights parked at arbitrary
+ * coordinates. This pool instead promotes the brightest fixtures that are
+ * actually on, and adds a few fill lights where their beams land. That is what
+ * turns beams into lighting: floor washes, truss highlights, crowd silhouettes.
+ */
+/* Dynamic lights are the main GPU cost of lighting the room, so the budget is
+ * explicit (ADR-007). Both pools are selected evenly across the rig, never as
+ * "the first N fixtures". The count must also stay *constant*: three/webgpu
+ * recompiles every material when the visible light count changes, which shows
+ * up as a ~1 s freeze exactly when a cue adds or drops a fixture. */
+const LIGHT_POOL_SIZE = 4;
+const BOUNCE_LIGHTS = 2;
+/** Short range: the fill must light the surface it bounces off, not reach up
+ * to the truss and put a fake reflection on nearby fixture bodies. */
+const BOUNCE_RANGE = 7;
+
+interface PoolLight {
+  light: THREE.SpotLight;
+  target: THREE.Object3D;
+}
+
 const toTuple = (value: { x: number; y: number; z: number }): [number, number, number] => [value.x, value.y, value.z];
 
 function viewsFrom(template: VenueTemplate): CameraView[] {
@@ -39,10 +64,15 @@ export class Stage {
   private readonly selectionMarker = new THREE.Group();
   private selectedFixtureId: string | null = null;
   private activeCount = Number.POSITIVE_INFINITY;
-  private readonly pointLights: THREE.PointLight[] = [];
-  private readonly spot: THREE.SpotLight;
+  private readonly poolLights: PoolLight[] = [];
+  private readonly bounceLights: THREE.PointLight[] = [];
+  private readonly ambient: THREE.AmbientLight;
+  private shadowsEnabled = true;
   private readonly ledUniforms = { time: uniform(0), energy: uniform(0.4) };
   private readonly edgeUniforms = { color: uniform(new THREE.Color(0xffffff)), energy: uniform(0.5) };
+  /** Scene haze, 0..1. Beams are only visible where light scatters off it. */
+  private readonly hazeUniform = uniform(0.65);
+  private haze = 0.65;
   private readonly beatSec: number;
   private viewIndex = 0;
   private venue: VenueTemplate;
@@ -55,8 +85,10 @@ export class Stage {
     this.beatSec = secondsPerBeat(show.beatGrid);
     this.venue = venue;
     this.views = viewsFrom(venue);
+    this.haze = venue.features.haze === true ? 0.65 : 0.05;
+    this.hazeUniform.value = this.haze;
     this.scene.background = new THREE.Color(0x04060a);
-    this.scene.fog = new THREE.FogExp2(0x05070c, 0.0135);
+    this.scene.fog = new THREE.FogExp2(0x05070c, this.fogDensity());
 
     this.camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.1, 220);
     this.camera.position.set(...this.views[0]!.position);
@@ -74,25 +106,37 @@ export class Stage {
     this.rebuildVenue();
     this.addSelectionMarker();
 
-    const spot = new THREE.SpotLight(0xffe6c8, 190, 42, 0.42, 0.7, 2);
-    spot.position.set(0, 9.5, -4);
-    spot.target.position.set(0, 1.2, -9.6);
-    spot.castShadow = true;
-    spot.shadow.mapSize.set(1024, 1024);
-    spot.shadow.camera.near = 2;
-    spot.shadow.camera.far = 40;
-    spot.shadow.bias = -0.0006;
-    this.scene.add(spot, spot.target);
-    this.spot = spot;
-
-    this.scene.add(new THREE.AmbientLight(0x2a3550, 0.38));
-
-    for (let i = 0; i < 4; i += 1) {
-      const light = new THREE.PointLight(0x4466ff, 10, 26, 2);
-      light.position.set(-9 + i * 6, 5.5, 3 + (i % 2) * 4);
-      this.scene.add(light);
-      this.pointLights.push(light);
+    /* Shadow budget (ADR-007): only the brightest fixture casts shadows. */
+    for (let i = 0; i < LIGHT_POOL_SIZE; i += 1) {
+      const light = new THREE.SpotLight(0xffffff, 0, 40, 0.4, 0.45, 2);
+      /* Stay visible for the whole session. Toggling `visible` changes the
+       * light count, and every material in the scene then recompiles its light
+       * loop — a multi-hundred-ms stall in the middle of a cue change. Idle
+       * slots keep intensity 0 instead. */
+      light.visible = true;
+      if (i === 0) {
+        light.castShadow = this.shadowsEnabled;
+        light.shadow.mapSize.set(1024, 1024);
+        light.shadow.camera.near = 0.5;
+        light.shadow.camera.far = 40;
+        light.shadow.bias = -0.0008;
+      }
+      const target = new THREE.Object3D();
+      this.scene.add(light, target);
+      light.target = target;
+      this.poolLights.push({ light, target });
     }
+
+    for (let i = 0; i < BOUNCE_LIGHTS; i += 1) {
+      const light = new THREE.PointLight(0xffffff, 0, 18, 2);
+      /* Same reason as the spot pool: a fixed light count, intensity 0 to idle. */
+      light.visible = true;
+      this.scene.add(light);
+      this.bounceLights.push(light);
+    }
+
+    this.ambient = new THREE.AmbientLight(0x2a3550, 0.16);
+    this.scene.add(this.ambient);
 
     this.setShow(show);
   }
@@ -110,8 +154,24 @@ export class Stage {
     if (template.id === this.venue.id) return;
     this.venue = template;
     this.views = viewsFrom(template);
+    this.setHaze(template.features.haze === true ? 0.65 : 0.05);
     this.rebuildVenue();
     this.setView(Math.min(this.viewIndex, this.views.length - 1), true);
+  }
+
+  /** Scene haze. Drives beam visibility and matches the fog density. */
+  setHaze(value: number): void {
+    this.haze = Math.min(1, Math.max(0, value));
+    this.hazeUniform.value = this.haze;
+    if (this.scene.fog instanceof THREE.FogExp2) this.scene.fog.density = this.fogDensity();
+  }
+
+  get hazeLevel(): number {
+    return this.haze;
+  }
+
+  private fogDensity(): number {
+    return 0.004 + this.haze * 0.016;
   }
 
   /** Rebuild venue geometry, crowd, LED wall, and haze from the template. */
@@ -226,7 +286,7 @@ export class Stage {
     const material = haze.material as THREE.MeshBasicNodeMaterial;
     const p = uv();
     const band = smoothstep(0.0, 0.55, p.y).mul(float(1).sub(smoothstep(0.55, 1.0, p.y)));
-    material.colorNode = vec3(0.05, 0.07, 0.12).mul(band).mul(0.7);
+    material.colorNode = vec3(0.05, 0.07, 0.12).mul(band).mul(this.hazeUniform).mul(1.1);
     haze.rotation.x = -Math.PI / 2;
     haze.position.set(0, 0.25, 0);
     return haze;
@@ -309,7 +369,12 @@ export class Stage {
     for (const rig of this.rigs) {
       const state = byId.get(rig.placement.id);
       if (!state) continue;
-      rig.update(state, timeSec, options.volumetrics);
+      rig.update(state, timeSec, {
+        volumetrics: options.volumetrics,
+        haze: this.haze,
+        camera: this.camera,
+        surfaces: this.venue.surfaces,
+      });
       // Placement is editable, so follow the selected fixture instead of
       // leaving the marker at the position it had when it was selected.
       if (this.selectionMarker.visible && rig.placement.id === this.selectedFixtureId) {
@@ -346,22 +411,119 @@ export class Stage {
     this.edgeUniforms.color.value.copy(color);
     this.edgeUniforms.energy.value = 0.4 + energy * 1.4;
 
-    this.pointLights.forEach((light, index) => {
-      const state = states[(index * 7) % Math.max(1, states.length)];
-      if (state) {
-        light.color.setRGB(state.color.r, state.color.g, state.color.b, THREE.SRGBColorSpace);
-        light.intensity = 6 + state.intensity * 20;
+    this.ambient.color.copy(color);
+    this.ambient.intensity = active > 0 ? 0.1 + energy * 0.14 : 0.06;
+
+    this.updateLights(states);
+  }
+
+  /**
+   * Promote live fixtures into the spotlight pool and put fill lights at their
+   * beam hits. Fixtures below a threshold release their light so a dark cue
+   * does not leave the room lit.
+   *
+   * Selection is stratified across the rig, not just "the brightest N". Most
+   * fixtures sit at full dimmer at the same time, so taking the first N would
+   * give the same handful of lights a real light and leave the rest of the rig
+   * unable to light anything — which reads as uneven blobs on a few fixtures.
+   */
+  private updateLights(states: readonly FixtureState[]): void {
+    const byId = new Map(states.map((state) => [state.fixtureId, state]));
+    /* Rig order is spatially even, which is what the stratification needs. */
+    const active = this.rigs
+      .filter((rig) => rig.root.visible)
+      .map((rig) => {
+        const info = rig.beamInfo;
+        return byId.get(rig.placement.id) !== undefined && info.level > 0.01
+          ? { info, kind: rig.placement.profile.kind, power: info.level }
+          : null;
+      })
+      .filter((entry) => entry !== null);
+
+    const chosen: typeof active = [];
+    if (active.length <= LIGHT_POOL_SIZE) {
+      chosen.push(...active);
+    } else {
+      /* One slot per slice of the rig, keeping the brightest in each slice so
+       * a busy side still gets the light it earned. */
+      const slice = active.length / LIGHT_POOL_SIZE;
+      for (let i = 0; i < LIGHT_POOL_SIZE; i += 1) {
+        const bucket = active.slice(Math.floor(i * slice), Math.floor((i + 1) * slice));
+        if (bucket.length === 0) continue;
+        let best = bucket[0]!;
+        for (const entry of bucket) if (entry.power > best.power) best = entry;
+        chosen.push(best);
       }
+    }
+
+    /* Never toggle `visible` here: keep the light count constant so cue
+     * changes cannot trigger a shader recompile. An idle slot is intensity 0. */
+    this.poolLights.forEach((slot, index) => {
+      const entry = chosen[index];
+      if (entry === undefined) {
+        slot.light.intensity = 0;
+        return;
+      }
+
+      const { info } = entry;
+      const halfAngle = THREE.MathUtils.degToRad(Math.min(info.spreadDeg, 140) / 2);
+      /* Narrow beams land more candela per steradian at the same dimmer
+       * level, which is why a tight spot looks hotter than a wide wash. */
+      const concentration = THREE.MathUtils.clamp(22 / info.spreadDeg, 0.35, 3.2);
+      const isWide = entry.kind === 'blinder' || entry.kind === 'strobe' || entry.kind === 'led-strip';
+
+      slot.light.color.copy(info.color);
+      slot.light.angle = halfAngle;
+      slot.light.penumbra = isWide ? 1 : 0.55;
+      slot.light.decay = 2;
+      slot.light.distance = Math.min(46, info.length * 1.35 + 6);
+      slot.light.intensity = info.level * (isWide ? 26 : 105) * concentration;
+      slot.light.position.copy(info.origin);
+      slot.target.position.copy(info.origin).addScaledVector(info.direction, Math.max(0.5, info.length));
     });
 
-    this.spot.intensity = 140 + energy * 90;
+    /* A shadowless fill at a few promoted fixtures' beam hits stands in for
+     * the single bounce we can afford. It is what stops the floor from reading
+     * as a flat decal and puts colour back into the air and onto the truss.
+     * Take them with an even stride so the fills are spread over the stage
+     * instead of clustering where the first hits happen to be. */
+    const allHits = chosen.filter((entry) => entry.info.hit !== null);
+    const hits: typeof allHits = [];
+    const stride = Math.max(1, Math.ceil(allHits.length / BOUNCE_LIGHTS));
+    for (let i = 0; i < allHits.length && hits.length < BOUNCE_LIGHTS; i += stride) {
+      hits.push(allHits[i]!);
+    }
+
+    this.bounceLights.forEach((light, index) => {
+      const entry = hits[index];
+      const hit = entry?.info.hit;
+      if (entry === undefined || hit === null || hit === undefined) {
+        light.intensity = 0;
+        return;
+      }
+      const source = entry.info;
+      const spreadArea = Math.max(0.25, Math.tan(THREE.MathUtils.degToRad(source.spreadDeg / 2)) * source.length);
+      light.color.copy(source.color);
+      /* Lift the fill off the surface. At ~0.3 m the inverse-square falloff
+       * makes a blown-out hotspot that reads as a fake spot reflection on the
+       * floor and on any fixture body nearby. */
+      light.position.copy(hit.point).addScaledVector(hit.normal, 1.1);
+      /* Clear air loses less light to scattering before it reaches the surface,
+       * so more of it bounces. Without this the room goes pitch black at haze 0
+       * even though the floor pools are at full brightness. */
+      const clearAir = 1 + (1 - this.haze) * 0.6;
+      light.intensity = source.level * (5 + spreadArea * 3) * clearAir;
+      light.distance = BOUNCE_RANGE;
+    });
   }
 
   setShadows(enabled: boolean): void {
-    this.spot.castShadow = enabled;
+    this.shadowsEnabled = enabled;
+    const key = this.poolLights[0];
+    if (key !== undefined) key.light.castShadow = enabled;
   }
 
   get shadowCasting(): boolean {
-    return this.spot.castShadow;
+    return this.shadowsEnabled;
   }
 }

@@ -21,11 +21,18 @@ interface RoleStyle {
 /**
  * Material and shadow behaviour per role. These are the values the original
  * hand-built room used, so a data-driven rebuild stays visually identical.
+ *
+ * Floor/stage stay slightly glossy but not glossy enough to mirror a light.
+ * At `roughness: 0.38` a single pooled `SpotLight` produced one hard specular
+ * blob on the dance floor and none anywhere else, because only one of the few
+ * real lights happened to fall in the camera's specular direction. The floor's
+ * brightness now comes from the additive beam pools (one per lit fixture),
+ * which are consistent by construction.
  */
 const ROLE_STYLES: Record<VenueRole, RoleStyle> = {
   wall: { color: 0x0b0d13, roughness: 0.85, metalness: 0.05, castShadow: false, receiveShadow: true },
-  floor: { color: 0x0c0e14, roughness: 0.38, metalness: 0.25, castShadow: false, receiveShadow: true },
-  stage: { color: 0x101319, roughness: 0.5, metalness: 0.2, castShadow: true, receiveShadow: true },
+  floor: { color: 0x0c0e14, roughness: 0.78, metalness: 0.05, castShadow: false, receiveShadow: true },
+  stage: { color: 0x101319, roughness: 0.68, metalness: 0.08, castShadow: true, receiveShadow: true },
   metal: { color: 0x2a2d34, roughness: 0.4, metalness: 0.9, castShadow: false, receiveShadow: false },
   dark: { color: 0x05060a, roughness: 0.3, metalness: 0.6, castShadow: false, receiveShadow: false },
 };

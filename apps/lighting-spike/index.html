@@ -115,6 +115,7 @@
         gap: 10px;
       }
 
+
       #controls button:hover, #transport button:hover { border-color: var(--edge); background: rgba(122, 209, 255, 0.08); }
       #controls .controls-group { margin-top: 3px; color: #5f6b80; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; }
       #controls .controls-group:first-child { margin-top: 0; }
@@ -918,7 +919,7 @@
           <b>Space</b> play/pause · <b>← →</b> seek 1/16 (Shift = measure) · <b>M</b> mute ·
           drag the ruler or waveform to scrub · <b>L</b> loop ·
           <b>1</b> beams <b>2</b> bloom <b>3</b> shadows <b>4</b> grade <b>5</b> strobes ·
-          <b>C</b> camera · <b>[ ]</b> fixture count · <b>S</b> stats · <b>`</b> controls panel<br />
+          <b>C</b> camera · <b>[ ]</b> fixture count · <b>S</b> stats · <b>`</b> controls panel · <b>H</b> haze<br />
           <b>Ctrl/⌘ + wheel</b> zoom at pointer · <b>Ctrl/⌘ +/-</b> zoom · <b>Ctrl/⌘ 0</b> fit ·
           drag a lane to draw a clip, drag a clip to move, drag its edge to resize ·
           <b>Backspace</b> deletes the selected clip<br />
@@ -973,8 +974,8 @@
             </div>
           </div>
           <div id="waveform-row">
-            <button type="button" class="track-name" id="btn-rig-menu" aria-pressed="false" aria-controls="side-panel" title="Open the rig panel">
-              <span class="rig-menu-label">MODIFY RIG</span>
+            <button type="button" class="track-name" id="btn-rig-menu" aria-pressed="false" aria-controls="side-panel" title="Open venue settings">
+              <span class="rig-menu-label">VENUE SETTINGS</span>
               <span class="rig-menu-count" id="rig-menu-count">0</span>
             </button>
             <div class="ruler-track">
@@ -1003,6 +1004,15 @@
             <p class="panel-note" id="rig-note">
               Lights are grouped by what they hang from. Click a light to edit it.
             </p>
+            <section>
+              <h3>Atmosphere</h3>
+              <label id="haze-control" for="haze">
+                <span>Haze</span>
+                <output id="haze-value">65</output>
+                <input id="haze" type="range" min="0" max="100" step="1" value="65"
+                  aria-label="Haze" title="Haze density (H)" />
+              </label>
+            </section>
             <div class="section-head">
               <h3>Lights</h3>
               <button id="btn-add-lights" type="button" class="sp-btn">+ Add lights</button>

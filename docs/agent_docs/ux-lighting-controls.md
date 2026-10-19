@@ -117,7 +117,7 @@ Separate **fixture setup**, **static look controls**, and **time-varying behavio
 
 ### Prototype now in the lighting spike
 
-The selected-fixture preview panel exposes render-only test output, mount/aim yaw and pitch offsets, and beam angle for zoom-capable profiles. Test output is an explicit override so a fixture can be inspected while its arrangement lane is dark. This is for visual iteration only: settings are not saved and do not alter clips or the show document. Beam angle is mapped through the profile's spread range. The demo sweep remains a hard-coded canned action, not an editable movement-pattern authoring system.
+The selected fixture's panel is a side panel docked to the right of the arrangement, not a floating overlay. Clicking a fixture's track name opens it for that fixture, clicking the same name again closes it, and the timeline column reclaims the full width while it is closed. Resizing the panel persists. The panel shows the fixture kind, id and model, capability chips, and clip counts (total and under the playhead) alongside the render-only test output, mount/aim yaw and pitch offsets, and beam angle for zoom-capable profiles. Test output is an explicit override so a fixture can be inspected while its arrangement lane is dark. This is for visual iteration only: settings are not saved and do not alter clips or the show document. Beam angle is mapped through the profile's spread range. The demo sweep remains a hard-coded canned action, not an editable movement-pattern authoring system.
 
 ### User-facing control behavior by fixture family
 
@@ -135,7 +135,7 @@ The selected-fixture preview panel exposes render-only test output, mount/aim ya
 - **Selection and clipboard.** Shift-click range/individual, marquee in lanes, cross-lane selection. Copy/paste preserves relative time and lane. Duplicate offsets by clip length. Split at playhead across selected clips.
 - **Undo.** Every mutation (create/move/resize/delete/action/colour/fade/envelope) goes through a command object; `Ctrl/Cmd+Z` / `Shift+Ctrl/Cmd+Z`. Undo must cover multi-select operations atomically.
 - **Tracks.** Reorder by dragging headers; group tracks (fixtures → group lane); collapse to a summary lane; row-height presets (compact/normal/tall). Keep lane order in the show document, not inferred from `show.fixtures`.
-- **Keyboard map.** Space play/pause; `S` split; `D` duplicate; `Delete` delete; `Ctrl/Cmd+C/V` copy/paste; `B` cycle snap; `F` follow; `L` loop; `M` marker; arrows nudge one snap unit; `Shift+arrows` one bar; `Esc` clear selection; `Ctrl/Cmd+0` fit song.
+- **Keyboard map.** Space play/pause; `S` split; `D` duplicate; `Delete`/`Backspace` delete the selected clip (implemented); `Ctrl/Cmd+C/V` copy/paste; `B` cycle snap; `F` follow; `L` loop; `M` marker; arrows nudge one snap unit; `Shift+arrows` one bar; `Esc` clear selection; `Ctrl/Cmd+0` fit song.
 - **Accessibility.** Clips need focusable elements, roving tabindex, and ARIA labels; pointer-only `div` clips are not keyboard-editable. Do not rely on colour alone for action/selection.
 
 ## Dimmer and effect semantics
@@ -155,7 +155,7 @@ Severity reflects user impact on the next authoring pass.
 | Gap | Evidence | Severity |
 |---|---|---|
 | Authoring model is a coarse preset, not an envelope editor | `Cue` in `arrangement.ts` stores only `action` + `colorIndex`; `toClip()` hardcodes dimmer/pan/tilt/strobe keyframes. | **High** |
-| Clip inspector only edits action and colour | `syncCueInspector` in `src/main.ts` builds two selects; the new fixture preview panel is render-only and does not author clip values. No clip fade, strobe rate, zoom, focus, pan/tilt target, or white control exists. | **High** |
+| Clip inspector only edits action and colour | `syncCueInspector` in `src/main.ts` builds two selects; the fixture side panel is render-only and does not author clip values. No clip fade, strobe rate, zoom, focus, pan/tilt target, or white control exists. | **High** |
 | No per-clip fade editing; fixed values | `toClip()` sets `fadeInSec` 0/0.04 and `fadeOutSec` 0.08; `evaluate.ts` only applies fade when a dimmer envelope exists. | **High** |
 | Strobe is one fixed value, no rate/duration | `toClip()` sets `strobe: [{ at: 0, value: 0.78 }]`; `evaluateFixture` maps it to Hz continuously. | **High** |
 | No undo/redo, multi-select, clipboard, split, duplicate | `arrangement.ts` mutates `this.cues` directly in `pointerMove`, `createCue`, `deleteSelected`; `pointerDown` tracks one selection only. | **High** |

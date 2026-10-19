@@ -89,6 +89,12 @@ export class Arrangement {
     private readonly onChange: (cues: readonly Cue[]) => void,
     private readonly onSelection: (fixture: FixturePlacement | null, cue: Cue | null) => void,
     private readonly onVisibilityChange?: (fixtureId: string, hidden: boolean) => void,
+    /**
+     * Fired when a track's name is clicked (after selection has been applied).
+     * The shell uses it to toggle the fixture side panel without the
+     * arrangement needing to know whether that panel is open.
+     */
+    private readonly onTrackName?: (fixture: FixturePlacement) => void,
   ) {
     this.fixtures = fixtures;
     const overlay = document.createElement('canvas');
@@ -330,6 +336,11 @@ export class Arrangement {
     if (target.closest('.track-name') !== null) {
       this.selectedCueId = null;
       this.renderRows();
+      // Announce the name click before the selection sync: the shell uses this
+      // to decide whether to open, switch or close the fixture panel, and the
+      // sync would otherwise overwrite the panel's previous fixture.
+      const fixture = this.selectedFixture;
+      if (fixture !== null) this.onTrackName?.(fixture);
       this.notifySelection();
       return;
     }

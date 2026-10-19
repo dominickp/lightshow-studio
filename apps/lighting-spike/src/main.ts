@@ -152,7 +152,16 @@ const ui = {
     dockResizer: element('dock-resizer'),
     dockToggle: element<HTMLButtonElement>('btn-dock'),
     waveformResizer: element('waveform-resizer'),
-    fixturePreview: element<HTMLDetailsElement>('fixture-preview'),
+    sidePanel: element<HTMLElement>('side-panel'),
+    sidePanelResizer: element('side-panel-resizer'),
+    sidePanelClose: element<HTMLButtonElement>('fixture-panel-close'),
+    panelFixtureKind: element('fixture-panel-kind'),
+    panelFixtureName: element('fixture-panel-name'),
+    panelFixtureMeta: element('fixture-panel-meta'),
+    panelCapabilities: element('panel-capabilities'),
+    panelClipCount: element('panel-clip-count'),
+    panelClipActive: element('panel-clip-active'),
+    panelPreviewBadge: element('panel-preview-badge'),
   waveform: element<HTMLCanvasElement>('waveform'),
   waveformPlayhead: element('waveform-playhead'),
   waveformHover: element('waveform-hover'),
@@ -175,9 +184,7 @@ const ui = {
   follow: element<HTMLButtonElement>('btn-follow'),
   rulerPlayhead: element('ruler-playhead'),
   selectedFixture: element('selected-fixture'),
-  fixtureCapabilities: element('fixture-capabilities'),
   loading: element('loading'),
-  fixturePreviewTitle: element('fixture-preview-title'),
   previewOutputEnabled: element<HTMLButtonElement>('preview-output-enabled'),
   previewIntensity: element<HTMLInputElement>('preview-intensity'),
   previewIntensityValue: element('preview-intensity-value'),
@@ -189,6 +196,14 @@ const ui = {
   previewSpread: element<HTMLInputElement>('preview-spread'),
   previewSpreadValue: element('preview-spread-value'),
 };
+
+/**
+ * Fixture side panel state. Declared here so selection sync can keep the panel
+ * pointed at the right fixture; the panel behaviour lives with the dock
+ * handling further down.
+ */
+let sidePanelOpen = false;
+let sidePanelFixtureId: string | null = null;
 
 interface FixturePreviewSettings {
   outputEnabled: boolean;
@@ -236,30 +251,75 @@ const syncPreviewOutputButton = (preview: FixturePreviewSettings): void => {
   ui.previewOutputEnabled.textContent = `Test output: ${preview.outputEnabled ? 'on' : 'off'}`;
   ui.previewOutputEnabled.classList.toggle('on', preview.outputEnabled);
   ui.previewOutputEnabled.setAttribute('aria-pressed', String(preview.outputEnabled));
+  ui.panelPreviewBadge.textContent = preview.outputEnabled ? 'on' : 'off';
+  ui.panelPreviewBadge.classList.toggle('on', preview.outputEnabled);
+};
+
+const kindLabel = (kind: string): string =>
+  kind.split('-').map((word) => word[0]!.toUpperCase() + word.slice(1)).join(' ');
+
+/** Capability badges shown in the fixture panel; only what the profile supports. */
+const fixtureCapabilityLabels = (fixture: (typeof show.fixtures)[number]): string[] => {
+  const caps = fixture.profile.capabilities;
+  return [
+    caps.dimmer ? 'Dimmer' : null,
+    caps.color ? caps.color.toUpperCase() : null,
+    caps.panTilt ? 'Pan / tilt' : null,
+    caps.zoom ? 'Beam angle' : null,
+    caps.focus ? 'Focus' : null,
+    caps.strobe ? 'Strobe' : null,
+    caps.gobo ? 'Gobo' : null,
+    caps.prism ? 'Prism' : null,
+    caps.rotation ? 'Rotation' : null,
+  ].filter((capability) => capability !== null);
+};
+
+const renderPanelCapabilities = (fixture: (typeof show.fixtures)[number] | null): void => {
+  const labels = fixture === null ? [] : fixtureCapabilityLabels(fixture);
+  if (labels.length === 0) {
+    const empty = document.createElement('span');
+    empty.className = 'sp-empty';
+    empty.textContent = fixture === null
+      ? 'Select a fixture to see what it supports.'
+      : 'No controllable attributes in this profile.';
+    ui.panelCapabilities.replaceChildren(empty);
+    return;
+  }
+  ui.panelCapabilities.replaceChildren(...labels.map((label) => {
+    const chip = document.createElement('span');
+    chip.className = 'sp-chip';
+    chip.textContent = label;
+    return chip;
+  }));
+};
+
+const refreshPanelClipStats = (): void => {
+  const fixture = arrangement.selectedFixture;
+  const trackCues = fixture === null ? [] : cuesByFixture.get(fixture.id) ?? [];
+  const now = clock.time;
+  const active = trackCues.filter((cue) => now >= cue.startSec && now <= cue.endSec).length;
+  ui.panelClipCount.textContent = String(trackCues.length);
+  ui.panelClipActive.textContent = String(active);
 };
 
 const syncCueInspector = (fixture: (typeof show.fixtures)[number] | null, cue: Cue | null): void => {
   stage.setSelectedFixture(fixture?.id ?? null);
   ui.selectedFixture.textContent = fixture?.id ?? 'Select a fixture track';
-  ui.fixtureCapabilities.textContent = fixture === null
-    ? 'Choose a track to see its available controls'
-    : [
-        fixture.profile.capabilities.dimmer ? 'Dimmer' : null,
-        fixture.profile.capabilities.color ? fixture.profile.capabilities.color.toUpperCase() : null,
-        fixture.profile.capabilities.panTilt ? 'Pan / tilt' : null,
-        fixture.profile.capabilities.zoom ? 'Zoom' : null,
-        fixture.profile.capabilities.strobe ? 'Strobe rate' : null,
-        fixture.profile.capabilities.gobo ? 'Gobo' : null,
-        fixture.profile.capabilities.prism ? 'Prism' : null,
-        fixture.profile.capabilities.rotation ? 'Rotation' : null,
-      ].filter((capability) => capability !== null).join(' · ');
+  ui.panelFixtureKind.textContent = fixture === null ? 'Fixture' : kindLabel(fixture.profile.kind);
+  ui.panelFixtureName.textContent = fixture?.id ?? 'No fixture selected';
+  ui.panelFixtureMeta.textContent = fixture === null
+    ? 'Click a track name to open this panel'
+    : fixture.profile.name;
+  renderPanelCapabilities(fixture);
+  if (sidePanelOpen) sidePanelFixtureId = fixture?.id ?? null;
 
   if (fixture === null) {
-    ui.fixturePreviewTitle.textContent = 'Fixture preview · select a track';
     ui.previewOutputEnabled.disabled = true;
-        ui.previewOutputEnabled.textContent = 'Test output: off';
-        ui.previewOutputEnabled.classList.remove('on');
-        ui.previewOutputEnabled.setAttribute('aria-pressed', 'false');
+    ui.previewOutputEnabled.textContent = 'Test output: off';
+    ui.previewOutputEnabled.classList.remove('on');
+    ui.previewOutputEnabled.setAttribute('aria-pressed', 'false');
+    ui.panelPreviewBadge.textContent = 'off';
+    ui.panelPreviewBadge.classList.remove('on');
     ui.previewIntensity.disabled = true;
     ui.previewYaw.disabled = true;
     ui.previewPitch.disabled = true;
@@ -268,9 +328,8 @@ const syncCueInspector = (fixture: (typeof show.fixtures)[number] | null, cue: C
   } else {
     const preview = previewFor(fixture);
     const [spreadMin, spreadMax] = fixture.profile.beam.spreadDeg;
-    ui.fixturePreviewTitle.textContent = `${fixture.id} · fixture preview`;
     ui.previewOutputEnabled.disabled = false;
-        syncPreviewOutputButton(preview);
+    syncPreviewOutputButton(preview);
     ui.previewIntensity.disabled = false;
     ui.previewIntensity.value = String(Math.round(preview.intensity * 100));
     ui.previewIntensityValue.textContent = `${Math.round(preview.intensity * 100)}%`;
@@ -294,6 +353,7 @@ const syncCueInspector = (fixture: (typeof show.fixtures)[number] | null, cue: C
     ui.previewSpreadValue.textContent = `${displayedSpread.toFixed(1)}°`;
     applyFixturePreview(fixture, preview);
   }
+  refreshPanelClipStats();
 
   const available = arrangement.selectedActions;
   ui.cueAction.replaceChildren(...available.map((action) => {
@@ -335,10 +395,11 @@ arrangement = new Arrangement(ui.arrangement, ui.arrangementScroll, show.fixture
   indexCues();
   syncCueInspector(arrangement.selectedFixture, arrangement.selectedCue);
 }, (fixture, cue) => {
-  if (fixture !== null) ui.fixturePreview.open = true;
   syncCueInspector(fixture, cue);
 }, (fixtureId, hidden) => {
   stage.setFixtureHidden(fixtureId, hidden);
+}, (fixture) => {
+  toggleSidePanel(fixture.id);
 });
 
 const updateSelectedPreview = (update: (preview: FixturePreviewSettings, fixture: (typeof show.fixtures)[number]) => void): void => {
@@ -639,6 +700,97 @@ ui.waveformResizer.addEventListener('pointerup', endWaveDrag);
 ui.waveformResizer.addEventListener('pointercancel', endWaveDrag);
 
 applyDock();
+
+// --- Fixture side panel ---------------------------------------------------
+const PANEL_WIDTH_KEY = 'dmxsim.spike.sidePanelWidth';
+const PANEL_MIN_WIDTH = 210;
+const PANEL_MAX_WIDTH = 520;
+const storedPanelWidth = Number.parseFloat(localStorage.getItem(PANEL_WIDTH_KEY) ?? '');
+let panelWidthPx = Number.isFinite(storedPanelWidth)
+  ? clamp(storedPanelWidth, PANEL_MIN_WIDTH, PANEL_MAX_WIDTH)
+  : 0;
+
+const applyPanelWidth = (): void => {
+  const root = document.documentElement;
+  // On narrow screens the responsive width in index.html wins; a persisted
+  // pixel width would otherwise squeeze the timeline too far.
+  if (panelWidthPx > 0 && window.innerWidth > 680) {
+    root.style.setProperty('--side-panel-width', `${Math.round(panelWidthPx)}px`);
+  } else {
+    root.style.removeProperty('--side-panel-width');
+  }
+};
+
+/**
+ * The arrangement lives in the first dock column, so closing the panel gives it
+ * the full width back. After the column changes we wait for layout to settle,
+ * then re-measure the scroll viewport and repaint the canvas-backed pieces.
+ */
+const applySidePanel = (): void => {
+  ui.sidePanel.hidden = !sidePanelOpen;
+  ui.dock.classList.toggle('has-panel', sidePanelOpen);
+  requestAnimationFrame(() => {
+    refreshScrollMetrics();
+    waveform.requestPaint();
+  });
+};
+
+const setSidePanelOpen = (open: boolean, fixtureId?: string): void => {
+  sidePanelOpen = open;
+  if (open && fixtureId !== undefined) sidePanelFixtureId = fixtureId;
+  applySidePanel();
+};
+
+/** Clicking a light's name opens its panel; clicking it again closes it. */
+const toggleSidePanel = (fixtureId: string): void => {
+  if (sidePanelOpen && sidePanelFixtureId === fixtureId) {
+    setSidePanelOpen(false);
+    return;
+  }
+  setSidePanelOpen(true, fixtureId);
+};
+
+ui.sidePanelClose.addEventListener('click', () => setSidePanelOpen(false));
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && sidePanelOpen) setSidePanelOpen(false);
+});
+
+let panelResize: { startX: number; startWidth: number } | null = null;
+
+const movePanelResize = (event: PointerEvent): void => {
+  if (panelResize === null) return;
+  const maxWidth = clamp(window.innerWidth - 420, PANEL_MIN_WIDTH, PANEL_MAX_WIDTH);
+  panelWidthPx = clamp(
+    panelResize.startWidth - (event.clientX - panelResize.startX),
+    PANEL_MIN_WIDTH,
+    maxWidth,
+  );
+  applyPanelWidth();
+};
+
+const endPanelResize = (): void => {
+  if (panelResize === null) return;
+  panelResize = null;
+  ui.sidePanelResizer.classList.remove('dragging');
+  window.removeEventListener('pointermove', movePanelResize);
+  window.removeEventListener('pointerup', endPanelResize);
+  window.removeEventListener('pointercancel', endPanelResize);
+  localStorage.setItem(PANEL_WIDTH_KEY, String(Math.round(panelWidthPx)));
+  refreshScrollMetrics();
+  waveform.requestPaint();
+};
+
+ui.sidePanelResizer.addEventListener('pointerdown', (event) => {
+  panelResize = { startX: event.clientX, startWidth: ui.sidePanel.getBoundingClientRect().width };
+  ui.sidePanelResizer.classList.add('dragging');
+  window.addEventListener('pointermove', movePanelResize);
+  window.addEventListener('pointerup', endPanelResize);
+  window.addEventListener('pointercancel', endPanelResize);
+  event.preventDefault();
+});
+
+applyPanelWidth();
+applySidePanel();
 
 const ZOOM_SLIDER_STEPS = 1000;
 const ZOOM_RANGE = MAX_PIXELS_PER_SECOND / MIN_PIXELS_PER_SECOND;
@@ -1098,6 +1250,12 @@ window.addEventListener('keydown', (event) => {
   } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
     event.preventDefault();
     seekBy(event.key === 'ArrowRight' ? 1 : -1, event.shiftKey);
+  } else if (event.key === 'Backspace' || event.key === 'Delete') {
+    // Backspace is also the browser's "back" shortcut; only intercept it when
+    // there is actually a clip to delete.
+    if (arrangement.selectedCue === null) return;
+    event.preventDefault();
+    arrangement.deleteSelected();
   } else if (event.key === 'm' || event.key === 'M') {
     muted = !muted;
     applyVolume(false);
@@ -1133,6 +1291,7 @@ window.addEventListener('keydown', (event) => {
 
 const resizeViewport = (): void => {
   measureTrackWidth();
+  applyPanelWidth();
   renderer.setSize(viewport.clientWidth, viewport.clientHeight);
   stage.camera.aspect = viewport.clientWidth / Math.max(1, viewport.clientHeight);
   stage.camera.updateProjectionMatrix();
@@ -1203,6 +1362,7 @@ const updateStats = (now: number, states: readonly FixtureState[], songTime: num
   const beatInBar = Math.floor(((beat % beatsPerBar) + beatsPerBar) % beatsPerBar) + 1;
   ui.time.textContent = `${bar}.${beatInBar}`;
   ui.transportTime.textContent = `${formatClock(songTime)} / ${formatClock(clock.duration)}`;
+  if (sidePanelOpen) refreshPanelClipStats();
 };
 
 const frame = (now: number): void => {

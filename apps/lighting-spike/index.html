@@ -16,6 +16,7 @@
         --row-height: 30px;
         --dock-height: 42vh;
         --wave-height: 62px;
+        --side-panel-width: 286px;
       }
 
       * { box-sizing: border-box; }
@@ -120,29 +121,179 @@
       #controls button em { font-style: normal; color: var(--dim); }
       #controls button.on, #transport button.on { border-color: rgba(122, 209, 255, 0.55); color: var(--accent); }
 
-      #fixture-preview {
-        position: fixed;
-              right: calc(12px + 202px);
-        bottom: calc(var(--dock-height) + 12px);
-        z-index: 5;
-        width: min(260px, calc(100vw - 24px));
-              max-height: calc(100vh - var(--dock-height) - 24px);
-              overflow: auto;
-        background: var(--panel);
-        border: 1px solid var(--edge);
-        border-radius: 8px;
-        backdrop-filter: blur(8px);
-        padding: 9px 11px;
+      /* --- Fixture side panel (right of the arrangement) ------------------- */
+      #side-panel {
+        position: relative;
+        grid-column: 2;
+        grid-row: 2 / span 2;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        width: var(--side-panel-width);
+        border-left: 1px solid rgba(122, 209, 255, 0.22);
+        background: #0d1219;
       }
-      #fixture-preview summary { color: var(--accent); cursor: pointer; }
-      #fixture-preview .preview-note { color: var(--dim); font-size: 10px; margin: 4px 0 8px; }
-      #preview-output-enabled { width: 100%; padding: 5px 8px; cursor: pointer; appearance: none; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.11); border-radius: 5px; color: var(--ink); font: inherit; }
+      #side-panel[hidden] { display: none; }
+
+      #side-panel-resizer {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: -4px;
+        z-index: 9;
+        width: 8px;
+        cursor: col-resize;
+        touch-action: none;
+      }
+      #side-panel-resizer::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 3px;
+        width: 2px;
+        background: transparent;
+      }
+      #side-panel-resizer:hover::after,
+      #side-panel-resizer.dragging::after { background: rgba(122, 209, 255, 0.45); }
+
+      #side-panel .panel-header {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 9px 10px 9px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      }
+      #side-panel .panel-eyebrow {
+        display: block;
+        color: #5f6b80;
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      #fixture-panel-name {
+        display: block;
+        overflow: hidden;
+        color: var(--accent);
+        font-size: 13px;
+        font-weight: 500;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #fixture-panel-meta {
+        display: block;
+        overflow: hidden;
+        color: #8290a4;
+        font-size: 10px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #fixture-panel-close {
+        flex: 0 0 auto;
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        margin-left: auto;
+        padding: 0;
+        border: 1px solid rgba(255, 255, 255, 0.11);
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--dim);
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+      }
+      #fixture-panel-close:hover { border-color: var(--edge); color: var(--accent); }
+
+      #side-panel .panel-body {
+        min-height: 0;
+        overflow: auto;
+        overscroll-behavior: contain;
+        padding: 10px 12px 14px;
+        scrollbar-color: #394455 #10151d;
+        scrollbar-width: thin;
+      }
+      #side-panel section { margin-bottom: 14px; }
+      #side-panel section:last-child { margin-bottom: 0; }
+      #side-panel h3 {
+        margin: 0 0 5px;
+        color: #7f8ca1;
+        font-size: 9px;
+        font-weight: 500;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      #side-panel .section-head { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+      #side-panel .section-head h3 { margin: 0; }
+      #side-panel .panel-note { margin: 0 0 8px; color: var(--dim); font-size: 10px; line-height: 1.5; }
+      #side-panel .subhead {
+        margin: 12px 0 0;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        color: #5f6b80;
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      #preview-output-enabled {
+        width: 100%;
+        padding: 6px 8px;
+        cursor: pointer;
+        appearance: none;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.11);
+        border-radius: 5px;
+        color: var(--ink);
+        font: inherit;
+      }
       #preview-output-enabled:disabled { opacity: 0.45; cursor: not-allowed; }
-      #preview-output-enabled.on { border-color: rgba(122, 209, 255, 0.55); color: var(--accent); background: rgba(122, 209, 255, 0.1); }
-      #fixture-preview label { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; margin-top: 6px; }
-      #fixture-preview input { grid-column: 1 / span 2; width: 100%; accent-color: var(--accent); }
-      #fixture-preview output { color: var(--ink); font-variant-numeric: tabular-nums; }
-      #fixture-preview [hidden] { display: none; }
+      #preview-output-enabled.on {
+        border-color: rgba(122, 209, 255, 0.55);
+        color: var(--accent);
+        background: rgba(122, 209, 255, 0.1);
+      }
+      #side-panel label {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 3px 8px;
+        margin-top: 8px;
+        color: #a9b4c7;
+        font-size: 11px;
+      }
+      #side-panel label input { grid-column: 1 / span 2; width: 100%; accent-color: var(--accent); }
+      #side-panel label input:disabled { opacity: 0.4; }
+      #side-panel output { color: var(--ink); font-variant-numeric: tabular-nums; font-size: 11px; }
+      #side-panel [hidden] { display: none; }
+
+      #panel-preview-badge {
+        padding: 1px 6px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 999px;
+        color: #6f7b8e;
+        font-size: 9px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      #panel-preview-badge.on {
+        border-color: rgba(122, 209, 255, 0.45);
+        background: rgba(122, 209, 255, 0.1);
+        color: var(--accent);
+      }
+      #panel-capabilities { display: flex; flex-wrap: wrap; gap: 4px; }
+      .sp-chip {
+        padding: 1px 7px;
+        border: 1px solid rgba(122, 209, 255, 0.3);
+        border-radius: 999px;
+        background: rgba(122, 209, 255, 0.06);
+        color: #9fb0c6;
+        font-size: 9px;
+        letter-spacing: 0.03em;
+      }
+      .sp-empty { color: #667184; font-size: 10px; }
+      #panel-clips { display: grid; gap: 4px; }
+      #panel-clips div { display: flex; justify-content: space-between; gap: 10px; color: var(--dim); font-size: 10px; }
+      #panel-clips b { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
 
       #timeline-dock {
         position: fixed;
@@ -156,6 +307,7 @@
         height: var(--dock-height);
         min-height: 180px;
         display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
         grid-template-rows: auto auto minmax(0, 1fr);
         background: #0a0d13;
         border-top: 1px solid rgba(122, 209, 255, 0.3);
@@ -169,10 +321,13 @@
       }
       #timeline-dock.collapsed #clip-inspector,
       #timeline-dock.collapsed #arrangement-scroll,
+      #timeline-dock.collapsed #side-panel,
       #timeline-dock.collapsed #zoom-tools { display: none; }
 
       #dock-resizer {
         position: absolute;
+        grid-column: 1 / -1;
+        grid-row: 1;
         top: -4px;
         left: 0;
         right: 0;
@@ -200,6 +355,8 @@
       #transport {
         position: sticky;
         top: 0;
+        grid-column: 1 / -1;
+        grid-row: 1;
         z-index: 6;
         left: auto;
         right: auto;
@@ -242,6 +399,8 @@
       #project-file { display: none; }
 
       #clip-inspector {
+        grid-column: 1;
+        grid-row: 2;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -259,18 +418,10 @@
       }
 
       #clip-inspector select { max-width: 95px; cursor: pointer; }
-      #clip-inspector #cue-color { max-width: 88px; }
-      #clip-inspector #btn-cue-delete { min-width: 0; }
-      #fixture-capabilities {
-        max-width: 220px;
-        overflow: hidden;
-        color: #8290a4;
-        font-size: 10px;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
 
       #arrangement-scroll {
+        grid-column: 1;
+        grid-row: 3;
         min-height: 0;
         overflow: auto;
         overscroll-behavior: contain;
@@ -344,6 +495,8 @@
       #timeline-ruler { display: block; height: 28px; cursor: ew-resize; touch-action: none; }
 
       #zoom-tools {
+        /* Anchored to the dock's right edge; the panel-open offset below keeps
+           it over the timeline column instead of the panel. */
         position: absolute;
         right: 14px;
         bottom: 12px;
@@ -358,6 +511,7 @@
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
         backdrop-filter: blur(6px);
       }
+      #timeline-dock.has-panel #zoom-tools { right: calc(var(--side-panel-width) + 14px); }
       #zoom-tools button {
         min-width: 24px;
         height: 24px;
@@ -600,11 +754,9 @@
       #loading[hidden] { display: none; }
 
       @media (max-width: 1000px) {
-        :root { --dock-height: 50vh; }
-              #fixture-preview { right: calc(12px + 202px); }
-              #clip-inspector { gap: 5px; padding: 5px 8px; }
+        :root { --dock-height: 50vh; --side-panel-width: 244px; }
+        #clip-inspector { gap: 5px; padding: 5px 8px; }
         #selected-fixture { max-width: 80px; }
-        #fixture-capabilities { display: none; }
         #transport-meta { column-gap: 8px; }
       }
 
@@ -612,7 +764,7 @@
         #stats { transform: scale(0.82); transform-origin: top left; }
         #controls { min-width: 150px; gap: 3px; padding: 7px; }
         #controls button { padding: 3px 6px; }
-                #fixture-preview { right: calc(12px + 162px); width: min(260px, calc(100vw - 190px)); }
+        :root { --side-panel-width: min(230px, 62vw); }
         #transport { gap: 5px; padding: 5px; }
         #transport button { min-width: 0; padding: 5px; }
         #transport-meta { display: none; }
@@ -661,24 +813,6 @@
         <button id="btn-stats" class="on">Stats <em>s</em></button>
       </div>
 
-      <details id="fixture-preview">
-        <summary id="fixture-preview-title">Fixture preview · select a track</summary>
-        <p class="preview-note">Preview only — changes here are not saved to clips or the show.</p>
-        <button id="preview-output-enabled" type="button" aria-pressed="false" disabled>Test output: off</button>
-        <label><span>Test intensity</span><output id="preview-intensity-value">50%</output>
-          <input id="preview-intensity" type="range" min="0" max="100" step="1" value="50" aria-label="Fixture test output level" disabled />
-        </label>
-        <label id="preview-yaw-row">Mount / aim pan <output id="preview-yaw-value">0°</output>
-          <input id="preview-yaw" type="range" min="-180" max="180" step="1" value="0" aria-label="Fixture mount or aim pan offset" disabled />
-        </label>
-        <label id="preview-pitch-row">Mount / aim tilt <output id="preview-pitch-value">0°</output>
-          <input id="preview-pitch" type="range" min="-90" max="90" step="1" value="0" aria-label="Fixture mount or aim tilt offset" disabled />
-        </label>
-        <label id="preview-spread-row">Beam angle <output id="preview-spread-value">—</output>
-          <input id="preview-spread" type="range" min="0" max="100" step="1" value="50" aria-label="Fixture beam angle" disabled />
-        </label>
-      </details>
-
       <details id="hint">
         <summary>Controls &amp; shortcuts</summary>
         <div>
@@ -687,11 +821,13 @@
           <b>1</b> beams <b>2</b> bloom <b>3</b> shadows <b>4</b> grade <b>5</b> strobes ·
           <b>C</b> camera · <b>[ ]</b> fixture count · <b>S</b> stats · <b>`</b> controls panel<br />
           <b>Ctrl/⌘ + wheel</b> zoom at pointer · <b>Ctrl/⌘ +/-</b> zoom · <b>Ctrl/⌘ 0</b> fit ·
-          drag a lane to draw a clip, drag a clip to move, drag its edge to resize<br />
+          drag a lane to draw a clip, drag a clip to move, drag its edge to resize ·
+          <b>Backspace</b> deletes the selected clip<br />
           <b>Shift + drag anywhere in the timeline</b> to draw a loop · drag the cyan loop edges to adjust it ·
           <b>L</b> or the Loop button toggles looping · Fit loop zooms to it<br />
+          <b>Click a fixture name</b> to open its side panel (click again to close) ·
           Playback loops measures 41–56 (1 measure = 1 bar of 4 beats); scrubbing before the loop plays the intro through to the loop end.
-                  </div>
+        </div>
       </details>
     </section>
 
@@ -721,9 +857,8 @@
         <span id="selected-fixture">Select a fixture track</span>
         <select id="cue-action" aria-label="Clip action" disabled></select>
         <select id="cue-color" aria-label="Clip color" disabled></select>
-        <span id="fixture-capabilities"></span>
         <button id="btn-cue-add" type="button" disabled>+ Clip</button>
-        <button id="btn-cue-delete" type="button" disabled>Delete</button>
+        <button id="btn-cue-delete" type="button" title="Delete the selected clip (Backspace)" disabled>Delete</button>
         <span id="cue-status" role="status">Load audio to arrange cues</span>
       </div>
 
@@ -751,6 +886,52 @@
           <div id="arrangement-rows"></div>
         </div>
       </div>
+
+      <aside id="side-panel" aria-label="Fixture panel" hidden>
+        <div id="side-panel-resizer" role="separator" aria-label="Resize fixture panel" title="Drag to resize the fixture panel"></div>
+        <header class="panel-header">
+          <div>
+            <span class="panel-eyebrow" id="fixture-panel-kind">Fixture</span>
+            <b id="fixture-panel-name">No fixture selected</b>
+            <small id="fixture-panel-meta">Click a track name to open this panel</small>
+          </div>
+          <button id="fixture-panel-close" type="button" title="Close panel (Esc)" aria-label="Close fixture panel">×</button>
+        </header>
+        <div class="panel-body">
+          <section>
+            <div class="section-head">
+              <h3>Live preview</h3>
+              <span id="panel-preview-badge">off</span>
+            </div>
+            <p class="panel-note">Overrides this fixture in the scene while you tune it. Nothing here is saved to clips or the show.</p>
+            <button id="preview-output-enabled" type="button" aria-pressed="false" disabled>Test output: off</button>
+            <label><span>Intensity</span><output id="preview-intensity-value">50%</output>
+              <input id="preview-intensity" type="range" min="0" max="100" step="1" value="50" aria-label="Fixture test output level" disabled />
+            </label>
+            <p class="subhead">Mount &amp; aim</p>
+            <label id="preview-yaw-row"><span>Pan offset</span><output id="preview-yaw-value">0°</output>
+              <input id="preview-yaw" type="range" min="-180" max="180" step="1" value="0" aria-label="Fixture mount or aim pan offset" disabled />
+            </label>
+            <label id="preview-pitch-row"><span>Tilt offset</span><output id="preview-pitch-value">0°</output>
+              <input id="preview-pitch" type="range" min="-90" max="90" step="1" value="0" aria-label="Fixture mount or aim tilt offset" disabled />
+            </label>
+            <label id="preview-spread-row"><span>Beam angle</span><output id="preview-spread-value">—</output>
+              <input id="preview-spread" type="range" min="0" max="100" step="1" value="50" aria-label="Fixture beam angle" disabled />
+            </label>
+          </section>
+          <section>
+            <h3>Capabilities</h3>
+            <div id="panel-capabilities"><span class="sp-empty">Select a fixture to see what it supports.</span></div>
+          </section>
+          <section>
+            <h3>Clips on this track</h3>
+            <div id="panel-clips">
+              <div><span>Total</span><b id="panel-clip-count">0</b></div>
+              <div><span>Under playhead</span><b id="panel-clip-active">0</b></div>
+            </div>
+          </section>
+        </div>
+      </aside>
 
       <div id="zoom-tools" role="toolbar" aria-label="Timeline zoom">
         <button id="btn-zoom-out" type="button" aria-label="Zoom out" title="Zoom out (Ctrl/⌘ -)" disabled>−</button>

@@ -198,18 +198,21 @@
       #transport-meta {
         display: grid;
         grid-template-columns: auto minmax(0, 1fr);
-        grid-template-rows: auto auto;
+        grid-template-rows: auto auto auto;
         align-items: center;
         column-gap: 14px;
         min-width: 0;
         flex: 1;
       }
 
-      #transport-meta b { grid-row: 1 / span 2; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      #transport-meta b { grid-row: 1 / span 3; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
       #transport-meta span { overflow: hidden; color: var(--dim); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
       #transport-meta #transport-track { grid-column: 2; grid-row: 1; }
       #transport-meta #audio-status { grid-column: 2; grid-row: 2; color: var(--accent); }
+      #transport-meta #project-status { grid-column: 2; grid-row: 3; color: #9aa6b8; }
+      #transport-meta #project-status:empty { display: none; }
       #audio-file { display: none; }
+      #project-file { display: none; }
 
       #clip-inspector {
         display: flex;
@@ -668,7 +671,10 @@
       <div class="panel" id="transport">
         <button id="btn-play" disabled>▶ Play</button>
         <button id="btn-audio" type="button">Load audio</button>
+        <button id="btn-project-open" type="button" title="Open a .dmxsim project file">Open project</button>
+        <button id="btn-project-save" type="button" title="Save the rig, timeline and settings as a .dmxsim file">Save project</button>
         <input id="audio-file" type="file" accept="audio/*" aria-label="Choose an audio file" />
+        <input id="project-file" type="file" accept=".dmxsim,.json,application/json" aria-label="Choose a project file" />
         <div id="volume-control">
           <button id="btn-mute" type="button" aria-label="Mute playback" aria-pressed="false" title="Mute (M)">🔊</button>
           <input id="volume" type="range" min="0" max="100" step="1" value="100" aria-label="Playback volume" title="Playback volume" />
@@ -677,6 +683,7 @@
           <b id="transport-time">–</b>
           <span id="transport-track">The Koto Chill — zircon · 130 BPM</span>
           <span id="audio-status" role="status" aria-live="polite">Loading default track…</span>
+          <span id="project-status" role="status" aria-live="polite"></span>
         </div>
         <button id="btn-dock" type="button" title="Collapse or expand the timeline dock">Collapse timeline</button>
       </div>

@@ -1,10 +1,29 @@
 import * as THREE from 'three/webgpu';
-import { evaluateFixture, timeToBeat, type FixtureState } from '@dmxsim/show-model';
+import {
+  evaluateFixture,
+  parseProject,
+  timeToBeat,
+  type FixtureState,
+  type ProjectFile,
+  type ProjectSettings,
+} from '@dmxsim/show-model';
 import { createDemoRig } from './demo-rig';
 import { createDemoCues } from './demo-arrangement';
 import { AudioClock } from './audio-clock';
 import { loopEndSec, loopStartSec, TRACK, TRACK_URL } from './track';
 import { computePeaks, WaveformStrip } from './waveform';
+import demoProjectUrl from '../../../resources/sample_projects/koto-chill/koto-chill.dmxsim?url';
+import {
+  cueTimelineFromProject,
+  cueToProjectClip,
+  downloadProject,
+  fixtureIds,
+  projectClipToCue,
+  projectFileName,
+  readProjectFile,
+  rigMatches,
+  showFromProject,
+} from './project-file';
 import {
   Arrangement,
   CUE_COLORS,
@@ -19,7 +38,36 @@ import {
 import { Stage } from './stage';
 import { Post } from './post';
 
-const show = createDemoRig(loopStartSec, TRACK.bpm);
+/**
+ * The demo is a project file, not generated code: the app loads
+ * `resources/sample_projects/koto-chill/koto-chill.dmxsim` at startup so the show can be edited on disk and
+ * opened back through `Open project`. The procedural rig/cues remain as a
+ * fallback if the file is missing or invalid.
+ */
+const loadBundledProject = async (): Promise<ProjectFile | null> => {
+  try {
+    const response = await fetch(demoProjectUrl);
+    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+    return parseProject(await response.json());
+  } catch (error) {
+    console.warn('could not load the bundled project; using the generated demo rig', error);
+    return null;
+  }
+};
+
+const bundledProject = await loadBundledProject();
+const show = bundledProject === null
+  ? createDemoRig(loopStartSec, TRACK.bpm)
+  : showFromProject(bundledProject);
+let projectName = bundledProject?.name ?? 'Untitled project';
+let projectDescription = bundledProject?.description;
+let projectAudio: ProjectFile['audio'] = bundledProject?.audio ?? {
+  source: 'bundled',
+  id: 'koto-chill',
+  title: TRACK.title,
+  artist: TRACK.artist,
+  fileName: 'The Koto Chill.ogg',
+};
 const counts = [10, 16, 22, 26, 32].filter((n) => n <= show.fixtures.length);
 
 const container = document.getElementById('app');
@@ -83,6 +131,10 @@ const ui = {
   play: element<HTMLButtonElement>('btn-play'),
   chooseAudio: element<HTMLButtonElement>('btn-audio'),
   audioFile: element<HTMLInputElement>('audio-file'),
+  projectOpen: element<HTMLButtonElement>('btn-project-open'),
+  projectSave: element<HTMLButtonElement>('btn-project-save'),
+  projectFile: element<HTMLInputElement>('project-file'),
+  projectStatus: element('project-status'),
   volume: element<HTMLInputElement>('volume'),
   mute: element<HTMLButtonElement>('btn-mute'),
   vol: element<HTMLButtonElement>('btn-vol'),
@@ -170,8 +222,13 @@ const waveform = new WaveformStrip(ui.waveform, (songSec) => clock.seek(songSec)
 let cues: readonly Cue[] = [];
 let arrangement: Arrangement;
 let currentTimeline: CueTimeline | null = null;
-let followPlayhead = true;
-let loopRegion = { startSec: loopStartSec, endSec: loopEndSec };
+let followPlayhead = bundledProject?.settings.playback.followPlayhead ?? true;
+let loopRegion = bundledProject === null
+  ? { startSec: loopStartSec, endSec: loopEndSec }
+  : {
+      startSec: bundledProject.timeline.loop.startSec,
+      endSec: bundledProject.timeline.loop.endSec,
+    };
 
 const syncPreviewOutputButton = (preview: FixturePreviewSettings): void => {
   ui.previewOutputEnabled.textContent = `Test output: ${preview.outputEnabled ? 'on' : 'off'}`;
@@ -853,6 +910,13 @@ window.addEventListener('keydown', (event) => {
   } else if (event.key === '0') {
     event.preventDefault();
     ui.zoomFit.click();
+  } else if (event.key === 'z' || event.key === 'Z') {
+    event.preventDefault();
+    if (event.shiftKey) arrangement.redo();
+    else arrangement.undo();
+  } else if (event.key === 'y' || event.key === 'Y') {
+    event.preventDefault();
+    arrangement.redo();
   }
 });
 const selectedAction = () => arrangement.selectedActions.find((action) => action === ui.cueAction.value)
@@ -883,6 +947,7 @@ ui.audioFile.addEventListener('change', () => {
       clock.load(buffer);
       clock.setLoop({ startSec: 0, endSec: buffer.duration }, true);
       clock.seek(0);
+      projectAudio = { source: 'external', fileName: file.name };
       ui.transportTrack.textContent = file.name;
       ui.transportTime.textContent = `${formatClock(0)} / ${formatClock(buffer.duration)}`;
       ui.audioStatus.textContent = 'Local audio loaded · beat grid not set';
@@ -910,15 +975,10 @@ ui.audioFile.addEventListener('change', () => {
       createRuler(ui.ruler, timeline, buffer.duration * arrangement.zoomLevel, arrangement.zoomLevel);
       arrangement.setTimeline(timeline);
       ui.arrangementScroll.scrollLeft = 0;
-      ui.zoomIn.disabled = false;
-      ui.zoomOut.disabled = false;
-      ui.zoomFit.disabled = false;
-      ui.zoomLevel.disabled = false;
-      ui.loopBtn.disabled = false;
-      ui.loopFit.disabled = false;
+      enableTimelineControls();
       setZoom(PIXELS_PER_SECOND);
       applyLoop();
-      ui.play.disabled = false;
+      setProjectStatus('Local audio attached · use Save project to keep the reference');
     } catch (error) {
       console.error(`could not load audio file "${file.name}"`, error);
       ui.audioStatus.textContent = `Could not load ${file.name}; previous audio is unchanged`;
@@ -1126,6 +1186,190 @@ const frame = (now: number): void => {
   requestAnimationFrame(frame);
 };
 
+// --- Project files --------------------------------------------------------
+
+const setProjectStatus = (message: string): void => {
+  ui.projectStatus.textContent = message;
+};
+
+const describeAudio = (audio: ProjectFile['audio'], bpm: number | null): string => {
+  if (audio.source === 'bundled' && audio.title !== undefined) {
+    const artist = audio.artist === undefined ? '' : ` — ${audio.artist}`;
+    const tempo = bpm === null ? '' : ` · ${Math.round(bpm)} BPM`;
+    return `${audio.title}${artist}${tempo}`;
+  }
+  return audio.fileName ?? 'Local audio';
+};
+
+const enableTimelineControls = (): void => {
+  ui.zoomIn.disabled = false;
+  ui.zoomOut.disabled = false;
+  ui.zoomFit.disabled = false;
+  ui.zoomLevel.disabled = false;
+  ui.loopBtn.disabled = false;
+  ui.loopFit.disabled = false;
+  ui.play.disabled = false;
+};
+
+/** Apply the saved UI/render state. Called on startup and project import. */
+const applyProjectSettings = (settings: ProjectSettings): void => {
+  volumetrics = settings.render.volumetrics;
+  bloomOn = settings.render.bloom;
+  shadowsOn = settings.render.shadows;
+  lofi = settings.render.lofi;
+  strobesOn = settings.render.strobes;
+  post.setBloom(bloomOn);
+  post.setLofi(lofi);
+  applyShadows();
+
+  const requested = settings.render.activeFixtureCount > 0
+    ? Math.min(settings.render.activeFixtureCount, show.fixtures.length)
+    : show.fixtures.length;
+  setActiveCount(requested);
+  const presetIndex = counts.indexOf(requested);
+  countIndex = presetIndex >= 0 ? presetIndex : counts.length - 1;
+  stage.setView(settings.render.cameraView, true);
+
+  volume = settings.playback.volume;
+  muted = settings.playback.muted;
+  applyVolume();
+  followPlayhead = settings.playback.followPlayhead;
+  ui.follow.classList.toggle('on', followPlayhead);
+  ui.follow.setAttribute('aria-pressed', String(followPlayhead));
+
+  statsVisible = settings.ui.statsVisible;
+  applyStats();
+  dockCollapsed = settings.ui.dockCollapsed;
+  dockHeightPx = settings.ui.dockHeightPx;
+  applyDock();
+  waveHeightPx = Math.max(40, Math.min(200, settings.ui.waveformHeightPx));
+  applyWaveHeight();
+
+  if (currentTimeline !== null) setZoom(settings.playback.zoomPixelsPerSecond);
+  syncButtons();
+};
+
+/** Load a project into the running app. The rig is fixed for the spike. */
+const applyProject = (project: ProjectFile): void => {
+  projectName = project.name;
+  projectDescription = project.description;
+  projectAudio = project.audio;
+  const timeline = cueTimelineFromProject(project);
+  currentTimeline = timeline;
+  loopRegion = {
+    startSec: project.timeline.loop.startSec,
+    endSec: project.timeline.loop.endSec,
+  };
+
+  ui.transportTrack.textContent = describeAudio(project.audio, timeline.bpm);
+  arrangement.setTimeline(timeline);
+  arrangement.setCues(project.arrangement.clips.map(projectClipToCue));
+  clock.setLoopEnabled(project.settings.playback.loopEnabled);
+  applyProjectSettings(project.settings);
+  applyLoop();
+  clock.seek(loopRegion.startSec);
+  ui.transportTime.textContent = `${formatClock(loopRegion.startSec)} / ${formatClock(clock.duration)}`;
+  ui.arrangementScroll.scrollLeft = Math.max(0, loopRegion.startSec * arrangement.zoomLevel);
+  enableTimelineControls();
+};
+
+const buildProject = (): ProjectFile | null => {
+  const timeline = currentTimeline;
+  if (timeline === null) return null;
+  return {
+    format: 'dmxsim-project',
+    version: 1,
+    name: projectName,
+    ...(projectDescription === undefined ? {} : { description: projectDescription }),
+    show: {
+      version: 1,
+      name: show.name,
+      fixtures: show.fixtures,
+      tracks: [],
+    },
+    timeline: {
+      durationSec: timeline.durationSec,
+      beatGrid: {
+        bpm: timeline.bpm,
+        offsetSec: timeline.firstBeatSec,
+        beatsPerBar: timeline.beatsPerBar,
+      },
+      loop: { startSec: loopRegion.startSec, endSec: loopRegion.endSec },
+    },
+    arrangement: {
+      clips: cues.map(cueToProjectClip),
+    },
+    settings: {
+      render: {
+        volumetrics,
+        bloom: bloomOn,
+        shadows: shadowsOn,
+        lofi,
+        strobes: strobesOn,
+        activeFixtureCount: activeCount,
+        cameraView: stage.view,
+      },
+      playback: {
+        volume,
+        muted,
+        loopEnabled: clock.loopEnabled,
+        followPlayhead,
+        zoomPixelsPerSecond: arrangement.zoomLevel,
+      },
+      ui: {
+        statsVisible,
+        dockCollapsed,
+        dockHeightPx,
+        waveformHeightPx: waveHeightPx,
+      },
+    },
+    audio: projectAudio,
+  };
+};
+
+const saveProject = (): void => {
+  const project = buildProject();
+  if (project === null) {
+    setProjectStatus('Load audio before saving a project');
+    return;
+  }
+  downloadProject(project);
+  setProjectStatus(`Saved ${projectFileName(project.name)} · ${project.arrangement.clips.length} clips`);
+};
+
+const openProject = async (file: File): Promise<void> => {
+  ui.projectOpen.disabled = true;
+  setProjectStatus(`Opening ${file.name}…`);
+  try {
+    const project = await readProjectFile(file);
+    if (currentTimeline === null || clock.duration <= 0) {
+      setProjectStatus('Load audio before opening a project');
+      return;
+    }
+    if (!rigMatches(project, show.fixtures)) {
+      setProjectStatus(
+        `Cannot open ${file.name}: its rig (${fixtureIds(project).length} fixtures) does not match this build`,
+      );
+      return;
+    }
+    applyProject(project);
+    setProjectStatus(`Opened ${project.name} · ${project.arrangement.clips.length} clips`);
+  } catch (error) {
+    console.error(`could not open project "${file.name}"`, error);
+    setProjectStatus(error instanceof Error ? `Could not open ${file.name}: ${error.message}` : `Could not open ${file.name}`);
+  } finally {
+    ui.projectOpen.disabled = false;
+  }
+};
+
+ui.projectSave.addEventListener('click', saveProject);
+ui.projectOpen.addEventListener('click', () => ui.projectFile.click());
+ui.projectFile.addEventListener('change', () => {
+  const file = ui.projectFile.files?.[0];
+  ui.projectFile.value = '';
+  if (file !== undefined) void openProject(file);
+});
+
 ui.loading.textContent = 'loading audio…';
 
 try {
@@ -1133,45 +1377,42 @@ try {
   if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
   const buffer = await clock.decode(await response.arrayBuffer());
   clock.load(buffer);
-  clock.setLoop({ startSec: loopStartSec, endSec: loopEndSec }, true);
-  clock.seek(loopStartSec);
-  ui.play.disabled = false;
-
-  ui.transportTrack.textContent = `${TRACK.title} — ${TRACK.artist} · ${TRACK.bpm} BPM`;
-  ui.audioStatus.textContent = 'Ready';
-  waveform.setTimeline({
-    durationSec: buffer.duration,
-    loopStartSec,
-    loopEndSec,
-    firstBeatSec: TRACK.firstBeatSec,
-    bpm: TRACK.bpm,
-    beatsPerBar: TRACK.beatsPerBar,
-  });
   waveform.setPeaks(computePeaks(buffer, 1600));
-  const timeline: CueTimeline = {
-    durationSec: buffer.duration,
-    firstBeatSec: TRACK.firstBeatSec,
-    bpm: TRACK.bpm,
-    beatsPerBar: TRACK.beatsPerBar,
-    loopStartSec,
-    loopEndSec,
-  };
-  currentTimeline = timeline;
-  loopRegion = { startSec: loopStartSec, endSec: loopEndSec };
-  ui.waveform.style.width = `${buffer.duration * arrangement.zoomLevel}px`;
-  createRuler(ui.ruler, timeline, buffer.duration * arrangement.zoomLevel, arrangement.zoomLevel);
-  arrangement.setTimeline(timeline);
-  ui.zoomIn.disabled = false;
-  ui.zoomOut.disabled = false;
-  ui.zoomFit.disabled = false;
-  ui.zoomLevel.disabled = false;
-  ui.loopBtn.disabled = false;
-  ui.loopFit.disabled = false;
-  setZoom(PIXELS_PER_SECOND);
-  applyLoop();
-  arrangement.setCues(createDemoCues(show.fixtures, timeline));
-  ui.arrangementScroll.scrollLeft = Math.max(0, loopStartSec * PIXELS_PER_SECOND);
-  ui.transportTime.textContent = `${formatClock(loopStartSec)} / ${formatClock(buffer.duration)}`;
+  ui.audioStatus.textContent = 'Ready';
+
+  if (bundledProject !== null) {
+    applyProject(bundledProject);
+    setProjectStatus(`Loaded ${bundledProject.name} · ${bundledProject.arrangement.clips.length} clips`);
+  } else {
+    clock.setLoop({ startSec: loopStartSec, endSec: loopEndSec }, true);
+    clock.seek(loopStartSec);
+    ui.transportTrack.textContent = `${TRACK.title} — ${TRACK.artist} · ${TRACK.bpm} BPM`;
+    const timeline: CueTimeline = {
+      durationSec: buffer.duration,
+      firstBeatSec: TRACK.firstBeatSec,
+      bpm: TRACK.bpm,
+      beatsPerBar: TRACK.beatsPerBar,
+      loopStartSec,
+      loopEndSec,
+    };
+    currentTimeline = timeline;
+    loopRegion = { startSec: loopStartSec, endSec: loopEndSec };
+    waveform.setTimeline({
+      durationSec: buffer.duration,
+      loopStartSec,
+      loopEndSec,
+      firstBeatSec: TRACK.firstBeatSec,
+      bpm: TRACK.bpm,
+      beatsPerBar: TRACK.beatsPerBar,
+    });
+    arrangement.setTimeline(timeline);
+    enableTimelineControls();
+    setZoom(PIXELS_PER_SECOND);
+    applyLoop();
+    arrangement.setCues(createDemoCues(show.fixtures, timeline));
+    ui.arrangementScroll.scrollLeft = Math.max(0, loopStartSec * PIXELS_PER_SECOND);
+    ui.transportTime.textContent = `${formatClock(loopStartSec)} / ${formatClock(buffer.duration)}`;
+  }
 } catch (error) {
   console.error(error);
   ui.audioStatus.textContent = `Could not load default track: ${TRACK.title}`;

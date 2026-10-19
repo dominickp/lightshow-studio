@@ -39,6 +39,12 @@ export const MAX_PIXELS_PER_SECOND = 480;
 export const TRACK_LABEL_WIDTH = 176;
 const MIN_CLIP_SEC = 0.1;
 const EDGE_GRAB_PX = 8;
+const HISTORY_LIMIT = 100;
+
+interface CueSnapshot {
+  cues: Cue[];
+  selectedCueId: string | null;
+}
 
 type Gesture =
   | { type: 'create'; fixtureId: string; startSec: number; currentSec: number }
@@ -53,6 +59,9 @@ export class Arrangement {
   private selectedCueId: string | null = null;
   private readonly hiddenFixtureIds = new Set<string>();
   private gesture: Gesture | null = null;
+  private gestureSnapshot: CueSnapshot | null = null;
+  private readonly undoStack: CueSnapshot[] = [];
+  private readonly redoStack: CueSnapshot[] = [];
   private nextId = 1;
   private songTime = 0;
   private pixelsPerSecond = PIXELS_PER_SECOND;
@@ -160,6 +169,7 @@ export class Arrangement {
     this.cues = [];
     this.selectedCueId = null;
     this.preview = null;
+    this.clearHistory();
     this.renderRows();
     this.notifyChange();
     this.notifySelection();
@@ -171,9 +181,26 @@ export class Arrangement {
     this.cues = this.cues.filter((cue) => this.fixtures.some((fixture) => fixture.id === cue.fixtureId));
     this.selectedCueId = null;
     this.preview = null;
+    this.clearHistory();
     this.renderRows();
     this.notifyChange();
     this.notifySelection();
+  }
+
+  /** Revert the last clip edit (add, delete, move, resize, action or colour). */
+  undo(): void {
+    const previous = this.undoStack.pop();
+    if (previous === undefined) return;
+    this.redoStack.push(this.snapshot());
+    this.restore(previous);
+  }
+
+  /** Re-apply the most recently undone clip edit. */
+  redo(): void {
+    const next = this.redoStack.pop();
+    if (next === undefined) return;
+    this.undoStack.push(this.snapshot());
+    this.restore(next);
   }
 
   /** Update the loop markers without clearing authored clips. */
@@ -217,6 +244,7 @@ export class Arrangement {
     const cue = this.selectedCue;
     const fixture = this.selectedFixture;
     if (cue === null || fixture === null || !this.actionsFor(fixture).includes(action)) return;
+    this.pushHistory();
     this.cues = this.cues.map((item) => item.id === cue.id ? { ...item, action } : item);
     this.renderRows();
     this.notifyChange();
@@ -226,6 +254,7 @@ export class Arrangement {
   setSelectedColor(colorIndex: number): void {
     const cue = this.selectedCue;
     if (cue === null || !this.selectedFixture?.profile.capabilities.color) return;
+    this.pushHistory();
     this.cues = this.cues.map((item) => item.id === cue.id ? { ...item, colorIndex } : item);
     this.renderRows();
     this.notifyChange();
@@ -250,6 +279,7 @@ export class Arrangement {
 
   deleteSelected(): void {
     if (this.selectedCueId === null) return;
+    this.pushHistory();
     this.cues = this.cues.filter((cue) => cue.id !== this.selectedCueId);
     this.selectedCueId = null;
     this.renderRows();
@@ -327,10 +357,12 @@ export class Arrangement {
           durationSec: cue.endSec - cue.startSec,
         };
       }
+      this.gestureSnapshot = this.snapshot();
     } else {
       const time = this.snap(this.xToTime(event.clientX, lane));
       this.selectedCueId = null;
       this.gesture = { type: 'create', fixtureId, startSec: time, currentSec: time };
+      this.gestureSnapshot = null;
       this.preview = { fixtureId, startSec: time, endSec: time + this.defaultLength() };
     }
 
@@ -386,6 +418,8 @@ export class Arrangement {
     const gesture = this.gesture;
     if (gesture === null) return;
     this.gesture = null;
+    const gestureSnapshot = this.gestureSnapshot;
+    this.gestureSnapshot = null;
     this.preview = null;
     const timeline = this.timeline;
     if (timeline === null) return;
@@ -408,6 +442,10 @@ export class Arrangement {
         return;
       }
     }
+    // A move/resize drag only becomes an undo step when it actually changed a cue.
+    if (gestureSnapshot !== null && !sameCues(gestureSnapshot.cues, this.cues)) {
+      this.pushSnapshot(gestureSnapshot);
+    }
     this.renderRows();
     this.notifyChange();
     this.notifySelection();
@@ -416,6 +454,7 @@ export class Arrangement {
   private cancelGesture(): void {
     if (this.gesture === null) return;
     this.gesture = null;
+    this.gestureSnapshot = null;
     this.preview = null;
     this.renderRows();
   }
@@ -432,6 +471,7 @@ export class Arrangement {
       colorIndex: this.suggestedColorIndex,
       action,
     };
+    this.pushHistory();
     this.cues = [...this.cues, cue];
     this.selectedFixtureId = fixtureId;
     this.selectedCueId = cue.id;
@@ -691,6 +731,41 @@ export class Arrangement {
     this.onChange(this.cues);
   }
 
+  private snapshot(): CueSnapshot {
+    return {
+      cues: this.cues.map((cue) => ({ ...cue })),
+      selectedCueId: this.selectedCueId,
+    };
+  }
+
+  /** Record the current state as an undo step and drop any redo branch. */
+  private pushHistory(): void {
+    this.pushSnapshot(this.snapshot());
+  }
+
+  private pushSnapshot(snapshot: CueSnapshot): void {
+    this.undoStack.push(snapshot);
+    if (this.undoStack.length > HISTORY_LIMIT) this.undoStack.shift();
+    this.redoStack.length = 0;
+  }
+
+  private clearHistory(): void {
+    this.undoStack.length = 0;
+    this.redoStack.length = 0;
+  }
+
+  private restore(snapshot: CueSnapshot): void {
+    this.cues = snapshot.cues.map((cue) => ({ ...cue }));
+    this.selectedCueId = snapshot.selectedCueId !== null
+      && this.cues.some((cue) => cue.id === snapshot.selectedCueId)
+      ? snapshot.selectedCueId
+      : null;
+    this.preview = null;
+    this.renderRows();
+    this.notifyChange();
+    this.notifySelection();
+  }
+
   private notifySelection(): void {
     this.onSelection(this.selectedFixture, this.selectedCue);
   }
@@ -892,3 +967,20 @@ export function createRuler(
 
 const clamp = (value: number, min: number, max: number): number =>
   Math.max(min, Math.min(max, value));
+
+/** Structural comparison used to decide whether a drag produced an undo step. */
+function sameCues(a: readonly Cue[], b: readonly Cue[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let index = 0; index < a.length; index += 1) {
+    const left = a[index]!;
+    const right = b[index]!;
+    if (left.id !== right.id
+      || left.fixtureId !== right.fixtureId
+      || left.startSec !== right.startSec
+      || left.endSec !== right.endSec
+      || left.colorIndex !== right.colorIndex
+      || left.action !== right.action
+      || left.fadeInSec !== right.fadeInSec) return false;
+  }
+  return true;
+}

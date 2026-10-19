@@ -2,7 +2,7 @@
 
 Phase 0 renderer/performance experiment for dmx-sim. It renders a procedural club/stage venue with a 32-fixture rig driven by an editable arrangement to answer two questions: does the lighting look work, and what fixture budget can we afford? The spike's renderer code is disposable; stable pieces get extracted into `packages/renderer` later.
 
-The stage has no hard-coded lighting effects. The rig ([src/demo-rig.ts](src/demo-rig.ts)) contains fixtures only; the default track ships with a seeded arrangement ([src/demo-arrangement.ts](src/demo-arrangement.ts)) that fills the 16-bar loop with clips on every fixture lane. Playback evaluates exactly those clips, so moving, resizing, or deleting a clip changes the light on screen.
+The stage has no hard-coded lighting effects. The rig and the 16-bar demo arrangement are loaded from [../../resources/sample_projects/koto-chill/koto-chill.dmxsim](../../resources/sample_projects/koto-chill/koto-chill.dmxsim) at startup — the project file sits next to the audio it scores, so it is easy to find and overwrite. Playback evaluates exactly those clips, so moving, resizing, or deleting a clip changes the light on screen. **Save project** downloads the current rig, timeline, clips, and settings as a `.dmxsim` file; **Open project** validates one and applies it. Edit the demo file on disk and reload the page to iterate on it, or run `npm run project:generate` (repo root) to rebuild it from [src/demo-arrangement.ts](src/demo-arrangement.ts). Format spec: [../../docs/agent_docs/project-file-format.md](../../docs/agent_docs/project-file-format.md).
 
 Playback is driven by the audio clock prototype ([src/audio-clock.ts](src/audio-clock.ts)): song time comes from `AudioContext`, not from frame deltas, and the transport strip scrubs a real waveform with the beat grid drawn on it.
 
@@ -10,7 +10,7 @@ Findings live in [../../docs/agent_docs/spike-notes.md](../../docs/agent_docs/sp
 
 ## Audio
 
-The demo loads `resources/sample_audio/The Koto Chill.ogg` (zircon, third-party music). Vite bundles it into production output; confirm distribution rights before publishing. Its beat grid was measured offline, not detected at import time: **130.00 BPM**, first beat at 0.02 s, default loop bars 41–56. Those constants live in [src/track.ts](src/track.ts) and are a placeholder for the real import-time analysis described in ADR-003.
+The demo loads `resources/sample_projects/koto-chill/The Koto Chill.ogg` (zircon, third-party music). Vite bundles it into production output; confirm distribution rights before publishing. Its beat grid was measured offline, not detected at import time: **130.00 BPM**, first beat at 0.02 s, default loop bars 41–56. Those constants live in [src/track.ts](src/track.ts) and are a placeholder for the real import-time analysis described in ADR-003.
 
 ## Run
 

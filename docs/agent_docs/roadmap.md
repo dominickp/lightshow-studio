@@ -20,7 +20,7 @@ Build on the working audio clock in this order:
 1. [x] Add local audio selection and playback for a user-provided file.
 2. Show and allow editing of BPM and beat-grid offset; keep analysis results correctable.
 3. Display the waveform with beat/bar markers driven by that grid.
-4. [x] Prototype an FL Studio-inspired arrangement with fixture-specific lanes, create/move/resize clips, and capability-aware actions. This proves a cue can reach the matching fixture in sync; clips are still in-memory and not saved.
+4. [x] Prototype an FL Studio-inspired arrangement with fixture-specific lanes, create/move/resize clips, and capability-aware actions. This proves a cue can reach the matching fixture in sync; clips can now be saved and restored through `.dmxsim` project files (see `docs/agent_docs/project-file-format.md`).
 
 **Keep the current fixture set.** Defer additional fixture types and lighting effects until this authoring flow is proven; those expand the content surface before the core workflow is validated. In parallel, validate the renderer on a 60 Hz / mid-range GPU and compare proxy beams with half-resolution volumetrics.
 

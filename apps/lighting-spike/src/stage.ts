@@ -311,6 +311,11 @@ export class Stage {
     this.controls?.update();
   }
 
+  /** Current camera preset, so it can be saved with the project. */
+  get view(): number {
+    return this.viewIndex;
+  }
+
   nextView(): void {
     this.setView(this.viewIndex + 1, true);
   }

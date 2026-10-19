@@ -54,5 +54,5 @@
   - Done (first pass): the panel auto-opens when a track is selected, sits in a fixed spot beside the controls, the checkbox is now a clear "Test output: off/on" button, and the note reads "Preview only — changes here are not saved to clips or the show."
 - [x] Debug/stats menu should be toggleable, so it doesn't show all the time. Maybe its time for a preferences/settings panel?
   - Done: Stats button / `S` shortcut toggles the HUD and the choice persists. Layout preferences persist too (see the dock/waveform item).
-- The timeline and settings need to be exportable and importable as a project file
+- [x] The timeline and settings need to be exportable and importable as a project file
   - Along with this work, the current koto chill demo needs to be loaded from that filetype off of the disk. This way, the user can iterate on the demo project.

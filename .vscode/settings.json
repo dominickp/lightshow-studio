@@ -2,6 +2,8 @@
     "chat.tools.terminal.autoApprove": {
         "npm run build": true,
         "npm run typecheck": true,
-        "npm test": true
+        "npm test": true,
+        "ffprobe": true,
+        "npm install": true
     }
 }

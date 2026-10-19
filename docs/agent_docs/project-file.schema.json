@@ -1,0 +1,705 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "format": {
+      "type": "string",
+      "const": "dmxsim-project"
+    },
+    "version": {
+      "type": "number",
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "show": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "number",
+          "const": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fixtures": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "profile": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "moving-head",
+                      "wash",
+                      "strobe",
+                      "laser",
+                      "par",
+                      "blinder",
+                      "led-strip"
+                    ]
+                  },
+                  "manufacturer": {
+                    "type": "string"
+                  },
+                  "channels": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "dimmer",
+                            "red",
+                            "green",
+                            "blue",
+                            "white",
+                            "pan",
+                            "panFine",
+                            "tilt",
+                            "tiltFine",
+                            "zoom",
+                            "focus",
+                            "strobe",
+                            "gobo",
+                            "prism",
+                            "rotation"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "capabilities": {
+                    "type": "object",
+                    "properties": {
+                      "dimmer": {
+                        "type": "boolean"
+                      },
+                      "color": {
+                        "anyOf": [
+                          {
+                            "type": "boolean",
+                            "const": false
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "rgb",
+                              "rgbw"
+                            ]
+                          }
+                        ]
+                      },
+                      "panTilt": {
+                        "type": "boolean"
+                      },
+                      "zoom": {
+                        "type": "boolean"
+                      },
+                      "focus": {
+                        "type": "boolean"
+                      },
+                      "strobe": {
+                        "type": "boolean"
+                      },
+                      "gobo": {
+                        "type": "boolean"
+                      },
+                      "prism": {
+                        "type": "boolean"
+                      },
+                      "rotation": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "dimmer",
+                      "color",
+                      "panTilt",
+                      "zoom",
+                      "focus",
+                      "strobe",
+                      "gobo",
+                      "prism",
+                      "rotation"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "limits": {
+                    "type": "object",
+                    "properties": {
+                      "panDeg": {
+                        "type": "array",
+                        "prefixItems": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ],
+                        "items": false,
+                        "minItems": 2,
+                        "maxItems": 2
+                      },
+                      "tiltDeg": {
+                        "type": "array",
+                        "prefixItems": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ],
+                        "items": false,
+                        "minItems": 2,
+                        "maxItems": 2
+                      },
+                      "strobeHz": {
+                        "type": "array",
+                        "prefixItems": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ],
+                        "items": false,
+                        "minItems": 2,
+                        "maxItems": 2
+                      }
+                    },
+                    "required": [
+                      "panDeg",
+                      "tiltDeg",
+                      "strobeHz"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "beam": {
+                    "type": "object",
+                    "properties": {
+                      "spreadDeg": {
+                        "type": "array",
+                        "prefixItems": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ],
+                        "items": false,
+                        "minItems": 2,
+                        "maxItems": 2
+                      },
+                      "apertureDiameterM": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "throwM": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "required": [
+                      "spreadDeg",
+                      "apertureDiameterM",
+                      "throwM"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "kind",
+                  "channels",
+                  "capabilities",
+                  "limits",
+                  "beam"
+                ],
+                "additionalProperties": false
+              },
+              "position": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "z": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y",
+                  "z"
+                ],
+                "additionalProperties": false
+              },
+              "yawDeg": {
+                "type": "number"
+              },
+              "pitchOffsetDeg": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "id",
+              "profile",
+              "position",
+              "yawDeg"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "tracks": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "fixtureIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "clips": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "startSec": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "endSec": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "attributes": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string",
+                        "enum": [
+                          "dimmer",
+                          "red",
+                          "green",
+                          "blue",
+                          "white",
+                          "pan",
+                          "tilt",
+                          "zoom",
+                          "focus",
+                          "strobe",
+                          "rotation"
+                        ]
+                      },
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "at": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "value": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "at",
+                            "value"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "fadeInSec": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "fadeOutSec": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "easing": {
+                      "type": "string",
+                      "enum": [
+                        "linear",
+                        "sine",
+                        "easeInOut",
+                        "step"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "startSec",
+                    "endSec",
+                    "attributes"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "fixtureIds",
+              "clips"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "version",
+        "name",
+        "fixtures",
+        "tracks"
+      ],
+      "additionalProperties": false
+    },
+    "timeline": {
+      "type": "object",
+      "properties": {
+        "durationSec": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "beatGrid": {
+          "type": "object",
+          "properties": {
+            "bpm": {
+              "default": null,
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "offsetSec": {
+              "default": 0,
+              "type": "number"
+            },
+            "beatsPerBar": {
+              "default": 4,
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "bpm",
+            "offsetSec",
+            "beatsPerBar"
+          ],
+          "additionalProperties": false
+        },
+        "loop": {
+          "type": "object",
+          "properties": {
+            "startSec": {
+              "type": "number",
+              "minimum": 0
+            },
+            "endSec": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "startSec",
+            "endSec"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "durationSec",
+        "beatGrid",
+        "loop"
+      ],
+      "additionalProperties": false
+    },
+    "arrangement": {
+      "type": "object",
+      "properties": {
+        "clips": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "fixtureId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "startSec": {
+                "type": "number",
+                "minimum": 0
+              },
+              "endSec": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "hold",
+                  "fade",
+                  "pulse",
+                  "sweep",
+                  "strobe"
+                ]
+              },
+              "colorIndex": {
+                "default": 0,
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "fadeInSec": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "id",
+              "fixtureId",
+              "startSec",
+              "endSec",
+              "action",
+              "colorIndex"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "clips"
+      ],
+      "additionalProperties": false
+    },
+    "settings": {
+      "type": "object",
+      "properties": {
+        "render": {
+          "type": "object",
+          "properties": {
+            "volumetrics": {
+              "default": true,
+              "type": "boolean"
+            },
+            "bloom": {
+              "default": true,
+              "type": "boolean"
+            },
+            "shadows": {
+              "default": true,
+              "type": "boolean"
+            },
+            "lofi": {
+              "default": false,
+              "type": "boolean"
+            },
+            "strobes": {
+              "default": false,
+              "type": "boolean"
+            },
+            "activeFixtureCount": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "cameraView": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "volumetrics",
+            "bloom",
+            "shadows",
+            "lofi",
+            "strobes",
+            "activeFixtureCount",
+            "cameraView"
+          ],
+          "additionalProperties": false
+        },
+        "playback": {
+          "type": "object",
+          "properties": {
+            "volume": {
+              "default": 1,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "muted": {
+              "default": false,
+              "type": "boolean"
+            },
+            "loopEnabled": {
+              "default": true,
+              "type": "boolean"
+            },
+            "followPlayhead": {
+              "default": true,
+              "type": "boolean"
+            },
+            "zoomPixelsPerSecond": {
+              "default": 48,
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "volume",
+            "muted",
+            "loopEnabled",
+            "followPlayhead",
+            "zoomPixelsPerSecond"
+          ],
+          "additionalProperties": false
+        },
+        "ui": {
+          "type": "object",
+          "properties": {
+            "statsVisible": {
+              "default": true,
+              "type": "boolean"
+            },
+            "dockCollapsed": {
+              "default": false,
+              "type": "boolean"
+            },
+            "dockHeightPx": {
+              "default": 0,
+              "type": "number",
+              "minimum": 0
+            },
+            "waveformHeightPx": {
+              "default": 62,
+              "type": "number",
+              "minimum": 40,
+              "maximum": 200
+            }
+          },
+          "required": [
+            "statsVisible",
+            "dockCollapsed",
+            "dockHeightPx",
+            "waveformHeightPx"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "render",
+        "playback",
+        "ui"
+      ],
+      "additionalProperties": false
+    },
+    "audio": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "default": "external",
+          "type": "string",
+          "enum": [
+            "bundled",
+            "external"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "artist": {
+          "type": "string"
+        },
+        "fileName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "format",
+    "version",
+    "name",
+    "show",
+    "timeline",
+    "arrangement",
+    "settings",
+    "audio"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,7270 @@
+{
+  "format": "dmxsim-project",
+  "version": 1,
+  "name": "Koto Chill demo",
+  "description": "Bundled demo project: the full rig plus a 16-bar arrangement on The Koto Chill.",
+  "show": {
+    "version": 1,
+    "name": "Spike — demo rig",
+    "fixtures": [
+      {
+        "id": "mh-front-0",
+        "profile": {
+          "id": "generic-moving-head",
+          "name": "Generic 16ch Moving Head",
+          "kind": "moving-head",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "white",
+            "zoom",
+            "focus",
+            "strobe",
+            "gobo",
+            "prism",
+            "rotation",
+            null
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": true,
+            "zoom": true,
+            "focus": true,
+            "strobe": true,
+            "gobo": true,
+            "prism": true,
+            "rotation": true
+          },
+          "limits": {
+            "panDeg": [
+              -270,
+              270
+            ],
+            "tiltDeg": [
+              -135,
+              135
+            ],
+            "strobeHz": [
+              1,
+              25
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              6,
+              42
+            ],
+            "apertureDiameterM": 0.12,
+            "throwM": 14
+          }
+        },
+        "position": {
+          "x": -8.1,
+          "y": 7.4,
+          "z": 1.6
+        },
+        "yawDeg": -12
+      },
+      {
+        "id": "mh-front-1",
+        "profile": {
+          "id": "generic-moving-head",
+          "name": "Generic 16ch Moving Head",
+          "kind": "moving-head",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "white",
+            "zoom",
+            "focus",
+            "strobe",
+            "gobo",
+            "prism",
+            "rotation",
+            null
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": true,
+            "zoom": true,
+            "focus": true,
+            "strobe": true,
+            "gobo": true,
+            "prism": true,
+            "rotation": true
+          },
+          "limits": {
+            "panDeg": [
+              -270,
+              270
+            ],
+            "tiltDeg": [
+              -135,
+              135
+            ],
+            "strobeHz": [
+              1,
+              25
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              6,
+              42
+            ],
+            "apertureDiameterM": 0.12,
+            "throwM": 14
+          }
+        },
+        "position": {
+          "x": -6.3,
+          "y": 7.4,
+          "z": 1.6
+        },
+        "yawDeg": -9.333333333333334
+      },
+      {
+        "id": "mh-front-2",
+        "profile": {
+          "id": "generic-moving-head",
+          "name": "Generic 16ch Moving Head",
+          "kind": "moving-head",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "white",
+            "zoom",
+            "focus",
+            "strobe",
+            "gobo",
+            "prism",
+            "rotation",
+            null
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": true,
+            "zoom": true,
+            "focus": true,
+            "strobe": true,
+            "gobo": true,
+            "prism": true,
+            "rotation": true
+          },
+          "limits": {
+            "panDeg": [
+              -270,
+              270
+            ],
+            "tiltDeg": [
+              -135,
+              135
+            ],
+            "strobeHz": [
+              1,
+              25
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              6,
+              42
+            ],
+            "apertureDiameterM": 0.12,
+            "throwM": 14
+          }
+        },
+        "position": {
+          "x": -4.5,
+          "y": 7.4,
+          "z": 1.6
+        },
+        "yawDeg": -6.666666666666667
+      },
+      {
+        "id": "mh-front-3",
+        "profile": {
+          "id": "generic-moving-head",
+          "name": "Generic 16ch Moving Head",
+          "kind": "moving-head",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "white",
+            "zoom",
+            "focus",
+            "strobe",
+            "gobo",
+            "prism",
+            "rotation",
+            null
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": true,
+            "zoom": true,
+            "focus": true,
+            "strobe": true,
+            "gobo": true,
+            "prism": true,
+            "rotation": true
+          },
+          "limits": {
+            "panDeg": [
+              -270,
+              270
+            ],
+            "tiltDeg": [
+              -135,
+              135
+            ],
+            "strobeHz": [
+              1,
+              25
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              6,
+              42
+            ],
+            "apertureDiameterM": 0.12,
+            "throwM": 14
+          }
+        },
+        "position": {
+          "x": -2.7,
+          "y": 7.4,
+          "z": 1.6
+        },
+        "yawDeg": -4
+      },
+      {
+        "id": "mh-front-4",
+        "profile": {
+          "id": "generic-moving-head",
+          "name": "Generic 16ch Moving Head",
+          "kind": "moving-head",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "white",
+            "zoom",
+            "focus",
+            "strobe",
+            "gobo",
+            "prism",
+            "rotation",
+            null
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": true,
+            "zoom": true,
+            "focus": true,
+            "strobe": true,
+            "gobo": true,
+            "prism": true,
+            "rotation": true
+          },
+          "limits": {
+            "panDeg": [
+              -270,
+              270
+            ],
+            "tiltDeg": [
+              -135,
+              135
+            ],
+            "strobeHz": [
+              1,
+              25
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              6,
+              42
+            ],
+            "apertureDiameterM": 0.12,
+            "throwM": 14
+          }
+        },
+        "position": {
+          "x": -0.9000000000000004,
+          "y": 7.4,
+          "z": 1.6
+        },
+        "yawDeg": -1.333333333333334
+      },
+      {
+        "id": "mh-front-5",
+        "profile": {
+          "id": "generic-moving-head",
+          "name": "Generic 16ch Moving Head",
+          "kind": "moving-head",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "white",
+            "zoom",
+            "focus",
+            "strobe",
+            "gobo",
+            "prism",
+            "rotation",
+            null
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": true,
+            "zoom": true,
+            "focus": true,
+            "strobe": true,
+            "gobo": true,
+            "prism": true,
+            "rotation": true
+          },
+          "limits": {
+            "panDeg": [
+              -270,
+              270
+            ],
+            "tiltDeg": [
+              -135,
+              135
+            ],
+            "strobeHz": [
+              1,
+              25
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              6,
+              42
+            ],
+            "apertureDiameterM": 0.12,
+            "throwM": 14
+          }
+        },
+        "position": {
+          "x": 0.9000000000000004,
+          "y": 7.4,
+          "z": 1.6
+        },
+        "yawDeg": 1.333333333333334
+      },
+      {
+        "id": "mh-front-6",
+        "profile": {
+          "id": "generic-moving-head",
+          "name": "Generic 16ch Moving Head",
+          "kind": "moving-head",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "white",
+            "zoom",
+            "focus",
+            "strobe",
+            "gobo",
+            "prism",
+            "rotation",
+            null
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": true,
+            "zoom": true,
+            "focus": true,
+            "strobe": true,
+            "gobo": true,
+            "prism": true,
+            "rotation": true
+          },
+          "limits": {
+            "panDeg": [
+              -270,
+              270
+            ],
+            "tiltDeg": [
+              -135,
+              135
+            ],
+            "strobeHz": [
+              1,
+              25
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              6,
+              42
+            ],
+            "apertureDiameterM": 0.12,
+            "throwM": 14
+          }
+        },
+        "position": {
+          "x": 2.6999999999999993,
+          "y": 7.4,
+          "z": 1.6
+        },
+        "yawDeg": 3.999999999999999
+      },
+      {
+        "id": "mh-front-7",
+        "profile": {
+          "id": "generic-moving-head",
+          "name": "Generic 16ch Moving Head",
+          "kind": "moving-head",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "white",
+            "zoom",
+            "focus",
+            "strobe",
+            "gobo",
+            "prism",
+            "rotation",
+            null
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": true,
+            "zoom": true,
+            "focus": true,
+            "strobe": true,
+            "gobo": true,
+            "prism": true,
+            "rotation": true
+          },
+          "limits": {
+            "panDeg": [
+              -270,
+              270
+            ],
+            "tiltDeg": [
+              -135,
+              135
+            ],
+            "strobeHz": [
+              1,
+              25
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              6,
+              42
+            ],
+            "apertureDiameterM": 0.12,
+            "throwM": 14
+          }
+        },
+        "position": {
+          "x": 4.5,
+          "y": 7.4,
+          "z": 1.6
+        },
+        "yawDeg": 6.666666666666667
+      },
+      {
+        "id": "mh-front-8",
+        "profile": {
+          "id": "generic-moving-head",
+          "name": "Generic 16ch Moving Head",
+          "kind": "moving-head",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "white",
+            "zoom",
+            "focus",
+            "strobe",
+            "gobo",
+            "prism",
+            "rotation",
+            null
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": true,
+            "zoom": true,
+            "focus": true,
+            "strobe": true,
+            "gobo": true,
+            "prism": true,
+            "rotation": true
+          },
+          "limits": {
+            "panDeg": [
+              -270,
+              270
+            ],
+            "tiltDeg": [
+              -135,
+              135
+            ],
+            "strobeHz": [
+              1,
+              25
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              6,
+              42
+            ],
+            "apertureDiameterM": 0.12,
+            "throwM": 14
+          }
+        },
+        "position": {
+          "x": 6.299999999999999,
+          "y": 7.4,
+          "z": 1.6
+        },
+        "yawDeg": 9.333333333333332
+      },
+      {
+        "id": "mh-front-9",
+        "profile": {
+          "id": "generic-moving-head",
+          "name": "Generic 16ch Moving Head",
+          "kind": "moving-head",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "white",
+            "zoom",
+            "focus",
+            "strobe",
+            "gobo",
+            "prism",
+            "rotation",
+            null
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": true,
+            "zoom": true,
+            "focus": true,
+            "strobe": true,
+            "gobo": true,
+            "prism": true,
+            "rotation": true
+          },
+          "limits": {
+            "panDeg": [
+              -270,
+              270
+            ],
+            "tiltDeg": [
+              -135,
+              135
+            ],
+            "strobeHz": [
+              1,
+              25
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              6,
+              42
+            ],
+            "apertureDiameterM": 0.12,
+            "throwM": 14
+          }
+        },
+        "position": {
+          "x": 8.1,
+          "y": 7.4,
+          "z": 1.6
+        },
+        "yawDeg": 12
+      },
+      {
+        "id": "mh-rear-0",
+        "profile": {
+          "id": "generic-moving-head",
+          "name": "Generic 16ch Moving Head",
+          "kind": "moving-head",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "white",
+            "zoom",
+            "focus",
+            "strobe",
+            "gobo",
+            "prism",
+            "rotation",
+            null
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": true,
+            "zoom": true,
+            "focus": true,
+            "strobe": true,
+            "gobo": true,
+            "prism": true,
+            "rotation": true
+          },
+          "limits": {
+            "panDeg": [
+              -270,
+              270
+            ],
+            "tiltDeg": [
+              -135,
+              135
+            ],
+            "strobeHz": [
+              1,
+              25
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              6,
+              42
+            ],
+            "apertureDiameterM": 0.12,
+            "throwM": 14
+          }
+        },
+        "position": {
+          "x": -6.4,
+          "y": 7.4,
+          "z": -5.6
+        },
+        "yawDeg": 15
+      },
+      {
+        "id": "mh-rear-1",
+        "profile": {
+          "id": "generic-moving-head",
+          "name": "Generic 16ch Moving Head",
+          "kind": "moving-head",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "white",
+            "zoom",
+            "focus",
+            "strobe",
+            "gobo",
+            "prism",
+            "rotation",
+            null
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": true,
+            "zoom": true,
+            "focus": true,
+            "strobe": true,
+            "gobo": true,
+            "prism": true,
+            "rotation": true
+          },
+          "limits": {
+            "panDeg": [
+              -270,
+              270
+            ],
+            "tiltDeg": [
+              -135,
+              135
+            ],
+            "strobeHz": [
+              1,
+              25
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              6,
+              42
+            ],
+            "apertureDiameterM": 0.12,
+            "throwM": 14
+          }
+        },
+        "position": {
+          "x": -3.8400000000000003,
+          "y": 7.4,
+          "z": -5.6
+        },
+        "yawDeg": 9
+      },
+      {
+        "id": "mh-rear-2",
+        "profile": {
+          "id": "generic-moving-head",
+          "name": "Generic 16ch Moving Head",
+          "kind": "moving-head",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "white",
+            "zoom",
+            "focus",
+            "strobe",
+            "gobo",
+            "prism",
+            "rotation",
+            null
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": true,
+            "zoom": true,
+            "focus": true,
+            "strobe": true,
+            "gobo": true,
+            "prism": true,
+            "rotation": true
+          },
+          "limits": {
+            "panDeg": [
+              -270,
+              270
+            ],
+            "tiltDeg": [
+              -135,
+              135
+            ],
+            "strobeHz": [
+              1,
+              25
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              6,
+              42
+            ],
+            "apertureDiameterM": 0.12,
+            "throwM": 14
+          }
+        },
+        "position": {
+          "x": -1.2800000000000002,
+          "y": 7.4,
+          "z": -5.6
+        },
+        "yawDeg": 2.999999999999999
+      },
+      {
+        "id": "mh-rear-3",
+        "profile": {
+          "id": "generic-moving-head",
+          "name": "Generic 16ch Moving Head",
+          "kind": "moving-head",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "white",
+            "zoom",
+            "focus",
+            "strobe",
+            "gobo",
+            "prism",
+            "rotation",
+            null
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": true,
+            "zoom": true,
+            "focus": true,
+            "strobe": true,
+            "gobo": true,
+            "prism": true,
+            "rotation": true
+          },
+          "limits": {
+            "panDeg": [
+              -270,
+              270
+            ],
+            "tiltDeg": [
+              -135,
+              135
+            ],
+            "strobeHz": [
+              1,
+              25
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              6,
+              42
+            ],
+            "apertureDiameterM": 0.12,
+            "throwM": 14
+          }
+        },
+        "position": {
+          "x": 1.2800000000000011,
+          "y": 7.4,
+          "z": -5.6
+        },
+        "yawDeg": -2.999999999999999
+      },
+      {
+        "id": "mh-rear-4",
+        "profile": {
+          "id": "generic-moving-head",
+          "name": "Generic 16ch Moving Head",
+          "kind": "moving-head",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "white",
+            "zoom",
+            "focus",
+            "strobe",
+            "gobo",
+            "prism",
+            "rotation",
+            null
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": true,
+            "zoom": true,
+            "focus": true,
+            "strobe": true,
+            "gobo": true,
+            "prism": true,
+            "rotation": true
+          },
+          "limits": {
+            "panDeg": [
+              -270,
+              270
+            ],
+            "tiltDeg": [
+              -135,
+              135
+            ],
+            "strobeHz": [
+              1,
+              25
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              6,
+              42
+            ],
+            "apertureDiameterM": 0.12,
+            "throwM": 14
+          }
+        },
+        "position": {
+          "x": 3.84,
+          "y": 7.4,
+          "z": -5.6
+        },
+        "yawDeg": -9.000000000000002
+      },
+      {
+        "id": "mh-rear-5",
+        "profile": {
+          "id": "generic-moving-head",
+          "name": "Generic 16ch Moving Head",
+          "kind": "moving-head",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "white",
+            "zoom",
+            "focus",
+            "strobe",
+            "gobo",
+            "prism",
+            "rotation",
+            null
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": true,
+            "zoom": true,
+            "focus": true,
+            "strobe": true,
+            "gobo": true,
+            "prism": true,
+            "rotation": true
+          },
+          "limits": {
+            "panDeg": [
+              -270,
+              270
+            ],
+            "tiltDeg": [
+              -135,
+              135
+            ],
+            "strobeHz": [
+              1,
+              25
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              6,
+              42
+            ],
+            "apertureDiameterM": 0.12,
+            "throwM": 14
+          }
+        },
+        "position": {
+          "x": 6.4,
+          "y": 7.4,
+          "z": -5.6
+        },
+        "yawDeg": -15
+      },
+      {
+        "id": "wash-0",
+        "profile": {
+          "id": "generic-wash",
+          "name": "Generic 10ch Wash",
+          "kind": "wash",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "zoom",
+            "strobe"
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgb",
+            "panTilt": true,
+            "zoom": true,
+            "focus": false,
+            "strobe": true,
+            "gobo": false,
+            "prism": false,
+            "rotation": false
+          },
+          "limits": {
+            "panDeg": [
+              -180,
+              180
+            ],
+            "tiltDeg": [
+              -120,
+              120
+            ],
+            "strobeHz": [
+              1,
+              20
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              24,
+              78
+            ],
+            "apertureDiameterM": 0.28,
+            "throwM": 10
+          }
+        },
+        "position": {
+          "x": -7,
+          "y": 7.5,
+          "z": -2
+        },
+        "yawDeg": -10
+      },
+      {
+        "id": "wash-1",
+        "profile": {
+          "id": "generic-wash",
+          "name": "Generic 10ch Wash",
+          "kind": "wash",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "zoom",
+            "strobe"
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgb",
+            "panTilt": true,
+            "zoom": true,
+            "focus": false,
+            "strobe": true,
+            "gobo": false,
+            "prism": false,
+            "rotation": false
+          },
+          "limits": {
+            "panDeg": [
+              -180,
+              180
+            ],
+            "tiltDeg": [
+              -120,
+              120
+            ],
+            "strobeHz": [
+              1,
+              20
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              24,
+              78
+            ],
+            "apertureDiameterM": 0.28,
+            "throwM": 10
+          }
+        },
+        "position": {
+          "x": -4.2,
+          "y": 7.5,
+          "z": -2
+        },
+        "yawDeg": -6
+      },
+      {
+        "id": "wash-2",
+        "profile": {
+          "id": "generic-wash",
+          "name": "Generic 10ch Wash",
+          "kind": "wash",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "zoom",
+            "strobe"
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgb",
+            "panTilt": true,
+            "zoom": true,
+            "focus": false,
+            "strobe": true,
+            "gobo": false,
+            "prism": false,
+            "rotation": false
+          },
+          "limits": {
+            "panDeg": [
+              -180,
+              180
+            ],
+            "tiltDeg": [
+              -120,
+              120
+            ],
+            "strobeHz": [
+              1,
+              20
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              24,
+              78
+            ],
+            "apertureDiameterM": 0.28,
+            "throwM": 10
+          }
+        },
+        "position": {
+          "x": -1.4000000000000004,
+          "y": 7.5,
+          "z": -2
+        },
+        "yawDeg": -1.9999999999999996
+      },
+      {
+        "id": "wash-3",
+        "profile": {
+          "id": "generic-wash",
+          "name": "Generic 10ch Wash",
+          "kind": "wash",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "zoom",
+            "strobe"
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgb",
+            "panTilt": true,
+            "zoom": true,
+            "focus": false,
+            "strobe": true,
+            "gobo": false,
+            "prism": false,
+            "rotation": false
+          },
+          "limits": {
+            "panDeg": [
+              -180,
+              180
+            ],
+            "tiltDeg": [
+              -120,
+              120
+            ],
+            "strobeHz": [
+              1,
+              20
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              24,
+              78
+            ],
+            "apertureDiameterM": 0.28,
+            "throwM": 10
+          }
+        },
+        "position": {
+          "x": 1.4000000000000004,
+          "y": 7.5,
+          "z": -2
+        },
+        "yawDeg": 1.9999999999999996
+      },
+      {
+        "id": "wash-4",
+        "profile": {
+          "id": "generic-wash",
+          "name": "Generic 10ch Wash",
+          "kind": "wash",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "zoom",
+            "strobe"
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgb",
+            "panTilt": true,
+            "zoom": true,
+            "focus": false,
+            "strobe": true,
+            "gobo": false,
+            "prism": false,
+            "rotation": false
+          },
+          "limits": {
+            "panDeg": [
+              -180,
+              180
+            ],
+            "tiltDeg": [
+              -120,
+              120
+            ],
+            "strobeHz": [
+              1,
+              20
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              24,
+              78
+            ],
+            "apertureDiameterM": 0.28,
+            "throwM": 10
+          }
+        },
+        "position": {
+          "x": 4.199999999999999,
+          "y": 7.5,
+          "z": -2
+        },
+        "yawDeg": 6.000000000000001
+      },
+      {
+        "id": "wash-5",
+        "profile": {
+          "id": "generic-wash",
+          "name": "Generic 10ch Wash",
+          "kind": "wash",
+          "manufacturer": "Generic",
+          "channels": [
+            "pan",
+            "panFine",
+            "tilt",
+            "tiltFine",
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "zoom",
+            "strobe"
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgb",
+            "panTilt": true,
+            "zoom": true,
+            "focus": false,
+            "strobe": true,
+            "gobo": false,
+            "prism": false,
+            "rotation": false
+          },
+          "limits": {
+            "panDeg": [
+              -180,
+              180
+            ],
+            "tiltDeg": [
+              -120,
+              120
+            ],
+            "strobeHz": [
+              1,
+              20
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              24,
+              78
+            ],
+            "apertureDiameterM": 0.28,
+            "throwM": 10
+          }
+        },
+        "position": {
+          "x": 7,
+          "y": 7.5,
+          "z": -2
+        },
+        "yawDeg": 10
+      },
+      {
+        "id": "strobe-0",
+        "profile": {
+          "id": "generic-strobe",
+          "name": "Generic Strobe",
+          "kind": "strobe",
+          "manufacturer": "Generic",
+          "channels": [
+            "dimmer",
+            "strobe",
+            "red",
+            "green",
+            "blue",
+            "white"
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": false,
+            "zoom": false,
+            "focus": false,
+            "strobe": true,
+            "gobo": false,
+            "prism": false,
+            "rotation": false
+          },
+          "limits": {
+            "panDeg": [
+              0,
+              0
+            ],
+            "tiltDeg": [
+              0,
+              0
+            ],
+            "strobeHz": [
+              1,
+              30
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              110,
+              120
+            ],
+            "apertureDiameterM": 0.48,
+            "throwM": 7
+          }
+        },
+        "position": {
+          "x": -9.2,
+          "y": 6.6,
+          "z": 2.4
+        },
+        "yawDeg": 0
+      },
+      {
+        "id": "strobe-1",
+        "profile": {
+          "id": "generic-strobe",
+          "name": "Generic Strobe",
+          "kind": "strobe",
+          "manufacturer": "Generic",
+          "channels": [
+            "dimmer",
+            "strobe",
+            "red",
+            "green",
+            "blue",
+            "white"
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": false,
+            "zoom": false,
+            "focus": false,
+            "strobe": true,
+            "gobo": false,
+            "prism": false,
+            "rotation": false
+          },
+          "limits": {
+            "panDeg": [
+              0,
+              0
+            ],
+            "tiltDeg": [
+              0,
+              0
+            ],
+            "strobeHz": [
+              1,
+              30
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              110,
+              120
+            ],
+            "apertureDiameterM": 0.48,
+            "throwM": 7
+          }
+        },
+        "position": {
+          "x": -9.2,
+          "y": 6.6,
+          "z": -1
+        },
+        "yawDeg": 0
+      },
+      {
+        "id": "strobe-2",
+        "profile": {
+          "id": "generic-strobe",
+          "name": "Generic Strobe",
+          "kind": "strobe",
+          "manufacturer": "Generic",
+          "channels": [
+            "dimmer",
+            "strobe",
+            "red",
+            "green",
+            "blue",
+            "white"
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": false,
+            "zoom": false,
+            "focus": false,
+            "strobe": true,
+            "gobo": false,
+            "prism": false,
+            "rotation": false
+          },
+          "limits": {
+            "panDeg": [
+              0,
+              0
+            ],
+            "tiltDeg": [
+              0,
+              0
+            ],
+            "strobeHz": [
+              1,
+              30
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              110,
+              120
+            ],
+            "apertureDiameterM": 0.48,
+            "throwM": 7
+          }
+        },
+        "position": {
+          "x": 9.2,
+          "y": 6.6,
+          "z": 2.4
+        },
+        "yawDeg": 0
+      },
+      {
+        "id": "strobe-3",
+        "profile": {
+          "id": "generic-strobe",
+          "name": "Generic Strobe",
+          "kind": "strobe",
+          "manufacturer": "Generic",
+          "channels": [
+            "dimmer",
+            "strobe",
+            "red",
+            "green",
+            "blue",
+            "white"
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": false,
+            "zoom": false,
+            "focus": false,
+            "strobe": true,
+            "gobo": false,
+            "prism": false,
+            "rotation": false
+          },
+          "limits": {
+            "panDeg": [
+              0,
+              0
+            ],
+            "tiltDeg": [
+              0,
+              0
+            ],
+            "strobeHz": [
+              1,
+              30
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              110,
+              120
+            ],
+            "apertureDiameterM": 0.48,
+            "throwM": 7
+          }
+        },
+        "position": {
+          "x": 9.2,
+          "y": 6.6,
+          "z": -1
+        },
+        "yawDeg": 0
+      },
+      {
+        "id": "laser-0",
+        "profile": {
+          "id": "generic-laser",
+          "name": "Generic RGB Laser",
+          "kind": "laser",
+          "manufacturer": "Generic",
+          "channels": [
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "pan",
+            "tilt",
+            "rotation"
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgb",
+            "panTilt": true,
+            "zoom": false,
+            "focus": false,
+            "strobe": false,
+            "gobo": false,
+            "prism": false,
+            "rotation": true
+          },
+          "limits": {
+            "panDeg": [
+              -40,
+              40
+            ],
+            "tiltDeg": [
+              -30,
+              30
+            ],
+            "strobeHz": [
+              1,
+              30
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              0.6,
+              1.8
+            ],
+            "apertureDiameterM": 0.006,
+            "throwM": 24
+          }
+        },
+        "position": {
+          "x": -1.4,
+          "y": 7.5,
+          "z": -5.6
+        },
+        "yawDeg": 0
+      },
+      {
+        "id": "laser-1",
+        "profile": {
+          "id": "generic-laser",
+          "name": "Generic RGB Laser",
+          "kind": "laser",
+          "manufacturer": "Generic",
+          "channels": [
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "pan",
+            "tilt",
+            "rotation"
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgb",
+            "panTilt": true,
+            "zoom": false,
+            "focus": false,
+            "strobe": false,
+            "gobo": false,
+            "prism": false,
+            "rotation": true
+          },
+          "limits": {
+            "panDeg": [
+              -40,
+              40
+            ],
+            "tiltDeg": [
+              -30,
+              30
+            ],
+            "strobeHz": [
+              1,
+              30
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              0.6,
+              1.8
+            ],
+            "apertureDiameterM": 0.006,
+            "throwM": 24
+          }
+        },
+        "position": {
+          "x": 1.4,
+          "y": 7.5,
+          "z": -5.6
+        },
+        "yawDeg": 0
+      },
+      {
+        "id": "par-0",
+        "profile": {
+          "id": "generic-par",
+          "name": "Generic PAR Can",
+          "kind": "par",
+          "manufacturer": "Generic",
+          "channels": [
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "white",
+            "zoom"
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": false,
+            "zoom": true,
+            "focus": false,
+            "strobe": false,
+            "gobo": false,
+            "prism": false,
+            "rotation": false
+          },
+          "limits": {
+            "panDeg": [
+              0,
+              0
+            ],
+            "tiltDeg": [
+              0,
+              0
+            ],
+            "strobeHz": [
+              1,
+              20
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              14,
+              38
+            ],
+            "apertureDiameterM": 0.18,
+            "throwM": 9
+          }
+        },
+        "position": {
+          "x": -7.5,
+          "y": 0.7,
+          "z": -2.6
+        },
+        "yawDeg": 0,
+        "pitchOffsetDeg": 168
+      },
+      {
+        "id": "par-1",
+        "profile": {
+          "id": "generic-par",
+          "name": "Generic PAR Can",
+          "kind": "par",
+          "manufacturer": "Generic",
+          "channels": [
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "white",
+            "zoom"
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": false,
+            "zoom": true,
+            "focus": false,
+            "strobe": false,
+            "gobo": false,
+            "prism": false,
+            "rotation": false
+          },
+          "limits": {
+            "panDeg": [
+              0,
+              0
+            ],
+            "tiltDeg": [
+              0,
+              0
+            ],
+            "strobeHz": [
+              1,
+              20
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              14,
+              38
+            ],
+            "apertureDiameterM": 0.18,
+            "throwM": 9
+          }
+        },
+        "position": {
+          "x": -3.2,
+          "y": 0.7,
+          "z": -2.6
+        },
+        "yawDeg": 0,
+        "pitchOffsetDeg": 168
+      },
+      {
+        "id": "par-2",
+        "profile": {
+          "id": "generic-par",
+          "name": "Generic PAR Can",
+          "kind": "par",
+          "manufacturer": "Generic",
+          "channels": [
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "white",
+            "zoom"
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": false,
+            "zoom": true,
+            "focus": false,
+            "strobe": false,
+            "gobo": false,
+            "prism": false,
+            "rotation": false
+          },
+          "limits": {
+            "panDeg": [
+              0,
+              0
+            ],
+            "tiltDeg": [
+              0,
+              0
+            ],
+            "strobeHz": [
+              1,
+              20
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              14,
+              38
+            ],
+            "apertureDiameterM": 0.18,
+            "throwM": 9
+          }
+        },
+        "position": {
+          "x": 3.2,
+          "y": 0.7,
+          "z": -2.6
+        },
+        "yawDeg": 0,
+        "pitchOffsetDeg": 168
+      },
+      {
+        "id": "par-3",
+        "profile": {
+          "id": "generic-par",
+          "name": "Generic PAR Can",
+          "kind": "par",
+          "manufacturer": "Generic",
+          "channels": [
+            "dimmer",
+            "red",
+            "green",
+            "blue",
+            "white",
+            "zoom"
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": "rgbw",
+            "panTilt": false,
+            "zoom": true,
+            "focus": false,
+            "strobe": false,
+            "gobo": false,
+            "prism": false,
+            "rotation": false
+          },
+          "limits": {
+            "panDeg": [
+              0,
+              0
+            ],
+            "tiltDeg": [
+              0,
+              0
+            ],
+            "strobeHz": [
+              1,
+              20
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              14,
+              38
+            ],
+            "apertureDiameterM": 0.18,
+            "throwM": 9
+          }
+        },
+        "position": {
+          "x": 7.5,
+          "y": 0.7,
+          "z": -2.6
+        },
+        "yawDeg": 0,
+        "pitchOffsetDeg": 168
+      }
+    ],
+    "tracks": []
+  },
+  "timeline": {
+    "durationSec": 123.924898,
+    "beatGrid": {
+      "bpm": 130,
+      "offsetSec": 0.02,
+      "beatsPerBar": 4
+    },
+    "loop": {
+      "startSec": 73.86615384615385,
+      "endSec": 103.4046153846154
+    }
+  },
+  "arrangement": {
+    "clips": [
+      {
+        "id": "demo-26",
+        "fixtureId": "laser-0",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-27",
+        "fixtureId": "laser-1",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-10",
+        "fixtureId": "mh-front-0",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-11",
+        "fixtureId": "mh-front-1",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-12",
+        "fixtureId": "mh-front-2",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-13",
+        "fixtureId": "mh-front-3",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-14",
+        "fixtureId": "mh-front-4",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-15",
+        "fixtureId": "mh-front-5",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-16",
+        "fixtureId": "mh-front-6",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-17",
+        "fixtureId": "mh-front-7",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-18",
+        "fixtureId": "mh-front-8",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-19",
+        "fixtureId": "mh-front-9",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-20",
+        "fixtureId": "mh-rear-0",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-21",
+        "fixtureId": "mh-rear-1",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-22",
+        "fixtureId": "mh-rear-2",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-23",
+        "fixtureId": "mh-rear-3",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-24",
+        "fixtureId": "mh-rear-4",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-25",
+        "fixtureId": "mh-rear-5",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-6",
+        "fixtureId": "par-0",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-7",
+        "fixtureId": "par-1",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "hold",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-8",
+        "fixtureId": "par-2",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-9",
+        "fixtureId": "par-3",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "hold",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-0",
+        "fixtureId": "wash-0",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "fade",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-1",
+        "fixtureId": "wash-1",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "fade",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-2",
+        "fixtureId": "wash-2",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "fade",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-3",
+        "fixtureId": "wash-3",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "fade",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-4",
+        "fixtureId": "wash-4",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "fade",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-5",
+        "fixtureId": "wash-5",
+        "startSec": 73.86615384615385,
+        "endSec": 77.55846153846154,
+        "action": "fade",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-58",
+        "fixtureId": "laser-0",
+        "startSec": 77.55846153846154,
+        "endSec": 79.40461538461538,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-28",
+        "fixtureId": "mh-front-0",
+        "startSec": 77.55846153846154,
+        "endSec": 79.40461538461538,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-33",
+        "fixtureId": "mh-front-5",
+        "startSec": 77.55846153846154,
+        "endSec": 79.40461538461538,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-38",
+        "fixtureId": "mh-rear-0",
+        "startSec": 77.55846153846154,
+        "endSec": 79.40461538461538,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-41",
+        "fixtureId": "mh-rear-3",
+        "startSec": 77.55846153846154,
+        "endSec": 79.40461538461538,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-50",
+        "fixtureId": "par-0",
+        "startSec": 77.55846153846154,
+        "endSec": 78.02000000000001,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-52",
+        "fixtureId": "par-1",
+        "startSec": 77.55846153846154,
+        "endSec": 78.02000000000001,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-54",
+        "fixtureId": "par-2",
+        "startSec": 77.55846153846154,
+        "endSec": 78.02000000000001,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-56",
+        "fixtureId": "par-3",
+        "startSec": 77.55846153846154,
+        "endSec": 78.02000000000001,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-44",
+        "fixtureId": "wash-0",
+        "startSec": 77.55846153846154,
+        "endSec": 79.40461538461538,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-45",
+        "fixtureId": "wash-1",
+        "startSec": 77.55846153846154,
+        "endSec": 79.40461538461538,
+        "action": "hold",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-46",
+        "fixtureId": "wash-2",
+        "startSec": 77.55846153846154,
+        "endSec": 79.40461538461538,
+        "action": "hold",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-47",
+        "fixtureId": "wash-3",
+        "startSec": 77.55846153846154,
+        "endSec": 79.40461538461538,
+        "action": "hold",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-48",
+        "fixtureId": "wash-4",
+        "startSec": 77.55846153846154,
+        "endSec": 79.40461538461538,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-49",
+        "fixtureId": "wash-5",
+        "startSec": 77.55846153846154,
+        "endSec": 79.40461538461538,
+        "action": "hold",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-29",
+        "fixtureId": "mh-front-1",
+        "startSec": 77.78,
+        "endSec": 79.62615384615385,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-34",
+        "fixtureId": "mh-front-6",
+        "startSec": 77.78,
+        "endSec": 79.62615384615385,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-39",
+        "fixtureId": "mh-rear-1",
+        "startSec": 77.92769230769231,
+        "endSec": 79.77384615384616,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-42",
+        "fixtureId": "mh-rear-4",
+        "startSec": 77.92769230769231,
+        "endSec": 79.77384615384616,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-30",
+        "fixtureId": "mh-front-2",
+        "startSec": 78.00153846153847,
+        "endSec": 79.84769230769231,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-35",
+        "fixtureId": "mh-front-7",
+        "startSec": 78.00153846153847,
+        "endSec": 79.84769230769231,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-31",
+        "fixtureId": "mh-front-3",
+        "startSec": 78.22307692307693,
+        "endSec": 80.06923076923077,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-36",
+        "fixtureId": "mh-front-8",
+        "startSec": 78.22307692307693,
+        "endSec": 80.06923076923077,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-40",
+        "fixtureId": "mh-rear-2",
+        "startSec": 78.29692307692308,
+        "endSec": 80.14307692307693,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-43",
+        "fixtureId": "mh-rear-5",
+        "startSec": 78.29692307692308,
+        "endSec": 80.14307692307693,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-32",
+        "fixtureId": "mh-front-4",
+        "startSec": 78.44461538461539,
+        "endSec": 80.29076923076923,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-37",
+        "fixtureId": "mh-front-9",
+        "startSec": 78.44461538461539,
+        "endSec": 80.29076923076923,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-59",
+        "fixtureId": "laser-1",
+        "startSec": 78.48153846153846,
+        "endSec": 80.32769230769232,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-51",
+        "fixtureId": "par-0",
+        "startSec": 78.48153846153846,
+        "endSec": 78.94307692307693,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-53",
+        "fixtureId": "par-1",
+        "startSec": 78.48153846153846,
+        "endSec": 78.94307692307693,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-55",
+        "fixtureId": "par-2",
+        "startSec": 78.48153846153846,
+        "endSec": 78.94307692307693,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-57",
+        "fixtureId": "par-3",
+        "startSec": 78.48153846153846,
+        "endSec": 78.94307692307693,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-90",
+        "fixtureId": "laser-0",
+        "startSec": 79.40461538461538,
+        "endSec": 81.25076923076924,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-60",
+        "fixtureId": "mh-front-0",
+        "startSec": 79.40461538461538,
+        "endSec": 81.25076923076924,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-65",
+        "fixtureId": "mh-front-5",
+        "startSec": 79.40461538461538,
+        "endSec": 81.25076923076924,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-70",
+        "fixtureId": "mh-rear-0",
+        "startSec": 79.40461538461538,
+        "endSec": 81.25076923076924,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-73",
+        "fixtureId": "mh-rear-3",
+        "startSec": 79.40461538461538,
+        "endSec": 81.25076923076924,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-82",
+        "fixtureId": "par-0",
+        "startSec": 79.40461538461538,
+        "endSec": 79.86615384615385,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-84",
+        "fixtureId": "par-1",
+        "startSec": 79.40461538461538,
+        "endSec": 79.86615384615385,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-86",
+        "fixtureId": "par-2",
+        "startSec": 79.40461538461538,
+        "endSec": 79.86615384615385,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-88",
+        "fixtureId": "par-3",
+        "startSec": 79.40461538461538,
+        "endSec": 79.86615384615385,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-76",
+        "fixtureId": "wash-0",
+        "startSec": 79.40461538461538,
+        "endSec": 81.25076923076924,
+        "action": "hold",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-77",
+        "fixtureId": "wash-1",
+        "startSec": 79.40461538461538,
+        "endSec": 81.25076923076924,
+        "action": "hold",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-78",
+        "fixtureId": "wash-2",
+        "startSec": 79.40461538461538,
+        "endSec": 81.25076923076924,
+        "action": "hold",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-79",
+        "fixtureId": "wash-3",
+        "startSec": 79.40461538461538,
+        "endSec": 81.25076923076924,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-80",
+        "fixtureId": "wash-4",
+        "startSec": 79.40461538461538,
+        "endSec": 81.25076923076924,
+        "action": "hold",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-81",
+        "fixtureId": "wash-5",
+        "startSec": 79.40461538461538,
+        "endSec": 81.25076923076924,
+        "action": "hold",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-61",
+        "fixtureId": "mh-front-1",
+        "startSec": 79.62615384615385,
+        "endSec": 81.4723076923077,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-66",
+        "fixtureId": "mh-front-6",
+        "startSec": 79.62615384615385,
+        "endSec": 81.4723076923077,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-71",
+        "fixtureId": "mh-rear-1",
+        "startSec": 79.77384615384616,
+        "endSec": 81.62,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-74",
+        "fixtureId": "mh-rear-4",
+        "startSec": 79.77384615384616,
+        "endSec": 81.62,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-62",
+        "fixtureId": "mh-front-2",
+        "startSec": 79.84769230769231,
+        "endSec": 81.69384615384615,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-67",
+        "fixtureId": "mh-front-7",
+        "startSec": 79.84769230769231,
+        "endSec": 81.69384615384615,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-63",
+        "fixtureId": "mh-front-3",
+        "startSec": 80.06923076923077,
+        "endSec": 81.91538461538462,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-68",
+        "fixtureId": "mh-front-8",
+        "startSec": 80.06923076923077,
+        "endSec": 81.91538461538462,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-72",
+        "fixtureId": "mh-rear-2",
+        "startSec": 80.14307692307693,
+        "endSec": 81.98923076923077,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-75",
+        "fixtureId": "mh-rear-5",
+        "startSec": 80.14307692307693,
+        "endSec": 81.98923076923077,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-64",
+        "fixtureId": "mh-front-4",
+        "startSec": 80.29076923076923,
+        "endSec": 82.13692307692308,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-69",
+        "fixtureId": "mh-front-9",
+        "startSec": 80.29076923076923,
+        "endSec": 82.13692307692308,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-83",
+        "fixtureId": "par-0",
+        "startSec": 80.3276923076923,
+        "endSec": 80.78923076923077,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-85",
+        "fixtureId": "par-1",
+        "startSec": 80.3276923076923,
+        "endSec": 80.78923076923077,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-87",
+        "fixtureId": "par-2",
+        "startSec": 80.3276923076923,
+        "endSec": 80.78923076923077,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-89",
+        "fixtureId": "par-3",
+        "startSec": 80.3276923076923,
+        "endSec": 80.78923076923077,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-91",
+        "fixtureId": "laser-1",
+        "startSec": 80.32769230769232,
+        "endSec": 82.17384615384616,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-142",
+        "fixtureId": "laser-0",
+        "startSec": 81.25076923076924,
+        "endSec": 82.17384615384616,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-144",
+        "fixtureId": "laser-1",
+        "startSec": 81.25076923076924,
+        "endSec": 82.17384615384616,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-92",
+        "fixtureId": "mh-front-0",
+        "startSec": 81.25076923076924,
+        "endSec": 82.17384615384616,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-94",
+        "fixtureId": "mh-front-1",
+        "startSec": 81.25076923076924,
+        "endSec": 82.17384615384616,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-96",
+        "fixtureId": "mh-front-2",
+        "startSec": 81.25076923076924,
+        "endSec": 82.17384615384616,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-98",
+        "fixtureId": "mh-front-3",
+        "startSec": 81.25076923076924,
+        "endSec": 82.17384615384616,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-100",
+        "fixtureId": "mh-front-4",
+        "startSec": 81.25076923076924,
+        "endSec": 82.17384615384616,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-102",
+        "fixtureId": "mh-front-5",
+        "startSec": 81.25076923076924,
+        "endSec": 82.17384615384616,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-104",
+        "fixtureId": "mh-front-6",
+        "startSec": 81.25076923076924,
+        "endSec": 82.17384615384616,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-106",
+        "fixtureId": "mh-front-7",
+        "startSec": 81.25076923076924,
+        "endSec": 82.17384615384616,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-108",
+        "fixtureId": "mh-front-8",
+        "startSec": 81.25076923076924,
+        "endSec": 82.17384615384616,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-110",
+        "fixtureId": "mh-front-9",
+        "startSec": 81.25076923076924,
+        "endSec": 82.17384615384616,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-112",
+        "fixtureId": "mh-rear-0",
+        "startSec": 81.25076923076924,
+        "endSec": 82.17384615384616,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-114",
+        "fixtureId": "mh-rear-1",
+        "startSec": 81.25076923076924,
+        "endSec": 82.17384615384616,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-116",
+        "fixtureId": "mh-rear-2",
+        "startSec": 81.25076923076924,
+        "endSec": 82.17384615384616,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-118",
+        "fixtureId": "mh-rear-3",
+        "startSec": 81.25076923076924,
+        "endSec": 82.17384615384616,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-120",
+        "fixtureId": "mh-rear-4",
+        "startSec": 81.25076923076924,
+        "endSec": 82.17384615384616,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-122",
+        "fixtureId": "mh-rear-5",
+        "startSec": 81.25076923076924,
+        "endSec": 82.17384615384616,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-130",
+        "fixtureId": "par-0",
+        "startSec": 81.25076923076924,
+        "endSec": 83.09692307692308,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-131",
+        "fixtureId": "par-1",
+        "startSec": 81.25076923076924,
+        "endSec": 83.09692307692308,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-132",
+        "fixtureId": "par-2",
+        "startSec": 81.25076923076924,
+        "endSec": 83.09692307692308,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-133",
+        "fixtureId": "par-3",
+        "startSec": 81.25076923076924,
+        "endSec": 83.09692307692308,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-134",
+        "fixtureId": "strobe-0",
+        "startSec": 81.25076923076924,
+        "endSec": 81.48153846153846,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-138",
+        "fixtureId": "strobe-2",
+        "startSec": 81.25076923076924,
+        "endSec": 81.48153846153846,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-124",
+        "fixtureId": "wash-0",
+        "startSec": 81.25076923076924,
+        "endSec": 83.09692307692308,
+        "action": "hold",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-125",
+        "fixtureId": "wash-1",
+        "startSec": 81.25076923076924,
+        "endSec": 83.09692307692308,
+        "action": "hold",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-126",
+        "fixtureId": "wash-2",
+        "startSec": 81.25076923076924,
+        "endSec": 83.09692307692308,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-127",
+        "fixtureId": "wash-3",
+        "startSec": 81.25076923076924,
+        "endSec": 83.09692307692308,
+        "action": "hold",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-128",
+        "fixtureId": "wash-4",
+        "startSec": 81.25076923076924,
+        "endSec": 83.09692307692308,
+        "action": "hold",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-129",
+        "fixtureId": "wash-5",
+        "startSec": 81.25076923076924,
+        "endSec": 83.09692307692308,
+        "action": "hold",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-136",
+        "fixtureId": "strobe-1",
+        "startSec": 81.7123076923077,
+        "endSec": 81.94307692307693,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-140",
+        "fixtureId": "strobe-3",
+        "startSec": 81.7123076923077,
+        "endSec": 81.94307692307693,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-143",
+        "fixtureId": "laser-0",
+        "startSec": 82.17384615384616,
+        "endSec": 83.09692307692308,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-145",
+        "fixtureId": "laser-1",
+        "startSec": 82.17384615384616,
+        "endSec": 83.09692307692308,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-93",
+        "fixtureId": "mh-front-0",
+        "startSec": 82.17384615384616,
+        "endSec": 83.09692307692308,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-95",
+        "fixtureId": "mh-front-1",
+        "startSec": 82.17384615384616,
+        "endSec": 83.09692307692308,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-97",
+        "fixtureId": "mh-front-2",
+        "startSec": 82.17384615384616,
+        "endSec": 83.09692307692308,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-99",
+        "fixtureId": "mh-front-3",
+        "startSec": 82.17384615384616,
+        "endSec": 83.09692307692308,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-101",
+        "fixtureId": "mh-front-4",
+        "startSec": 82.17384615384616,
+        "endSec": 83.09692307692308,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-103",
+        "fixtureId": "mh-front-5",
+        "startSec": 82.17384615384616,
+        "endSec": 83.09692307692308,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-105",
+        "fixtureId": "mh-front-6",
+        "startSec": 82.17384615384616,
+        "endSec": 83.09692307692308,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-107",
+        "fixtureId": "mh-front-7",
+        "startSec": 82.17384615384616,
+        "endSec": 83.09692307692308,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-109",
+        "fixtureId": "mh-front-8",
+        "startSec": 82.17384615384616,
+        "endSec": 83.09692307692308,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-111",
+        "fixtureId": "mh-front-9",
+        "startSec": 82.17384615384616,
+        "endSec": 83.09692307692308,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-113",
+        "fixtureId": "mh-rear-0",
+        "startSec": 82.17384615384616,
+        "endSec": 83.09692307692308,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-115",
+        "fixtureId": "mh-rear-1",
+        "startSec": 82.17384615384616,
+        "endSec": 83.09692307692308,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-117",
+        "fixtureId": "mh-rear-2",
+        "startSec": 82.17384615384616,
+        "endSec": 83.09692307692308,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-119",
+        "fixtureId": "mh-rear-3",
+        "startSec": 82.17384615384616,
+        "endSec": 83.09692307692308,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-121",
+        "fixtureId": "mh-rear-4",
+        "startSec": 82.17384615384616,
+        "endSec": 83.09692307692308,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-123",
+        "fixtureId": "mh-rear-5",
+        "startSec": 82.17384615384616,
+        "endSec": 83.09692307692308,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-135",
+        "fixtureId": "strobe-0",
+        "startSec": 82.17384615384616,
+        "endSec": 82.4046153846154,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-139",
+        "fixtureId": "strobe-2",
+        "startSec": 82.17384615384616,
+        "endSec": 82.4046153846154,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-137",
+        "fixtureId": "strobe-1",
+        "startSec": 82.63538461538462,
+        "endSec": 82.86615384615385,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-141",
+        "fixtureId": "strobe-3",
+        "startSec": 82.63538461538462,
+        "endSec": 82.86615384615385,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-196",
+        "fixtureId": "laser-0",
+        "startSec": 83.09692307692308,
+        "endSec": 84.02000000000001,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-198",
+        "fixtureId": "laser-1",
+        "startSec": 83.09692307692308,
+        "endSec": 84.02000000000001,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-146",
+        "fixtureId": "mh-front-0",
+        "startSec": 83.09692307692308,
+        "endSec": 84.02000000000001,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-148",
+        "fixtureId": "mh-front-1",
+        "startSec": 83.09692307692308,
+        "endSec": 84.02000000000001,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-150",
+        "fixtureId": "mh-front-2",
+        "startSec": 83.09692307692308,
+        "endSec": 84.02000000000001,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-152",
+        "fixtureId": "mh-front-3",
+        "startSec": 83.09692307692308,
+        "endSec": 84.02000000000001,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-154",
+        "fixtureId": "mh-front-4",
+        "startSec": 83.09692307692308,
+        "endSec": 84.02000000000001,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-156",
+        "fixtureId": "mh-front-5",
+        "startSec": 83.09692307692308,
+        "endSec": 84.02000000000001,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-158",
+        "fixtureId": "mh-front-6",
+        "startSec": 83.09692307692308,
+        "endSec": 84.02000000000001,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-160",
+        "fixtureId": "mh-front-7",
+        "startSec": 83.09692307692308,
+        "endSec": 84.02000000000001,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-162",
+        "fixtureId": "mh-front-8",
+        "startSec": 83.09692307692308,
+        "endSec": 84.02000000000001,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-164",
+        "fixtureId": "mh-front-9",
+        "startSec": 83.09692307692308,
+        "endSec": 84.02000000000001,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-166",
+        "fixtureId": "mh-rear-0",
+        "startSec": 83.09692307692308,
+        "endSec": 84.02000000000001,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-168",
+        "fixtureId": "mh-rear-1",
+        "startSec": 83.09692307692308,
+        "endSec": 84.02000000000001,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-170",
+        "fixtureId": "mh-rear-2",
+        "startSec": 83.09692307692308,
+        "endSec": 84.02000000000001,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-172",
+        "fixtureId": "mh-rear-3",
+        "startSec": 83.09692307692308,
+        "endSec": 84.02000000000001,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-174",
+        "fixtureId": "mh-rear-4",
+        "startSec": 83.09692307692308,
+        "endSec": 84.02000000000001,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-176",
+        "fixtureId": "mh-rear-5",
+        "startSec": 83.09692307692308,
+        "endSec": 84.02000000000001,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-184",
+        "fixtureId": "par-0",
+        "startSec": 83.09692307692308,
+        "endSec": 84.94307692307693,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-185",
+        "fixtureId": "par-1",
+        "startSec": 83.09692307692308,
+        "endSec": 84.94307692307693,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-186",
+        "fixtureId": "par-2",
+        "startSec": 83.09692307692308,
+        "endSec": 84.94307692307693,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-187",
+        "fixtureId": "par-3",
+        "startSec": 83.09692307692308,
+        "endSec": 84.94307692307693,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-188",
+        "fixtureId": "strobe-0",
+        "startSec": 83.09692307692308,
+        "endSec": 83.3276923076923,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-192",
+        "fixtureId": "strobe-2",
+        "startSec": 83.09692307692308,
+        "endSec": 83.3276923076923,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-178",
+        "fixtureId": "wash-0",
+        "startSec": 83.09692307692308,
+        "endSec": 84.94307692307693,
+        "action": "hold",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-179",
+        "fixtureId": "wash-1",
+        "startSec": 83.09692307692308,
+        "endSec": 84.94307692307693,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-180",
+        "fixtureId": "wash-2",
+        "startSec": 83.09692307692308,
+        "endSec": 84.94307692307693,
+        "action": "hold",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-181",
+        "fixtureId": "wash-3",
+        "startSec": 83.09692307692308,
+        "endSec": 84.94307692307693,
+        "action": "hold",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-182",
+        "fixtureId": "wash-4",
+        "startSec": 83.09692307692308,
+        "endSec": 84.94307692307693,
+        "action": "hold",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-183",
+        "fixtureId": "wash-5",
+        "startSec": 83.09692307692308,
+        "endSec": 84.94307692307693,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-190",
+        "fixtureId": "strobe-1",
+        "startSec": 83.55846153846154,
+        "endSec": 83.78923076923077,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-194",
+        "fixtureId": "strobe-3",
+        "startSec": 83.55846153846154,
+        "endSec": 83.78923076923077,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-189",
+        "fixtureId": "strobe-0",
+        "startSec": 84.02,
+        "endSec": 84.25076923076924,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-193",
+        "fixtureId": "strobe-2",
+        "startSec": 84.02,
+        "endSec": 84.25076923076924,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-197",
+        "fixtureId": "laser-0",
+        "startSec": 84.02000000000001,
+        "endSec": 84.94307692307693,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-199",
+        "fixtureId": "laser-1",
+        "startSec": 84.02000000000001,
+        "endSec": 84.94307692307693,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-147",
+        "fixtureId": "mh-front-0",
+        "startSec": 84.02000000000001,
+        "endSec": 84.94307692307693,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-149",
+        "fixtureId": "mh-front-1",
+        "startSec": 84.02000000000001,
+        "endSec": 84.94307692307693,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-151",
+        "fixtureId": "mh-front-2",
+        "startSec": 84.02000000000001,
+        "endSec": 84.94307692307693,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-153",
+        "fixtureId": "mh-front-3",
+        "startSec": 84.02000000000001,
+        "endSec": 84.94307692307693,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-155",
+        "fixtureId": "mh-front-4",
+        "startSec": 84.02000000000001,
+        "endSec": 84.94307692307693,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-157",
+        "fixtureId": "mh-front-5",
+        "startSec": 84.02000000000001,
+        "endSec": 84.94307692307693,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-159",
+        "fixtureId": "mh-front-6",
+        "startSec": 84.02000000000001,
+        "endSec": 84.94307692307693,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-161",
+        "fixtureId": "mh-front-7",
+        "startSec": 84.02000000000001,
+        "endSec": 84.94307692307693,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-163",
+        "fixtureId": "mh-front-8",
+        "startSec": 84.02000000000001,
+        "endSec": 84.94307692307693,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-165",
+        "fixtureId": "mh-front-9",
+        "startSec": 84.02000000000001,
+        "endSec": 84.94307692307693,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-167",
+        "fixtureId": "mh-rear-0",
+        "startSec": 84.02000000000001,
+        "endSec": 84.94307692307693,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-169",
+        "fixtureId": "mh-rear-1",
+        "startSec": 84.02000000000001,
+        "endSec": 84.94307692307693,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-171",
+        "fixtureId": "mh-rear-2",
+        "startSec": 84.02000000000001,
+        "endSec": 84.94307692307693,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-173",
+        "fixtureId": "mh-rear-3",
+        "startSec": 84.02000000000001,
+        "endSec": 84.94307692307693,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-175",
+        "fixtureId": "mh-rear-4",
+        "startSec": 84.02000000000001,
+        "endSec": 84.94307692307693,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-177",
+        "fixtureId": "mh-rear-5",
+        "startSec": 84.02000000000001,
+        "endSec": 84.94307692307693,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-191",
+        "fixtureId": "strobe-1",
+        "startSec": 84.48153846153846,
+        "endSec": 84.71230769230769,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-195",
+        "fixtureId": "strobe-3",
+        "startSec": 84.48153846153846,
+        "endSec": 84.71230769230769,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-226",
+        "fixtureId": "laser-0",
+        "startSec": 84.94307692307693,
+        "endSec": 88.63538461538462,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-227",
+        "fixtureId": "laser-1",
+        "startSec": 84.94307692307693,
+        "endSec": 88.63538461538462,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-206",
+        "fixtureId": "mh-front-0",
+        "startSec": 84.94307692307693,
+        "endSec": 88.63538461538462,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-211",
+        "fixtureId": "mh-front-5",
+        "startSec": 84.94307692307693,
+        "endSec": 88.63538461538462,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-216",
+        "fixtureId": "mh-rear-0",
+        "startSec": 84.94307692307693,
+        "endSec": 88.63538461538462,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-219",
+        "fixtureId": "mh-rear-3",
+        "startSec": 84.94307692307693,
+        "endSec": 88.63538461538462,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-222",
+        "fixtureId": "par-0",
+        "startSec": 84.94307692307693,
+        "endSec": 88.63538461538462,
+        "action": "hold",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-223",
+        "fixtureId": "par-1",
+        "startSec": 84.94307692307693,
+        "endSec": 88.63538461538462,
+        "action": "hold",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-224",
+        "fixtureId": "par-2",
+        "startSec": 84.94307692307693,
+        "endSec": 88.63538461538462,
+        "action": "hold",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-225",
+        "fixtureId": "par-3",
+        "startSec": 84.94307692307693,
+        "endSec": 88.63538461538462,
+        "action": "hold",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-200",
+        "fixtureId": "wash-0",
+        "startSec": 84.94307692307693,
+        "endSec": 88.63538461538462,
+        "action": "fade",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-201",
+        "fixtureId": "wash-1",
+        "startSec": 84.94307692307693,
+        "endSec": 88.63538461538462,
+        "action": "fade",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-202",
+        "fixtureId": "wash-2",
+        "startSec": 84.94307692307693,
+        "endSec": 88.63538461538462,
+        "action": "fade",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-203",
+        "fixtureId": "wash-3",
+        "startSec": 84.94307692307693,
+        "endSec": 88.63538461538462,
+        "action": "fade",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-204",
+        "fixtureId": "wash-4",
+        "startSec": 84.94307692307693,
+        "endSec": 88.63538461538462,
+        "action": "fade",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-205",
+        "fixtureId": "wash-5",
+        "startSec": 84.94307692307693,
+        "endSec": 88.63538461538462,
+        "action": "fade",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-207",
+        "fixtureId": "mh-front-1",
+        "startSec": 85.12769230769231,
+        "endSec": 88.63538461538462,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-212",
+        "fixtureId": "mh-front-6",
+        "startSec": 85.12769230769231,
+        "endSec": 88.63538461538462,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-217",
+        "fixtureId": "mh-rear-1",
+        "startSec": 85.22,
+        "endSec": 88.63538461538462,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-220",
+        "fixtureId": "mh-rear-4",
+        "startSec": 85.22,
+        "endSec": 88.63538461538462,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-208",
+        "fixtureId": "mh-front-2",
+        "startSec": 85.3123076923077,
+        "endSec": 88.63538461538462,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-213",
+        "fixtureId": "mh-front-7",
+        "startSec": 85.3123076923077,
+        "endSec": 88.63538461538462,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-209",
+        "fixtureId": "mh-front-3",
+        "startSec": 85.49692307692308,
+        "endSec": 88.63538461538462,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-214",
+        "fixtureId": "mh-front-8",
+        "startSec": 85.49692307692308,
+        "endSec": 88.63538461538462,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-218",
+        "fixtureId": "mh-rear-2",
+        "startSec": 85.49692307692308,
+        "endSec": 88.63538461538462,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-221",
+        "fixtureId": "mh-rear-5",
+        "startSec": 85.49692307692308,
+        "endSec": 88.63538461538462,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-210",
+        "fixtureId": "mh-front-4",
+        "startSec": 85.68153846153847,
+        "endSec": 88.63538461538462,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-215",
+        "fixtureId": "mh-front-9",
+        "startSec": 85.68153846153847,
+        "endSec": 88.63538461538462,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-274",
+        "fixtureId": "laser-0",
+        "startSec": 88.63538461538462,
+        "endSec": 89.55846153846154,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-276",
+        "fixtureId": "laser-1",
+        "startSec": 88.63538461538462,
+        "endSec": 89.55846153846154,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-228",
+        "fixtureId": "mh-front-0",
+        "startSec": 88.63538461538462,
+        "endSec": 90.48153846153846,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-233",
+        "fixtureId": "mh-front-5",
+        "startSec": 88.63538461538462,
+        "endSec": 90.48153846153846,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-238",
+        "fixtureId": "mh-rear-0",
+        "startSec": 88.63538461538462,
+        "endSec": 90.48153846153846,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-241",
+        "fixtureId": "mh-rear-3",
+        "startSec": 88.63538461538462,
+        "endSec": 90.48153846153846,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-250",
+        "fixtureId": "par-0",
+        "startSec": 88.63538461538462,
+        "endSec": 89.09692307692309,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-254",
+        "fixtureId": "par-1",
+        "startSec": 88.63538461538462,
+        "endSec": 89.09692307692309,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-258",
+        "fixtureId": "par-2",
+        "startSec": 88.63538461538462,
+        "endSec": 89.09692307692309,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-262",
+        "fixtureId": "par-3",
+        "startSec": 88.63538461538462,
+        "endSec": 89.09692307692309,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-266",
+        "fixtureId": "strobe-0",
+        "startSec": 88.63538461538462,
+        "endSec": 88.86615384615385,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-268",
+        "fixtureId": "strobe-1",
+        "startSec": 88.63538461538462,
+        "endSec": 88.86615384615385,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-270",
+        "fixtureId": "strobe-2",
+        "startSec": 88.63538461538462,
+        "endSec": 88.86615384615385,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-272",
+        "fixtureId": "strobe-3",
+        "startSec": 88.63538461538462,
+        "endSec": 88.86615384615385,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-244",
+        "fixtureId": "wash-0",
+        "startSec": 88.63538461538462,
+        "endSec": 90.48153846153846,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-245",
+        "fixtureId": "wash-1",
+        "startSec": 88.63538461538462,
+        "endSec": 90.48153846153846,
+        "action": "hold",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-246",
+        "fixtureId": "wash-2",
+        "startSec": 88.63538461538462,
+        "endSec": 90.48153846153846,
+        "action": "hold",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-247",
+        "fixtureId": "wash-3",
+        "startSec": 88.63538461538462,
+        "endSec": 90.48153846153846,
+        "action": "hold",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-248",
+        "fixtureId": "wash-4",
+        "startSec": 88.63538461538462,
+        "endSec": 90.48153846153846,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-249",
+        "fixtureId": "wash-5",
+        "startSec": 88.63538461538462,
+        "endSec": 90.48153846153846,
+        "action": "hold",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-229",
+        "fixtureId": "mh-front-1",
+        "startSec": 88.82000000000001,
+        "endSec": 90.66615384615385,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-234",
+        "fixtureId": "mh-front-6",
+        "startSec": 88.82000000000001,
+        "endSec": 90.66615384615385,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-239",
+        "fixtureId": "mh-rear-1",
+        "startSec": 88.91230769230769,
+        "endSec": 90.75846153846155,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-242",
+        "fixtureId": "mh-rear-4",
+        "startSec": 88.91230769230769,
+        "endSec": 90.75846153846155,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-230",
+        "fixtureId": "mh-front-2",
+        "startSec": 89.00461538461539,
+        "endSec": 90.85076923076923,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-235",
+        "fixtureId": "mh-front-7",
+        "startSec": 89.00461538461539,
+        "endSec": 90.85076923076923,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-251",
+        "fixtureId": "par-0",
+        "startSec": 89.09692307692309,
+        "endSec": 89.55846153846154,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-255",
+        "fixtureId": "par-1",
+        "startSec": 89.09692307692309,
+        "endSec": 89.55846153846154,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-259",
+        "fixtureId": "par-2",
+        "startSec": 89.09692307692309,
+        "endSec": 89.55846153846154,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-263",
+        "fixtureId": "par-3",
+        "startSec": 89.09692307692309,
+        "endSec": 89.55846153846154,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-231",
+        "fixtureId": "mh-front-3",
+        "startSec": 89.18923076923078,
+        "endSec": 91.03538461538463,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-236",
+        "fixtureId": "mh-front-8",
+        "startSec": 89.18923076923078,
+        "endSec": 91.03538461538463,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-240",
+        "fixtureId": "mh-rear-2",
+        "startSec": 89.18923076923078,
+        "endSec": 91.03538461538463,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-243",
+        "fixtureId": "mh-rear-5",
+        "startSec": 89.18923076923078,
+        "endSec": 91.03538461538463,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-232",
+        "fixtureId": "mh-front-4",
+        "startSec": 89.37384615384616,
+        "endSec": 91.22,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-237",
+        "fixtureId": "mh-front-9",
+        "startSec": 89.37384615384616,
+        "endSec": 91.22,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-275",
+        "fixtureId": "laser-0",
+        "startSec": 89.55846153846154,
+        "endSec": 90.48153846153846,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-277",
+        "fixtureId": "laser-1",
+        "startSec": 89.55846153846154,
+        "endSec": 90.48153846153846,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-252",
+        "fixtureId": "par-0",
+        "startSec": 89.55846153846154,
+        "endSec": 90.02000000000001,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-256",
+        "fixtureId": "par-1",
+        "startSec": 89.55846153846154,
+        "endSec": 90.02000000000001,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-260",
+        "fixtureId": "par-2",
+        "startSec": 89.55846153846154,
+        "endSec": 90.02000000000001,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-264",
+        "fixtureId": "par-3",
+        "startSec": 89.55846153846154,
+        "endSec": 90.02000000000001,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-267",
+        "fixtureId": "strobe-0",
+        "startSec": 89.55846153846154,
+        "endSec": 89.78923076923078,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-269",
+        "fixtureId": "strobe-1",
+        "startSec": 89.55846153846154,
+        "endSec": 89.78923076923078,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-271",
+        "fixtureId": "strobe-2",
+        "startSec": 89.55846153846154,
+        "endSec": 89.78923076923078,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-273",
+        "fixtureId": "strobe-3",
+        "startSec": 89.55846153846154,
+        "endSec": 89.78923076923078,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-253",
+        "fixtureId": "par-0",
+        "startSec": 90.02000000000001,
+        "endSec": 90.48153846153846,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-257",
+        "fixtureId": "par-1",
+        "startSec": 90.02000000000001,
+        "endSec": 90.48153846153846,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-261",
+        "fixtureId": "par-2",
+        "startSec": 90.02000000000001,
+        "endSec": 90.48153846153846,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-265",
+        "fixtureId": "par-3",
+        "startSec": 90.02000000000001,
+        "endSec": 90.48153846153846,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-324",
+        "fixtureId": "laser-0",
+        "startSec": 90.48153846153846,
+        "endSec": 91.4046153846154,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-326",
+        "fixtureId": "laser-1",
+        "startSec": 90.48153846153846,
+        "endSec": 91.4046153846154,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-278",
+        "fixtureId": "mh-front-0",
+        "startSec": 90.48153846153846,
+        "endSec": 92.32769230769232,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-283",
+        "fixtureId": "mh-front-5",
+        "startSec": 90.48153846153846,
+        "endSec": 92.32769230769232,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-288",
+        "fixtureId": "mh-rear-0",
+        "startSec": 90.48153846153846,
+        "endSec": 92.32769230769232,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-291",
+        "fixtureId": "mh-rear-3",
+        "startSec": 90.48153846153846,
+        "endSec": 92.32769230769232,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-300",
+        "fixtureId": "par-0",
+        "startSec": 90.48153846153846,
+        "endSec": 90.94307692307693,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-304",
+        "fixtureId": "par-1",
+        "startSec": 90.48153846153846,
+        "endSec": 90.94307692307693,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-308",
+        "fixtureId": "par-2",
+        "startSec": 90.48153846153846,
+        "endSec": 90.94307692307693,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-312",
+        "fixtureId": "par-3",
+        "startSec": 90.48153846153846,
+        "endSec": 90.94307692307693,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-316",
+        "fixtureId": "strobe-0",
+        "startSec": 90.48153846153846,
+        "endSec": 90.71230769230769,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-318",
+        "fixtureId": "strobe-1",
+        "startSec": 90.48153846153846,
+        "endSec": 90.71230769230769,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-320",
+        "fixtureId": "strobe-2",
+        "startSec": 90.48153846153846,
+        "endSec": 90.71230769230769,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-322",
+        "fixtureId": "strobe-3",
+        "startSec": 90.48153846153846,
+        "endSec": 90.71230769230769,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-294",
+        "fixtureId": "wash-0",
+        "startSec": 90.48153846153846,
+        "endSec": 92.32769230769232,
+        "action": "hold",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-295",
+        "fixtureId": "wash-1",
+        "startSec": 90.48153846153846,
+        "endSec": 92.32769230769232,
+        "action": "hold",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-296",
+        "fixtureId": "wash-2",
+        "startSec": 90.48153846153846,
+        "endSec": 92.32769230769232,
+        "action": "hold",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-297",
+        "fixtureId": "wash-3",
+        "startSec": 90.48153846153846,
+        "endSec": 92.32769230769232,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-298",
+        "fixtureId": "wash-4",
+        "startSec": 90.48153846153846,
+        "endSec": 92.32769230769232,
+        "action": "hold",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-299",
+        "fixtureId": "wash-5",
+        "startSec": 90.48153846153846,
+        "endSec": 92.32769230769232,
+        "action": "hold",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-279",
+        "fixtureId": "mh-front-1",
+        "startSec": 90.66615384615385,
+        "endSec": 92.5123076923077,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-284",
+        "fixtureId": "mh-front-6",
+        "startSec": 90.66615384615385,
+        "endSec": 92.5123076923077,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-289",
+        "fixtureId": "mh-rear-1",
+        "startSec": 90.75846153846155,
+        "endSec": 92.60461538461539,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-292",
+        "fixtureId": "mh-rear-4",
+        "startSec": 90.75846153846155,
+        "endSec": 92.60461538461539,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-280",
+        "fixtureId": "mh-front-2",
+        "startSec": 90.85076923076923,
+        "endSec": 92.69692307692308,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-285",
+        "fixtureId": "mh-front-7",
+        "startSec": 90.85076923076923,
+        "endSec": 92.69692307692308,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-301",
+        "fixtureId": "par-0",
+        "startSec": 90.94307692307693,
+        "endSec": 91.40461538461538,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-305",
+        "fixtureId": "par-1",
+        "startSec": 90.94307692307693,
+        "endSec": 91.40461538461538,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-309",
+        "fixtureId": "par-2",
+        "startSec": 90.94307692307693,
+        "endSec": 91.40461538461538,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-313",
+        "fixtureId": "par-3",
+        "startSec": 90.94307692307693,
+        "endSec": 91.40461538461538,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-281",
+        "fixtureId": "mh-front-3",
+        "startSec": 91.03538461538463,
+        "endSec": 92.88153846153847,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-286",
+        "fixtureId": "mh-front-8",
+        "startSec": 91.03538461538463,
+        "endSec": 92.88153846153847,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-290",
+        "fixtureId": "mh-rear-2",
+        "startSec": 91.03538461538463,
+        "endSec": 92.88153846153847,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-293",
+        "fixtureId": "mh-rear-5",
+        "startSec": 91.03538461538463,
+        "endSec": 92.88153846153847,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-282",
+        "fixtureId": "mh-front-4",
+        "startSec": 91.22,
+        "endSec": 93.06615384615385,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-287",
+        "fixtureId": "mh-front-9",
+        "startSec": 91.22,
+        "endSec": 93.06615384615385,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-302",
+        "fixtureId": "par-0",
+        "startSec": 91.40461538461538,
+        "endSec": 91.86615384615385,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-306",
+        "fixtureId": "par-1",
+        "startSec": 91.40461538461538,
+        "endSec": 91.86615384615385,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-310",
+        "fixtureId": "par-2",
+        "startSec": 91.40461538461538,
+        "endSec": 91.86615384615385,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-314",
+        "fixtureId": "par-3",
+        "startSec": 91.40461538461538,
+        "endSec": 91.86615384615385,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-317",
+        "fixtureId": "strobe-0",
+        "startSec": 91.40461538461538,
+        "endSec": 91.63538461538462,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-319",
+        "fixtureId": "strobe-1",
+        "startSec": 91.40461538461538,
+        "endSec": 91.63538461538462,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-321",
+        "fixtureId": "strobe-2",
+        "startSec": 91.40461538461538,
+        "endSec": 91.63538461538462,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-323",
+        "fixtureId": "strobe-3",
+        "startSec": 91.40461538461538,
+        "endSec": 91.63538461538462,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-325",
+        "fixtureId": "laser-0",
+        "startSec": 91.4046153846154,
+        "endSec": 92.32769230769232,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-327",
+        "fixtureId": "laser-1",
+        "startSec": 91.4046153846154,
+        "endSec": 92.32769230769232,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-303",
+        "fixtureId": "par-0",
+        "startSec": 91.86615384615385,
+        "endSec": 92.3276923076923,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-307",
+        "fixtureId": "par-1",
+        "startSec": 91.86615384615385,
+        "endSec": 92.3276923076923,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-311",
+        "fixtureId": "par-2",
+        "startSec": 91.86615384615385,
+        "endSec": 92.3276923076923,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-315",
+        "fixtureId": "par-3",
+        "startSec": 91.86615384615385,
+        "endSec": 92.3276923076923,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-374",
+        "fixtureId": "laser-0",
+        "startSec": 92.32769230769232,
+        "endSec": 93.25076923076924,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-376",
+        "fixtureId": "laser-1",
+        "startSec": 92.32769230769232,
+        "endSec": 93.25076923076924,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-328",
+        "fixtureId": "mh-front-0",
+        "startSec": 92.32769230769232,
+        "endSec": 94.17384615384616,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-333",
+        "fixtureId": "mh-front-5",
+        "startSec": 92.32769230769232,
+        "endSec": 94.17384615384616,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-338",
+        "fixtureId": "mh-rear-0",
+        "startSec": 92.32769230769232,
+        "endSec": 94.17384615384616,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-341",
+        "fixtureId": "mh-rear-3",
+        "startSec": 92.32769230769232,
+        "endSec": 94.17384615384616,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-350",
+        "fixtureId": "par-0",
+        "startSec": 92.32769230769232,
+        "endSec": 92.78923076923078,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-354",
+        "fixtureId": "par-1",
+        "startSec": 92.32769230769232,
+        "endSec": 92.78923076923078,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-358",
+        "fixtureId": "par-2",
+        "startSec": 92.32769230769232,
+        "endSec": 92.78923076923078,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-362",
+        "fixtureId": "par-3",
+        "startSec": 92.32769230769232,
+        "endSec": 92.78923076923078,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-366",
+        "fixtureId": "strobe-0",
+        "startSec": 92.32769230769232,
+        "endSec": 92.55846153846154,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-368",
+        "fixtureId": "strobe-1",
+        "startSec": 92.32769230769232,
+        "endSec": 92.55846153846154,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-370",
+        "fixtureId": "strobe-2",
+        "startSec": 92.32769230769232,
+        "endSec": 92.55846153846154,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-372",
+        "fixtureId": "strobe-3",
+        "startSec": 92.32769230769232,
+        "endSec": 92.55846153846154,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-344",
+        "fixtureId": "wash-0",
+        "startSec": 92.32769230769232,
+        "endSec": 94.17384615384616,
+        "action": "hold",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-345",
+        "fixtureId": "wash-1",
+        "startSec": 92.32769230769232,
+        "endSec": 94.17384615384616,
+        "action": "hold",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-346",
+        "fixtureId": "wash-2",
+        "startSec": 92.32769230769232,
+        "endSec": 94.17384615384616,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-347",
+        "fixtureId": "wash-3",
+        "startSec": 92.32769230769232,
+        "endSec": 94.17384615384616,
+        "action": "hold",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-348",
+        "fixtureId": "wash-4",
+        "startSec": 92.32769230769232,
+        "endSec": 94.17384615384616,
+        "action": "hold",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-349",
+        "fixtureId": "wash-5",
+        "startSec": 92.32769230769232,
+        "endSec": 94.17384615384616,
+        "action": "hold",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-329",
+        "fixtureId": "mh-front-1",
+        "startSec": 92.5123076923077,
+        "endSec": 94.35846153846154,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-334",
+        "fixtureId": "mh-front-6",
+        "startSec": 92.5123076923077,
+        "endSec": 94.35846153846154,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-339",
+        "fixtureId": "mh-rear-1",
+        "startSec": 92.60461538461539,
+        "endSec": 94.45076923076924,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-342",
+        "fixtureId": "mh-rear-4",
+        "startSec": 92.60461538461539,
+        "endSec": 94.45076923076924,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-330",
+        "fixtureId": "mh-front-2",
+        "startSec": 92.69692307692308,
+        "endSec": 94.54307692307692,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-335",
+        "fixtureId": "mh-front-7",
+        "startSec": 92.69692307692308,
+        "endSec": 94.54307692307692,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-351",
+        "fixtureId": "par-0",
+        "startSec": 92.78923076923078,
+        "endSec": 93.25076923076924,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-355",
+        "fixtureId": "par-1",
+        "startSec": 92.78923076923078,
+        "endSec": 93.25076923076924,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-359",
+        "fixtureId": "par-2",
+        "startSec": 92.78923076923078,
+        "endSec": 93.25076923076924,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-363",
+        "fixtureId": "par-3",
+        "startSec": 92.78923076923078,
+        "endSec": 93.25076923076924,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-331",
+        "fixtureId": "mh-front-3",
+        "startSec": 92.88153846153847,
+        "endSec": 94.72769230769231,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-336",
+        "fixtureId": "mh-front-8",
+        "startSec": 92.88153846153847,
+        "endSec": 94.72769230769231,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-340",
+        "fixtureId": "mh-rear-2",
+        "startSec": 92.88153846153847,
+        "endSec": 94.72769230769231,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-343",
+        "fixtureId": "mh-rear-5",
+        "startSec": 92.88153846153847,
+        "endSec": 94.72769230769231,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-332",
+        "fixtureId": "mh-front-4",
+        "startSec": 93.06615384615385,
+        "endSec": 94.9123076923077,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-337",
+        "fixtureId": "mh-front-9",
+        "startSec": 93.06615384615385,
+        "endSec": 94.9123076923077,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-375",
+        "fixtureId": "laser-0",
+        "startSec": 93.25076923076924,
+        "endSec": 94.17384615384616,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-377",
+        "fixtureId": "laser-1",
+        "startSec": 93.25076923076924,
+        "endSec": 94.17384615384616,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-352",
+        "fixtureId": "par-0",
+        "startSec": 93.25076923076924,
+        "endSec": 93.7123076923077,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-356",
+        "fixtureId": "par-1",
+        "startSec": 93.25076923076924,
+        "endSec": 93.7123076923077,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-360",
+        "fixtureId": "par-2",
+        "startSec": 93.25076923076924,
+        "endSec": 93.7123076923077,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-364",
+        "fixtureId": "par-3",
+        "startSec": 93.25076923076924,
+        "endSec": 93.7123076923077,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-367",
+        "fixtureId": "strobe-0",
+        "startSec": 93.25076923076924,
+        "endSec": 93.48153846153848,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-369",
+        "fixtureId": "strobe-1",
+        "startSec": 93.25076923076924,
+        "endSec": 93.48153846153848,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-371",
+        "fixtureId": "strobe-2",
+        "startSec": 93.25076923076924,
+        "endSec": 93.48153846153848,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-373",
+        "fixtureId": "strobe-3",
+        "startSec": 93.25076923076924,
+        "endSec": 93.48153846153848,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-353",
+        "fixtureId": "par-0",
+        "startSec": 93.7123076923077,
+        "endSec": 94.17384615384616,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-357",
+        "fixtureId": "par-1",
+        "startSec": 93.7123076923077,
+        "endSec": 94.17384615384616,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-361",
+        "fixtureId": "par-2",
+        "startSec": 93.7123076923077,
+        "endSec": 94.17384615384616,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-365",
+        "fixtureId": "par-3",
+        "startSec": 93.7123076923077,
+        "endSec": 94.17384615384616,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-424",
+        "fixtureId": "laser-0",
+        "startSec": 94.17384615384616,
+        "endSec": 95.09692307692308,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-426",
+        "fixtureId": "laser-1",
+        "startSec": 94.17384615384616,
+        "endSec": 95.09692307692308,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-378",
+        "fixtureId": "mh-front-0",
+        "startSec": 94.17384615384616,
+        "endSec": 96.02000000000001,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-383",
+        "fixtureId": "mh-front-5",
+        "startSec": 94.17384615384616,
+        "endSec": 96.02000000000001,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-388",
+        "fixtureId": "mh-rear-0",
+        "startSec": 94.17384615384616,
+        "endSec": 96.02000000000001,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-391",
+        "fixtureId": "mh-rear-3",
+        "startSec": 94.17384615384616,
+        "endSec": 96.02000000000001,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-400",
+        "fixtureId": "par-0",
+        "startSec": 94.17384615384616,
+        "endSec": 94.63538461538462,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-404",
+        "fixtureId": "par-1",
+        "startSec": 94.17384615384616,
+        "endSec": 94.63538461538462,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-408",
+        "fixtureId": "par-2",
+        "startSec": 94.17384615384616,
+        "endSec": 94.63538461538462,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-412",
+        "fixtureId": "par-3",
+        "startSec": 94.17384615384616,
+        "endSec": 94.63538461538462,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-416",
+        "fixtureId": "strobe-0",
+        "startSec": 94.17384615384616,
+        "endSec": 94.40461538461538,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-418",
+        "fixtureId": "strobe-1",
+        "startSec": 94.17384615384616,
+        "endSec": 94.40461538461538,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-420",
+        "fixtureId": "strobe-2",
+        "startSec": 94.17384615384616,
+        "endSec": 94.40461538461538,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-422",
+        "fixtureId": "strobe-3",
+        "startSec": 94.17384615384616,
+        "endSec": 94.40461538461538,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-394",
+        "fixtureId": "wash-0",
+        "startSec": 94.17384615384616,
+        "endSec": 96.02000000000001,
+        "action": "hold",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-395",
+        "fixtureId": "wash-1",
+        "startSec": 94.17384615384616,
+        "endSec": 96.02000000000001,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-396",
+        "fixtureId": "wash-2",
+        "startSec": 94.17384615384616,
+        "endSec": 96.02000000000001,
+        "action": "hold",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-397",
+        "fixtureId": "wash-3",
+        "startSec": 94.17384615384616,
+        "endSec": 96.02000000000001,
+        "action": "hold",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-398",
+        "fixtureId": "wash-4",
+        "startSec": 94.17384615384616,
+        "endSec": 96.02000000000001,
+        "action": "hold",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-399",
+        "fixtureId": "wash-5",
+        "startSec": 94.17384615384616,
+        "endSec": 96.02000000000001,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-379",
+        "fixtureId": "mh-front-1",
+        "startSec": 94.35846153846154,
+        "endSec": 96.2046153846154,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-384",
+        "fixtureId": "mh-front-6",
+        "startSec": 94.35846153846154,
+        "endSec": 96.2046153846154,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-389",
+        "fixtureId": "mh-rear-1",
+        "startSec": 94.45076923076924,
+        "endSec": 96.29692307692308,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-392",
+        "fixtureId": "mh-rear-4",
+        "startSec": 94.45076923076924,
+        "endSec": 96.29692307692308,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-380",
+        "fixtureId": "mh-front-2",
+        "startSec": 94.54307692307692,
+        "endSec": 96.38923076923078,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-385",
+        "fixtureId": "mh-front-7",
+        "startSec": 94.54307692307692,
+        "endSec": 96.38923076923078,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-401",
+        "fixtureId": "par-0",
+        "startSec": 94.63538461538462,
+        "endSec": 95.09692307692308,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-405",
+        "fixtureId": "par-1",
+        "startSec": 94.63538461538462,
+        "endSec": 95.09692307692308,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-409",
+        "fixtureId": "par-2",
+        "startSec": 94.63538461538462,
+        "endSec": 95.09692307692308,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-413",
+        "fixtureId": "par-3",
+        "startSec": 94.63538461538462,
+        "endSec": 95.09692307692308,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-381",
+        "fixtureId": "mh-front-3",
+        "startSec": 94.72769230769231,
+        "endSec": 96.57384615384616,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-386",
+        "fixtureId": "mh-front-8",
+        "startSec": 94.72769230769231,
+        "endSec": 96.57384615384616,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-390",
+        "fixtureId": "mh-rear-2",
+        "startSec": 94.72769230769231,
+        "endSec": 96.57384615384616,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-393",
+        "fixtureId": "mh-rear-5",
+        "startSec": 94.72769230769231,
+        "endSec": 96.57384615384616,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-382",
+        "fixtureId": "mh-front-4",
+        "startSec": 94.9123076923077,
+        "endSec": 96.75846153846155,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-387",
+        "fixtureId": "mh-front-9",
+        "startSec": 94.9123076923077,
+        "endSec": 96.75846153846155,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-425",
+        "fixtureId": "laser-0",
+        "startSec": 95.09692307692308,
+        "endSec": 96.02000000000001,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-427",
+        "fixtureId": "laser-1",
+        "startSec": 95.09692307692308,
+        "endSec": 96.02000000000001,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-402",
+        "fixtureId": "par-0",
+        "startSec": 95.09692307692308,
+        "endSec": 95.55846153846154,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-406",
+        "fixtureId": "par-1",
+        "startSec": 95.09692307692308,
+        "endSec": 95.55846153846154,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-410",
+        "fixtureId": "par-2",
+        "startSec": 95.09692307692308,
+        "endSec": 95.55846153846154,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-414",
+        "fixtureId": "par-3",
+        "startSec": 95.09692307692308,
+        "endSec": 95.55846153846154,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-417",
+        "fixtureId": "strobe-0",
+        "startSec": 95.09692307692308,
+        "endSec": 95.32769230769232,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-419",
+        "fixtureId": "strobe-1",
+        "startSec": 95.09692307692308,
+        "endSec": 95.32769230769232,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-421",
+        "fixtureId": "strobe-2",
+        "startSec": 95.09692307692308,
+        "endSec": 95.32769230769232,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-423",
+        "fixtureId": "strobe-3",
+        "startSec": 95.09692307692308,
+        "endSec": 95.32769230769232,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-403",
+        "fixtureId": "par-0",
+        "startSec": 95.55846153846154,
+        "endSec": 96.02,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-407",
+        "fixtureId": "par-1",
+        "startSec": 95.55846153846154,
+        "endSec": 96.02,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-411",
+        "fixtureId": "par-2",
+        "startSec": 95.55846153846154,
+        "endSec": 96.02,
+        "action": "pulse",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-415",
+        "fixtureId": "par-3",
+        "startSec": 95.55846153846154,
+        "endSec": 96.02,
+        "action": "pulse",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-486",
+        "fixtureId": "laser-0",
+        "startSec": 96.02000000000001,
+        "endSec": 96.94307692307693,
+        "action": "sweep",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-488",
+        "fixtureId": "laser-1",
+        "startSec": 96.02000000000001,
+        "endSec": 96.94307692307693,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-428",
+        "fixtureId": "mh-front-0",
+        "startSec": 96.02000000000001,
+        "endSec": 96.94307692307693,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-430",
+        "fixtureId": "mh-front-1",
+        "startSec": 96.02000000000001,
+        "endSec": 96.94307692307693,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-432",
+        "fixtureId": "mh-front-2",
+        "startSec": 96.02000000000001,
+        "endSec": 96.94307692307693,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-434",
+        "fixtureId": "mh-front-3",
+        "startSec": 96.02000000000001,
+        "endSec": 96.94307692307693,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-436",
+        "fixtureId": "mh-front-4",
+        "startSec": 96.02000000000001,
+        "endSec": 96.94307692307693,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-438",
+        "fixtureId": "mh-front-5",
+        "startSec": 96.02000000000001,
+        "endSec": 96.94307692307693,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-440",
+        "fixtureId": "mh-front-6",
+        "startSec": 96.02000000000001,
+        "endSec": 96.94307692307693,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-442",
+        "fixtureId": "mh-front-7",
+        "startSec": 96.02000000000001,
+        "endSec": 96.94307692307693,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-444",
+        "fixtureId": "mh-front-8",
+        "startSec": 96.02000000000001,
+        "endSec": 96.94307692307693,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-446",
+        "fixtureId": "mh-front-9",
+        "startSec": 96.02000000000001,
+        "endSec": 96.94307692307693,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-448",
+        "fixtureId": "mh-rear-0",
+        "startSec": 96.02000000000001,
+        "endSec": 96.94307692307693,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-450",
+        "fixtureId": "mh-rear-1",
+        "startSec": 96.02000000000001,
+        "endSec": 96.94307692307693,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-452",
+        "fixtureId": "mh-rear-2",
+        "startSec": 96.02000000000001,
+        "endSec": 96.94307692307693,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-454",
+        "fixtureId": "mh-rear-3",
+        "startSec": 96.02000000000001,
+        "endSec": 96.94307692307693,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-456",
+        "fixtureId": "mh-rear-4",
+        "startSec": 96.02000000000001,
+        "endSec": 96.94307692307693,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-458",
+        "fixtureId": "mh-rear-5",
+        "startSec": 96.02000000000001,
+        "endSec": 96.94307692307693,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-466",
+        "fixtureId": "par-0",
+        "startSec": 96.02000000000001,
+        "endSec": 97.86615384615385,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-467",
+        "fixtureId": "par-1",
+        "startSec": 96.02000000000001,
+        "endSec": 97.86615384615385,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-468",
+        "fixtureId": "par-2",
+        "startSec": 96.02000000000001,
+        "endSec": 97.86615384615385,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-469",
+        "fixtureId": "par-3",
+        "startSec": 96.02000000000001,
+        "endSec": 97.86615384615385,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-470",
+        "fixtureId": "strobe-0",
+        "startSec": 96.02000000000001,
+        "endSec": 96.25076923076924,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-474",
+        "fixtureId": "strobe-1",
+        "startSec": 96.02000000000001,
+        "endSec": 96.25076923076924,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-478",
+        "fixtureId": "strobe-2",
+        "startSec": 96.02000000000001,
+        "endSec": 96.25076923076924,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-482",
+        "fixtureId": "strobe-3",
+        "startSec": 96.02000000000001,
+        "endSec": 96.25076923076924,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-460",
+        "fixtureId": "wash-0",
+        "startSec": 96.02000000000001,
+        "endSec": 97.86615384615385,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-461",
+        "fixtureId": "wash-1",
+        "startSec": 96.02000000000001,
+        "endSec": 97.86615384615385,
+        "action": "hold",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-462",
+        "fixtureId": "wash-2",
+        "startSec": 96.02000000000001,
+        "endSec": 97.86615384615385,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-463",
+        "fixtureId": "wash-3",
+        "startSec": 96.02000000000001,
+        "endSec": 97.86615384615385,
+        "action": "hold",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-464",
+        "fixtureId": "wash-4",
+        "startSec": 96.02000000000001,
+        "endSec": 97.86615384615385,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-465",
+        "fixtureId": "wash-5",
+        "startSec": 96.02000000000001,
+        "endSec": 97.86615384615385,
+        "action": "hold",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-471",
+        "fixtureId": "strobe-0",
+        "startSec": 96.48153846153848,
+        "endSec": 96.7123076923077,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-475",
+        "fixtureId": "strobe-1",
+        "startSec": 96.48153846153848,
+        "endSec": 96.7123076923077,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-479",
+        "fixtureId": "strobe-2",
+        "startSec": 96.48153846153848,
+        "endSec": 96.7123076923077,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-483",
+        "fixtureId": "strobe-3",
+        "startSec": 96.48153846153848,
+        "endSec": 96.7123076923077,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-487",
+        "fixtureId": "laser-0",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-489",
+        "fixtureId": "laser-1",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-429",
+        "fixtureId": "mh-front-0",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-431",
+        "fixtureId": "mh-front-1",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-433",
+        "fixtureId": "mh-front-2",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-435",
+        "fixtureId": "mh-front-3",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-437",
+        "fixtureId": "mh-front-4",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-439",
+        "fixtureId": "mh-front-5",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-441",
+        "fixtureId": "mh-front-6",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-443",
+        "fixtureId": "mh-front-7",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-445",
+        "fixtureId": "mh-front-8",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-447",
+        "fixtureId": "mh-front-9",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-449",
+        "fixtureId": "mh-rear-0",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-451",
+        "fixtureId": "mh-rear-1",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-453",
+        "fixtureId": "mh-rear-2",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-455",
+        "fixtureId": "mh-rear-3",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-457",
+        "fixtureId": "mh-rear-4",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-459",
+        "fixtureId": "mh-rear-5",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-472",
+        "fixtureId": "strobe-0",
+        "startSec": 96.94307692307693,
+        "endSec": 97.17384615384617,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-476",
+        "fixtureId": "strobe-1",
+        "startSec": 96.94307692307693,
+        "endSec": 97.17384615384617,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-480",
+        "fixtureId": "strobe-2",
+        "startSec": 96.94307692307693,
+        "endSec": 97.17384615384617,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-484",
+        "fixtureId": "strobe-3",
+        "startSec": 96.94307692307693,
+        "endSec": 97.17384615384617,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-473",
+        "fixtureId": "strobe-0",
+        "startSec": 97.4046153846154,
+        "endSec": 97.63538461538462,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-477",
+        "fixtureId": "strobe-1",
+        "startSec": 97.4046153846154,
+        "endSec": 97.63538461538462,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-481",
+        "fixtureId": "strobe-2",
+        "startSec": 97.4046153846154,
+        "endSec": 97.63538461538462,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-485",
+        "fixtureId": "strobe-3",
+        "startSec": 97.4046153846154,
+        "endSec": 97.63538461538462,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-548",
+        "fixtureId": "laser-0",
+        "startSec": 97.86615384615385,
+        "endSec": 98.78923076923077,
+        "action": "sweep",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-550",
+        "fixtureId": "laser-1",
+        "startSec": 97.86615384615385,
+        "endSec": 98.78923076923077,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-490",
+        "fixtureId": "mh-front-0",
+        "startSec": 97.86615384615385,
+        "endSec": 98.78923076923077,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-492",
+        "fixtureId": "mh-front-1",
+        "startSec": 97.86615384615385,
+        "endSec": 98.78923076923077,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-494",
+        "fixtureId": "mh-front-2",
+        "startSec": 97.86615384615385,
+        "endSec": 98.78923076923077,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-496",
+        "fixtureId": "mh-front-3",
+        "startSec": 97.86615384615385,
+        "endSec": 98.78923076923077,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-498",
+        "fixtureId": "mh-front-4",
+        "startSec": 97.86615384615385,
+        "endSec": 98.78923076923077,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-500",
+        "fixtureId": "mh-front-5",
+        "startSec": 97.86615384615385,
+        "endSec": 98.78923076923077,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-502",
+        "fixtureId": "mh-front-6",
+        "startSec": 97.86615384615385,
+        "endSec": 98.78923076923077,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-504",
+        "fixtureId": "mh-front-7",
+        "startSec": 97.86615384615385,
+        "endSec": 98.78923076923077,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-506",
+        "fixtureId": "mh-front-8",
+        "startSec": 97.86615384615385,
+        "endSec": 98.78923076923077,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-508",
+        "fixtureId": "mh-front-9",
+        "startSec": 97.86615384615385,
+        "endSec": 98.78923076923077,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-510",
+        "fixtureId": "mh-rear-0",
+        "startSec": 97.86615384615385,
+        "endSec": 98.78923076923077,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-512",
+        "fixtureId": "mh-rear-1",
+        "startSec": 97.86615384615385,
+        "endSec": 98.78923076923077,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-514",
+        "fixtureId": "mh-rear-2",
+        "startSec": 97.86615384615385,
+        "endSec": 98.78923076923077,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-516",
+        "fixtureId": "mh-rear-3",
+        "startSec": 97.86615384615385,
+        "endSec": 98.78923076923077,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-518",
+        "fixtureId": "mh-rear-4",
+        "startSec": 97.86615384615385,
+        "endSec": 98.78923076923077,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-520",
+        "fixtureId": "mh-rear-5",
+        "startSec": 97.86615384615385,
+        "endSec": 98.78923076923077,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-528",
+        "fixtureId": "par-0",
+        "startSec": 97.86615384615385,
+        "endSec": 99.71230769230769,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-529",
+        "fixtureId": "par-1",
+        "startSec": 97.86615384615385,
+        "endSec": 99.71230769230769,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-530",
+        "fixtureId": "par-2",
+        "startSec": 97.86615384615385,
+        "endSec": 99.71230769230769,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-531",
+        "fixtureId": "par-3",
+        "startSec": 97.86615384615385,
+        "endSec": 99.71230769230769,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-532",
+        "fixtureId": "strobe-0",
+        "startSec": 97.86615384615385,
+        "endSec": 98.09692307692308,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-536",
+        "fixtureId": "strobe-1",
+        "startSec": 97.86615384615385,
+        "endSec": 98.09692307692308,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-540",
+        "fixtureId": "strobe-2",
+        "startSec": 97.86615384615385,
+        "endSec": 98.09692307692308,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-544",
+        "fixtureId": "strobe-3",
+        "startSec": 97.86615384615385,
+        "endSec": 98.09692307692308,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-522",
+        "fixtureId": "wash-0",
+        "startSec": 97.86615384615385,
+        "endSec": 99.71230769230769,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-523",
+        "fixtureId": "wash-1",
+        "startSec": 97.86615384615385,
+        "endSec": 99.71230769230769,
+        "action": "hold",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-524",
+        "fixtureId": "wash-2",
+        "startSec": 97.86615384615385,
+        "endSec": 99.71230769230769,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-525",
+        "fixtureId": "wash-3",
+        "startSec": 97.86615384615385,
+        "endSec": 99.71230769230769,
+        "action": "hold",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-526",
+        "fixtureId": "wash-4",
+        "startSec": 97.86615384615385,
+        "endSec": 99.71230769230769,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-527",
+        "fixtureId": "wash-5",
+        "startSec": 97.86615384615385,
+        "endSec": 99.71230769230769,
+        "action": "hold",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-533",
+        "fixtureId": "strobe-0",
+        "startSec": 98.32769230769232,
+        "endSec": 98.55846153846154,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-537",
+        "fixtureId": "strobe-1",
+        "startSec": 98.32769230769232,
+        "endSec": 98.55846153846154,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-541",
+        "fixtureId": "strobe-2",
+        "startSec": 98.32769230769232,
+        "endSec": 98.55846153846154,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-545",
+        "fixtureId": "strobe-3",
+        "startSec": 98.32769230769232,
+        "endSec": 98.55846153846154,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-549",
+        "fixtureId": "laser-0",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-551",
+        "fixtureId": "laser-1",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-491",
+        "fixtureId": "mh-front-0",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-493",
+        "fixtureId": "mh-front-1",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-495",
+        "fixtureId": "mh-front-2",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-497",
+        "fixtureId": "mh-front-3",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-499",
+        "fixtureId": "mh-front-4",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-501",
+        "fixtureId": "mh-front-5",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-503",
+        "fixtureId": "mh-front-6",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-505",
+        "fixtureId": "mh-front-7",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-507",
+        "fixtureId": "mh-front-8",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-509",
+        "fixtureId": "mh-front-9",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-511",
+        "fixtureId": "mh-rear-0",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-513",
+        "fixtureId": "mh-rear-1",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-515",
+        "fixtureId": "mh-rear-2",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-517",
+        "fixtureId": "mh-rear-3",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-519",
+        "fixtureId": "mh-rear-4",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-521",
+        "fixtureId": "mh-rear-5",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-534",
+        "fixtureId": "strobe-0",
+        "startSec": 98.78923076923077,
+        "endSec": 99.02000000000001,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-538",
+        "fixtureId": "strobe-1",
+        "startSec": 98.78923076923077,
+        "endSec": 99.02000000000001,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-542",
+        "fixtureId": "strobe-2",
+        "startSec": 98.78923076923077,
+        "endSec": 99.02000000000001,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-546",
+        "fixtureId": "strobe-3",
+        "startSec": 98.78923076923077,
+        "endSec": 99.02000000000001,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-535",
+        "fixtureId": "strobe-0",
+        "startSec": 99.25076923076924,
+        "endSec": 99.48153846153846,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-539",
+        "fixtureId": "strobe-1",
+        "startSec": 99.25076923076924,
+        "endSec": 99.48153846153846,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-543",
+        "fixtureId": "strobe-2",
+        "startSec": 99.25076923076924,
+        "endSec": 99.48153846153846,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-547",
+        "fixtureId": "strobe-3",
+        "startSec": 99.25076923076924,
+        "endSec": 99.48153846153846,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-578",
+        "fixtureId": "laser-0",
+        "startSec": 99.71230769230769,
+        "endSec": 103.4046153846154,
+        "action": "hold",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-579",
+        "fixtureId": "laser-1",
+        "startSec": 99.71230769230769,
+        "endSec": 103.4046153846154,
+        "action": "hold",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-558",
+        "fixtureId": "mh-front-0",
+        "startSec": 99.71230769230769,
+        "endSec": 103.4046153846154,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-563",
+        "fixtureId": "mh-front-5",
+        "startSec": 99.71230769230769,
+        "endSec": 103.4046153846154,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-568",
+        "fixtureId": "mh-rear-0",
+        "startSec": 99.71230769230769,
+        "endSec": 103.4046153846154,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-571",
+        "fixtureId": "mh-rear-3",
+        "startSec": 99.71230769230769,
+        "endSec": 103.4046153846154,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-574",
+        "fixtureId": "par-0",
+        "startSec": 99.71230769230769,
+        "endSec": 103.4046153846154,
+        "action": "hold",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-575",
+        "fixtureId": "par-1",
+        "startSec": 99.71230769230769,
+        "endSec": 103.4046153846154,
+        "action": "hold",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-576",
+        "fixtureId": "par-2",
+        "startSec": 99.71230769230769,
+        "endSec": 103.4046153846154,
+        "action": "hold",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-577",
+        "fixtureId": "par-3",
+        "startSec": 99.71230769230769,
+        "endSec": 103.4046153846154,
+        "action": "hold",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-552",
+        "fixtureId": "wash-0",
+        "startSec": 99.71230769230769,
+        "endSec": 103.4046153846154,
+        "action": "fade",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-553",
+        "fixtureId": "wash-1",
+        "startSec": 99.71230769230769,
+        "endSec": 103.4046153846154,
+        "action": "fade",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-554",
+        "fixtureId": "wash-2",
+        "startSec": 99.71230769230769,
+        "endSec": 103.4046153846154,
+        "action": "fade",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-555",
+        "fixtureId": "wash-3",
+        "startSec": 99.71230769230769,
+        "endSec": 103.4046153846154,
+        "action": "fade",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-556",
+        "fixtureId": "wash-4",
+        "startSec": 99.71230769230769,
+        "endSec": 103.4046153846154,
+        "action": "fade",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-557",
+        "fixtureId": "wash-5",
+        "startSec": 99.71230769230769,
+        "endSec": 103.4046153846154,
+        "action": "fade",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-559",
+        "fixtureId": "mh-front-1",
+        "startSec": 99.86000000000001,
+        "endSec": 103.4046153846154,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-564",
+        "fixtureId": "mh-front-6",
+        "startSec": 99.86000000000001,
+        "endSec": 103.4046153846154,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-569",
+        "fixtureId": "mh-rear-1",
+        "startSec": 99.93384615384616,
+        "endSec": 103.4046153846154,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-572",
+        "fixtureId": "mh-rear-4",
+        "startSec": 99.93384615384616,
+        "endSec": 103.4046153846154,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-560",
+        "fixtureId": "mh-front-2",
+        "startSec": 100.00769230769231,
+        "endSec": 103.4046153846154,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-565",
+        "fixtureId": "mh-front-7",
+        "startSec": 100.00769230769231,
+        "endSec": 103.4046153846154,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-561",
+        "fixtureId": "mh-front-3",
+        "startSec": 100.15538461538462,
+        "endSec": 103.4046153846154,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-566",
+        "fixtureId": "mh-front-8",
+        "startSec": 100.15538461538462,
+        "endSec": 103.4046153846154,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-570",
+        "fixtureId": "mh-rear-2",
+        "startSec": 100.15538461538462,
+        "endSec": 103.4046153846154,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-573",
+        "fixtureId": "mh-rear-5",
+        "startSec": 100.15538461538462,
+        "endSec": 103.4046153846154,
+        "action": "sweep",
+        "colorIndex": 1,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-562",
+        "fixtureId": "mh-front-4",
+        "startSec": 100.30307692307693,
+        "endSec": 103.4046153846154,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-567",
+        "fixtureId": "mh-front-9",
+        "startSec": 100.30307692307693,
+        "endSec": 103.4046153846154,
+        "action": "sweep",
+        "colorIndex": 0,
+        "fadeInSec": 0
+      },
+      {
+        "id": "cue-1",
+        "fixtureId": "mh-front-0",
+        "startSec": 61.17384615384616,
+        "endSec": 62.09692307692308,
+        "action": "sweep",
+        "colorIndex": 6
+      }
+    ]
+  },
+  "settings": {
+    "render": {
+      "volumetrics": true,
+      "bloom": true,
+      "shadows": true,
+      "lofi": false,
+      "strobes": false,
+      "activeFixtureCount": 32,
+      "cameraView": 0
+    },
+    "playback": {
+      "volume": 1,
+      "muted": false,
+      "loopEnabled": true,
+      "followPlayhead": true,
+      "zoomPixelsPerSecond": 48
+    },
+    "ui": {
+      "statsVisible": true,
+      "dockCollapsed": false,
+      "dockHeightPx": 0,
+      "waveformHeightPx": 62
+    }
+  },
+  "audio": {
+    "source": "bundled",
+    "id": "koto-chill",
+    "title": "The Koto Chill",
+    "artist": "zircon",
+    "fileName": "The Koto Chill.ogg"
+  }
+}

@@ -31,6 +31,7 @@ Enforce with an ESLint `no-restricted-imports` rule in `packages/show-model`.
 
 **show-model**
 - `Show` document types + Zod schema + `version` migrations
+- `.dmxsim` project-file schema (rig + timeline + arrangement + settings) in `project.ts`
 - `evaluateFixtureStates(show, timeSec)` — pure, deterministic
 - Timeline math: clips, envelopes, beat grid ↔ seconds conversion
 - Preset expansion (preset → clips)

@@ -1,4 +1,4 @@
-import trackUrl from '../../../resources/sample_audio/The Koto Chill.ogg?url';
+import trackUrl from '../../../resources/sample_projects/koto-chill/The Koto Chill.ogg?url';
 
 /**
  * Offline analysis of the sample track, not import-time detection: an

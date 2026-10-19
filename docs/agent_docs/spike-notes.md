@@ -42,7 +42,11 @@ The lower dock is an FL Studio-style **Playlist / Arrangement view**: a pinned t
 - Inspector: the selected fixture's capabilities are listed (Dimmer, RGB/W, Pan/Tilt, Zoom, Strobe rate, Gobo, Prism, Rotation). Hold, fade, and pulse are available generally; pan/tilt fixtures add sweep and strobe-capable fixtures add strobe. Colour is editable for colour-mixing fixtures. When no clip is selected, the action/colour pickers set the default for the next clip, so drag-created clips inherit the user's intent.
 - Fixture response: each cue resolves into the existing show-model envelopes and drives only its target fixture. The default track ships with a seeded demo arrangement (`src/demo-arrangement.ts`) filling the 16-bar loop; before that, the demo was a separate hard-coded show and cues only overrode it when present.
 
-This is a design and behavior prototype, not a finished editor. Clip data is still in-memory and is discarded when another audio file is loaded; there is no save/load, undo/redo, multi-select, copy/paste, track reordering, or per-attribute keyframe inspector. BPM/offset editing and beat analysis remain open.
+This is a design and behavior prototype, not a finished editor. Clip data is stored in the project file and round-trips through **Open project** / **Save project**; loading another audio file still resets the timeline and discards cues (the audio reference is tracked, but the two are not yet merged). Undo/redo, multi-select, copy/paste, track reordering, and a per-attribute keyframe inspector remain open. BPM/offset editing and beat analysis remain open.
+
+### Project files (2026-10-18)
+
+The shipped demo is now data, not code: the app fetches `resources/sample_projects/koto-chill/koto-chill.dmxsim` at startup and builds the rig, timeline, loop, clips, and view settings from it. The project file lives next to the sample audio it scores. The format is specified in `docs/agent_docs/project-file-format.md` with a generated JSON Schema companion, and validated by Zod in `packages/show-model/src/project.ts`. **Save project** downloads the current rig/timeline/clips/settings as a `.dmxsim` file; **Open project** validates and applies one, rejecting a rig that does not match the running build. Render-only fixture preview overrides are deliberately not saved. `npm run project:generate` rebuilds the bundled demo from `demo-arrangement.ts` (overwriting on-disk edits) and regenerates the schema.
 
 ### Frame-cost fixes (2026-10-18)
 

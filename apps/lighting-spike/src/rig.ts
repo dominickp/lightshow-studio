@@ -175,7 +175,7 @@ export class FixtureRig {
 
     this.beamGeometry = new THREE.CylinderGeometry(1, 1, 1, 30, 1, true);
     this.beamGeometry.translate(0, -0.5, 0);
-    this.beamPositions = this.beamGeometry.attributes.position.array as Float32Array;
+    this.beamPositions = this.beamGeometry.attributes.position!.array as Float32Array;
     this.beamUnitPositions = this.beamPositions.slice();
     this.beamMaterial = createBeamMaterial();
     this.beam = new THREE.Mesh(this.beamGeometry, this.beamMaterial.material);
@@ -220,7 +220,7 @@ export class FixtureRig {
     const strobeOn = preview?.outputEnabled || state.strobeHz <= 0
       ? true
       : Math.floor(timeSec * state.strobeHz) % 2 === 0;
-    const level = (preview?.outputEnabled ? preview.intensity : state.intensity) * (strobeOn ? 1 : 0);
+    const level = (preview?.outputEnabled ? preview.intensity ?? 0 : state.intensity) * (strobeOn ? 1 : 0);
 
     const color = this.color.setRGB(state.color.r, state.color.g, state.color.b, THREE.SRGBColorSpace);
     const spread = Math.max(0.2, preview?.spreadDeg ?? state.spreadDeg);
@@ -262,7 +262,7 @@ export class FixtureRig {
         this.beamPositions[index] = this.beamUnitPositions[index]! * radius;
         this.beamPositions[index + 2] = this.beamUnitPositions[index + 2]! * radius;
       }
-      this.beamGeometry.attributes.position.needsUpdate = true;
+      this.beamGeometry.attributes.position!.needsUpdate = true;
       this.beamGeometry.computeBoundingSphere();
       this.lastFarRadius = farRadius;
     }

@@ -37,6 +37,9 @@ export const PIXELS_PER_SECOND = 48;
 export const MIN_PIXELS_PER_SECOND = 0.25;
 export const MAX_PIXELS_PER_SECOND = 480;
 export const TRACK_LABEL_WIDTH = 176;
+
+/** Matches the `.fixture-row.hidden` opacity in index.html. */
+const HIDDEN_ROW_OPACITY = 0.32;
 const MIN_CLIP_SEC = 0.1;
 const EDGE_GRAB_PX = 8;
 const HISTORY_LIMIT = 100;
@@ -640,6 +643,8 @@ export class Arrangement {
     for (const [index, fixture] of this.fixtures.entries()) {
       const cues = byFixture.get(fixture.id);
       if (cues === undefined) continue;
+      // Row content is dimmed via CSS, but clips live in this shared canvas.
+      ctx.globalAlpha = this.hiddenFixtureIds.has(fixture.id) ? HIDDEN_ROW_OPACITY : 1;
       const y = index * rowHeight + 4;
       const h = Math.max(2, rowHeight - 8);
       for (const cue of cues) {
@@ -666,6 +671,7 @@ export class Arrangement {
         }
       }
     }
+    ctx.globalAlpha = 1;
 
     const preview = this.preview;
     if (preview !== null) {

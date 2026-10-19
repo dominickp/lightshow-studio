@@ -115,6 +115,8 @@ const element = <T extends HTMLElement>(id: string): T => {
 
 const ui = {
   statsPanel: element('stats'),
+  controlsPanel: element('controls'),
+  controlsToggle: element<HTMLButtonElement>('controls-toggle'),
   fps: element('stat-fps'),
   ms: element('stat-ms'),
   calls: element('stat-calls'),
@@ -383,6 +385,54 @@ const formatClock = (seconds: number): string => {
   return `${minutes}:${(safe - minutes * 60).toFixed(1).padStart(4, '0')}`;
 };
 
+// --- Render preferences (persisted) ---------------------------------------
+/**
+ * View/render preferences are kept in localStorage so a refresh does not undo
+ * the user's setup. The bundled demo project is re-applied on every load, so
+ * its settings are only treated as defaults (see `applyProjectSettings`).
+ */
+const RENDER_KEY = 'dmxsim.spike.render';
+
+interface StoredRenderSettings {
+  volumetrics?: boolean;
+  bloom?: boolean;
+  shadows?: boolean;
+  lofi?: boolean;
+  strobes?: boolean;
+  activeFixtureCount?: number;
+  cameraView?: number;
+}
+
+const readStoredRender = (): StoredRenderSettings => {
+  try {
+    const raw = localStorage.getItem(RENDER_KEY);
+    if (raw === null) return {};
+    const parsed: unknown = JSON.parse(raw);
+    return typeof parsed === 'object' && parsed !== null ? (parsed as StoredRenderSettings) : {};
+  } catch {
+    return {};
+  }
+};
+
+const snapshotRender = (): StoredRenderSettings => ({
+  volumetrics,
+  bloom: bloomOn,
+  shadows: shadowsOn,
+  lofi,
+  strobes: strobesOn,
+  activeFixtureCount: activeCount,
+  cameraView: stage.view,
+});
+
+let persistedRender = '';
+/** Write render prefs only when they actually changed. */
+const persistRender = (): void => {
+  const next = JSON.stringify(snapshotRender());
+  if (next === persistedRender) return;
+  persistedRender = next;
+  localStorage.setItem(RENDER_KEY, next);
+};
+
 const syncButtons = (): void => {
   ui.play.classList.toggle('on', clock.playing);
   ui.play.textContent = clock.playing ? '❚❚ Pause' : '▶ Play';
@@ -394,6 +444,7 @@ const syncButtons = (): void => {
   ui.strobe.classList.toggle('on', strobesOn);
   ui.strobeStatus.textContent = strobesOn ? 'on' : 'off';
   ui.count.querySelector('em')!.textContent = String(activeCount);
+  persistRender();
 };
 
 const applyShadows = (): void => {
@@ -479,13 +530,30 @@ const applyStats = (): void => {
   ui.stats.classList.toggle('on', statsVisible);
   ui.stats.setAttribute('aria-pressed', String(statsVisible));
 };
-const toggleStats = (): void => {
-  statsVisible = !statsVisible;
-  localStorage.setItem(STATS_KEY, statsVisible ? 'on' : 'off');
+const setStatsVisible = (visible: boolean, persist = true): void => {
+  statsVisible = visible;
+  if (persist) localStorage.setItem(STATS_KEY, visible ? 'on' : 'off');
   applyStats();
 };
+const toggleStats = (): void => setStatsVisible(!statsVisible);
 applyStats();
 ui.stats.addEventListener('click', toggleStats);
+
+const CONTROLS_KEY = 'dmxsim.spike.controlsVisible';
+let controlsVisible = localStorage.getItem(CONTROLS_KEY) === 'on';
+const applyControls = (): void => {
+  ui.controlsPanel.hidden = !controlsVisible;
+  ui.controlsToggle.classList.toggle('on', controlsVisible);
+  ui.controlsToggle.setAttribute('aria-pressed', String(controlsVisible));
+};
+const setControlsVisible = (visible: boolean, persist = true): void => {
+  controlsVisible = visible;
+  if (persist) localStorage.setItem(CONTROLS_KEY, visible ? 'on' : 'off');
+  applyControls();
+};
+const toggleControls = (): void => setControlsVisible(!controlsVisible);
+applyControls();
+ui.controlsToggle.addEventListener('click', toggleControls);
 
 const DOCK_HEIGHT_KEY = 'dmxsim.spike.dockHeight';
 const DOCK_COLLAPSED_KEY = 'dmxsim.spike.dockCollapsed';
@@ -1011,7 +1079,10 @@ ui.strobe.addEventListener('click', () => {
   strobesOn = !strobesOn;
   syncButtons();
 });
-ui.view.addEventListener('click', () => stage.nextView());
+ui.view.addEventListener('click', () => {
+  stage.nextView();
+  persistRender();
+});
 ui.count.addEventListener('click', () => {
   countIndex = (countIndex + 1) % counts.length;
   setActiveCount(counts[countIndex] ?? show.fixtures.length);
@@ -1045,6 +1116,8 @@ window.addEventListener('keydown', (event) => {
     strobesOn = !strobesOn;
   } else if (event.key === 's' || event.key === 'S') {
     toggleStats();
+  } else if (event.key === '`' || event.key === '~') {
+    toggleControls();
   } else if (event.key === 'l' || event.key === 'L') {
     clock.setLoopEnabled(!clock.loopEnabled);
     updateLoopUi();
@@ -1211,24 +1284,35 @@ const enableTimelineControls = (): void => {
   ui.play.disabled = false;
 };
 
-/** Apply the saved UI/render state. Called on startup and project import. */
-const applyProjectSettings = (settings: ProjectSettings): void => {
-  volumetrics = settings.render.volumetrics;
-  bloomOn = settings.render.bloom;
-  shadowsOn = settings.render.shadows;
-  lofi = settings.render.lofi;
-  strobesOn = settings.render.strobes;
+/**
+ * Apply saved UI/render state. Called on startup and project import.
+ *
+ * `source` decides who wins when they disagree:
+ * - `project`: a project the user just opened — its settings are authoritative
+ *   and become the local defaults for the next refresh.
+ * - `default`: the bundled demo, which is re-applied on every load. Local
+ *   preferences (localStorage) win so refreshing does not undo the user's setup.
+ */
+const applyProjectSettings = (settings: ProjectSettings, source: 'project' | 'default' = 'project'): void => {
+  const local = source === 'default' ? readStoredRender() : {};
+  const keepLocalUi = source === 'default';
+
+  volumetrics = local.volumetrics ?? settings.render.volumetrics;
+  bloomOn = local.bloom ?? settings.render.bloom;
+  shadowsOn = local.shadows ?? settings.render.shadows;
+  lofi = local.lofi ?? settings.render.lofi;
+  strobesOn = local.strobes ?? settings.render.strobes;
   post.setBloom(bloomOn);
   post.setLofi(lofi);
   applyShadows();
 
-  const requested = settings.render.activeFixtureCount > 0
-    ? Math.min(settings.render.activeFixtureCount, show.fixtures.length)
+  const requested = (local.activeFixtureCount ?? settings.render.activeFixtureCount) > 0
+    ? Math.min(local.activeFixtureCount ?? settings.render.activeFixtureCount, show.fixtures.length)
     : show.fixtures.length;
   setActiveCount(requested);
   const presetIndex = counts.indexOf(requested);
   countIndex = presetIndex >= 0 ? presetIndex : counts.length - 1;
-  stage.setView(settings.render.cameraView, true);
+  stage.setView(local.cameraView ?? settings.render.cameraView, true);
 
   volume = settings.playback.volume;
   muted = settings.playback.muted;
@@ -1237,20 +1321,25 @@ const applyProjectSettings = (settings: ProjectSettings): void => {
   ui.follow.classList.toggle('on', followPlayhead);
   ui.follow.setAttribute('aria-pressed', String(followPlayhead));
 
-  statsVisible = settings.ui.statsVisible;
-  applyStats();
-  dockCollapsed = settings.ui.dockCollapsed;
-  dockHeightPx = settings.ui.dockHeightPx;
-  applyDock();
-  waveHeightPx = Math.max(40, Math.min(200, settings.ui.waveformHeightPx));
-  applyWaveHeight();
+  // Local panel/dock prefs survive the demo load; a freshly opened project wins.
+  if (!keepLocalUi) {
+    setStatsVisible(settings.ui.statsVisible);
+    dockCollapsed = settings.ui.dockCollapsed;
+    dockHeightPx = settings.ui.dockHeightPx;
+    localStorage.setItem(DOCK_COLLAPSED_KEY, dockCollapsed ? 'on' : 'off');
+    localStorage.setItem(DOCK_HEIGHT_KEY, String(Math.round(dockHeightPx)));
+    applyDock();
+    waveHeightPx = Math.max(40, Math.min(200, settings.ui.waveformHeightPx));
+    localStorage.setItem(WAVE_HEIGHT_KEY, String(Math.round(waveHeightPx)));
+    applyWaveHeight();
+  }
 
   if (currentTimeline !== null) setZoom(settings.playback.zoomPixelsPerSecond);
   syncButtons();
 };
 
 /** Load a project into the running app. The rig is fixed for the spike. */
-const applyProject = (project: ProjectFile): void => {
+const applyProject = (project: ProjectFile, source: 'project' | 'default' = 'project'): void => {
   projectName = project.name;
   projectDescription = project.description;
   projectAudio = project.audio;
@@ -1265,7 +1354,7 @@ const applyProject = (project: ProjectFile): void => {
   arrangement.setTimeline(timeline);
   arrangement.setCues(project.arrangement.clips.map(projectClipToCue));
   clock.setLoopEnabled(project.settings.playback.loopEnabled);
-  applyProjectSettings(project.settings);
+  applyProjectSettings(project.settings, source);
   applyLoop();
   clock.seek(loopRegion.startSec);
   ui.transportTime.textContent = `${formatClock(loopRegion.startSec)} / ${formatClock(clock.duration)}`;
@@ -1381,7 +1470,7 @@ try {
   ui.audioStatus.textContent = 'Ready';
 
   if (bundledProject !== null) {
-    applyProject(bundledProject);
+    applyProject(bundledProject, 'default');
     setProjectStatus(`Loaded ${bundledProject.name} · ${bundledProject.arrangement.clips.length} clips`);
   } else {
     clock.setLoop({ startSec: loopStartSec, endSec: loopEndSec }, true);

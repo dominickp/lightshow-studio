@@ -1,10 +1,14 @@
 {
   "format": "dmxsim-project",
-  "version": 1,
+  "version": 2,
   "name": "Koto Chill demo",
   "description": "Bundled demo project: the full rig plus a 16-bar arrangement on The Koto Chill.",
+  "venue": {
+    "id": "club-stage",
+    "name": "Club Stage"
+  },
   "show": {
-    "version": 1,
+    "version": 2,
     "name": "Spike — demo rig",
     "fixtures": [
       {
@@ -71,7 +75,18 @@
           "y": 7.4,
           "z": 1.6
         },
-        "yawDeg": -12
+        "yawDeg": -12,
+        "mount": {
+          "anchorId": "truss-front",
+          "u": 0.11428571428571428,
+          "offset": {
+            "x": 0,
+            "y": -0.6,
+            "z": 0
+          },
+          "yawDeg": -12
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "mh-front-1",
@@ -133,11 +148,22 @@
           }
         },
         "position": {
-          "x": -6.3,
+          "x": -6.300000000000001,
           "y": 7.4,
           "z": 1.6
         },
-        "yawDeg": -9.333333333333334
+        "yawDeg": -9.333333333333371,
+        "mount": {
+          "anchorId": "truss-front",
+          "u": 0.19999999999999998,
+          "offset": {
+            "x": 0,
+            "y": -0.6,
+            "z": 0
+          },
+          "yawDeg": -9.333333333333334
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "mh-front-2",
@@ -203,7 +229,18 @@
           "y": 7.4,
           "z": 1.6
         },
-        "yawDeg": -6.666666666666667
+        "yawDeg": -6.666666666666629,
+        "mount": {
+          "anchorId": "truss-front",
+          "u": 0.2857142857142857,
+          "offset": {
+            "x": 0,
+            "y": -0.6,
+            "z": 0
+          },
+          "yawDeg": -6.666666666666667
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "mh-front-3",
@@ -265,11 +302,22 @@
           }
         },
         "position": {
-          "x": -2.7,
+          "x": -2.700000000000001,
           "y": 7.4,
           "z": 1.6
         },
-        "yawDeg": -4
+        "yawDeg": -4,
+        "mount": {
+          "anchorId": "truss-front",
+          "u": 0.3714285714285714,
+          "offset": {
+            "x": 0,
+            "y": -0.6,
+            "z": 0
+          },
+          "yawDeg": -4
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "mh-front-4",
@@ -331,11 +379,22 @@
           }
         },
         "position": {
-          "x": -0.9000000000000004,
+          "x": -0.9000000000000021,
           "y": 7.4,
           "z": 1.6
         },
-        "yawDeg": -1.333333333333334
+        "yawDeg": -1.3333333333333712,
+        "mount": {
+          "anchorId": "truss-front",
+          "u": 0.4571428571428571,
+          "offset": {
+            "x": 0,
+            "y": -0.6,
+            "z": 0
+          },
+          "yawDeg": -1.333333333333334
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "mh-front-5",
@@ -397,11 +456,22 @@
           }
         },
         "position": {
-          "x": 0.9000000000000004,
+          "x": 0.8999999999999986,
           "y": 7.4,
           "z": 1.6
         },
-        "yawDeg": 1.333333333333334
+        "yawDeg": 1.3333333333333712,
+        "mount": {
+          "anchorId": "truss-front",
+          "u": 0.5428571428571428,
+          "offset": {
+            "x": 0,
+            "y": -0.6,
+            "z": 0
+          },
+          "yawDeg": 1.333333333333334
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "mh-front-6",
@@ -467,7 +537,18 @@
           "y": 7.4,
           "z": 1.6
         },
-        "yawDeg": 3.999999999999999
+        "yawDeg": 4,
+        "mount": {
+          "anchorId": "truss-front",
+          "u": 0.6285714285714286,
+          "offset": {
+            "x": 0,
+            "y": -0.6,
+            "z": 0
+          },
+          "yawDeg": 3.999999999999999
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "mh-front-7",
@@ -533,7 +614,18 @@
           "y": 7.4,
           "z": 1.6
         },
-        "yawDeg": 6.666666666666667
+        "yawDeg": 6.666666666666629,
+        "mount": {
+          "anchorId": "truss-front",
+          "u": 0.7142857142857143,
+          "offset": {
+            "x": 0,
+            "y": -0.6,
+            "z": 0
+          },
+          "yawDeg": 6.666666666666667
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "mh-front-8",
@@ -595,11 +687,22 @@
           }
         },
         "position": {
-          "x": 6.299999999999999,
+          "x": 6.299999999999997,
           "y": 7.4,
           "z": 1.6
         },
-        "yawDeg": 9.333333333333332
+        "yawDeg": 9.333333333333371,
+        "mount": {
+          "anchorId": "truss-front",
+          "u": 0.7999999999999999,
+          "offset": {
+            "x": 0,
+            "y": -0.6,
+            "z": 0
+          },
+          "yawDeg": 9.333333333333332
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "mh-front-9",
@@ -661,11 +764,22 @@
           }
         },
         "position": {
-          "x": 8.1,
+          "x": 8.099999999999998,
           "y": 7.4,
           "z": 1.6
         },
-        "yawDeg": 12
+        "yawDeg": 12,
+        "mount": {
+          "anchorId": "truss-front",
+          "u": 0.8857142857142857,
+          "offset": {
+            "x": 0,
+            "y": -0.6,
+            "z": 0
+          },
+          "yawDeg": 12
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "mh-rear-0",
@@ -731,7 +845,18 @@
           "y": 7.4,
           "z": -5.6
         },
-        "yawDeg": 15
+        "yawDeg": 15,
+        "mount": {
+          "anchorId": "truss-rear",
+          "u": 0.1952380952380952,
+          "offset": {
+            "x": 0,
+            "y": -0.6,
+            "z": 0
+          },
+          "yawDeg": 15
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "mh-rear-1",
@@ -793,11 +918,22 @@
           }
         },
         "position": {
-          "x": -3.8400000000000003,
+          "x": -3.8400000000000007,
           "y": 7.4,
           "z": -5.6
         },
-        "yawDeg": 9
+        "yawDeg": 9,
+        "mount": {
+          "anchorId": "truss-rear",
+          "u": 0.3171428571428571,
+          "offset": {
+            "x": 0,
+            "y": -0.6,
+            "z": 0
+          },
+          "yawDeg": 9
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "mh-rear-2",
@@ -859,11 +995,22 @@
           }
         },
         "position": {
-          "x": -1.2800000000000002,
+          "x": -1.2800000000000011,
           "y": 7.4,
           "z": -5.6
         },
-        "yawDeg": 2.999999999999999
+        "yawDeg": 3,
+        "mount": {
+          "anchorId": "truss-rear",
+          "u": 0.439047619047619,
+          "offset": {
+            "x": 0,
+            "y": -0.6,
+            "z": 0
+          },
+          "yawDeg": 2.999999999999999
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "mh-rear-3",
@@ -929,7 +1076,18 @@
           "y": 7.4,
           "z": -5.6
         },
-        "yawDeg": -2.999999999999999
+        "yawDeg": -3,
+        "mount": {
+          "anchorId": "truss-rear",
+          "u": 0.560952380952381,
+          "offset": {
+            "x": 0,
+            "y": -0.6,
+            "z": 0
+          },
+          "yawDeg": -2.999999999999999
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "mh-rear-4",
@@ -995,7 +1153,18 @@
           "y": 7.4,
           "z": -5.6
         },
-        "yawDeg": -9.000000000000002
+        "yawDeg": -9,
+        "mount": {
+          "anchorId": "truss-rear",
+          "u": 0.6828571428571428,
+          "offset": {
+            "x": 0,
+            "y": -0.6,
+            "z": 0
+          },
+          "yawDeg": -9.000000000000002
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "mh-rear-5",
@@ -1057,11 +1226,22 @@
           }
         },
         "position": {
-          "x": 6.4,
+          "x": 6.400000000000002,
           "y": 7.4,
           "z": -5.6
         },
-        "yawDeg": -15
+        "yawDeg": -15,
+        "mount": {
+          "anchorId": "truss-rear",
+          "u": 0.8047619047619048,
+          "offset": {
+            "x": 0,
+            "y": -0.6,
+            "z": 0
+          },
+          "yawDeg": -15
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "wash-0",
@@ -1121,7 +1301,18 @@
           "y": 7.5,
           "z": -2
         },
-        "yawDeg": -10
+        "yawDeg": -10,
+        "mount": {
+          "anchorId": "truss-mid",
+          "u": 0.16666666666666666,
+          "offset": {
+            "x": 0,
+            "y": -0.5,
+            "z": 0
+          },
+          "yawDeg": -10
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "wash-1",
@@ -1177,11 +1368,22 @@
           }
         },
         "position": {
-          "x": -4.2,
+          "x": -4.199999999999999,
           "y": 7.5,
           "z": -2
         },
-        "yawDeg": -6
+        "yawDeg": -6,
+        "mount": {
+          "anchorId": "truss-mid",
+          "u": 0.30000000000000004,
+          "offset": {
+            "x": 0,
+            "y": -0.5,
+            "z": 0
+          },
+          "yawDeg": -6
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "wash-2",
@@ -1241,7 +1443,18 @@
           "y": 7.5,
           "z": -2
         },
-        "yawDeg": -1.9999999999999996
+        "yawDeg": -2,
+        "mount": {
+          "anchorId": "truss-mid",
+          "u": 0.43333333333333335,
+          "offset": {
+            "x": 0,
+            "y": -0.5,
+            "z": 0
+          },
+          "yawDeg": -1.9999999999999996
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "wash-3",
@@ -1301,7 +1514,18 @@
           "y": 7.5,
           "z": -2
         },
-        "yawDeg": 1.9999999999999996
+        "yawDeg": 2,
+        "mount": {
+          "anchorId": "truss-mid",
+          "u": 0.5666666666666667,
+          "offset": {
+            "x": 0,
+            "y": -0.5,
+            "z": 0
+          },
+          "yawDeg": 1.9999999999999996
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "wash-4",
@@ -1357,11 +1581,22 @@
           }
         },
         "position": {
-          "x": 4.199999999999999,
+          "x": 4.200000000000001,
           "y": 7.5,
           "z": -2
         },
-        "yawDeg": 6.000000000000001
+        "yawDeg": 6,
+        "mount": {
+          "anchorId": "truss-mid",
+          "u": 0.7000000000000001,
+          "offset": {
+            "x": 0,
+            "y": -0.5,
+            "z": 0
+          },
+          "yawDeg": 6.000000000000001
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "wash-5",
@@ -1421,7 +1656,18 @@
           "y": 7.5,
           "z": -2
         },
-        "yawDeg": 10
+        "yawDeg": 10,
+        "mount": {
+          "anchorId": "truss-mid",
+          "u": 0.8333333333333334,
+          "offset": {
+            "x": 0,
+            "y": -0.5,
+            "z": 0
+          },
+          "yawDeg": 10
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "strobe-0",
@@ -1474,10 +1720,20 @@
         },
         "position": {
           "x": -9.2,
-          "y": 6.6,
-          "z": 2.4
+          "y": 6.59975,
+          "z": 2.4000000000000004
         },
-        "yawDeg": 0
+        "yawDeg": 90,
+        "mount": {
+          "anchorId": "tower-left",
+          "u": 0.8133,
+          "offset": {
+            "x": 1.3,
+            "y": 0,
+            "z": 4.4
+          }
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "strobe-1",
@@ -1530,10 +1786,20 @@
         },
         "position": {
           "x": -9.2,
-          "y": 6.6,
+          "y": 6.59975,
           "z": -1
         },
-        "yawDeg": 0
+        "yawDeg": 90,
+        "mount": {
+          "anchorId": "tower-left",
+          "u": 0.8133,
+          "offset": {
+            "x": 1.3,
+            "y": 0,
+            "z": 1
+          }
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "strobe-2",
@@ -1586,10 +1852,20 @@
         },
         "position": {
           "x": 9.2,
-          "y": 6.6,
-          "z": 2.4
+          "y": 6.59975,
+          "z": 2.4000000000000004
         },
-        "yawDeg": 0
+        "yawDeg": -90,
+        "mount": {
+          "anchorId": "tower-right",
+          "u": 0.8133,
+          "offset": {
+            "x": -1.3,
+            "y": 0,
+            "z": 4.4
+          }
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "strobe-3",
@@ -1642,10 +1918,20 @@
         },
         "position": {
           "x": 9.2,
-          "y": 6.6,
+          "y": 6.59975,
           "z": -1
         },
-        "yawDeg": 0
+        "yawDeg": -90,
+        "mount": {
+          "anchorId": "tower-right",
+          "u": 0.8133,
+          "offset": {
+            "x": -1.3,
+            "y": 0,
+            "z": 1
+          }
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "laser-0",
@@ -1698,11 +1984,21 @@
           }
         },
         "position": {
-          "x": -1.4,
+          "x": -1.4000000000000004,
           "y": 7.5,
           "z": -5.6
         },
-        "yawDeg": 0
+        "yawDeg": 0,
+        "mount": {
+          "anchorId": "truss-rear",
+          "u": 0.4333333333333333,
+          "offset": {
+            "x": 0,
+            "y": -0.5,
+            "z": 0
+          }
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "laser-1",
@@ -1755,11 +2051,21 @@
           }
         },
         "position": {
-          "x": 1.4,
+          "x": 1.4000000000000004,
           "y": 7.5,
           "z": -5.6
         },
-        "yawDeg": 0
+        "yawDeg": 0,
+        "mount": {
+          "anchorId": "truss-rear",
+          "u": 0.5666666666666667,
+          "offset": {
+            "x": 0,
+            "y": -0.5,
+            "z": 0
+          }
+        },
+        "pitchOffsetDeg": 0
       },
       {
         "id": "par-0",
@@ -1816,7 +2122,17 @@
           "z": -2.6
         },
         "yawDeg": 0,
-        "pitchOffsetDeg": 168
+        "pitchOffsetDeg": 168,
+        "mount": {
+          "anchorId": "riser-front",
+          "u": 0.1875,
+          "offset": {
+            "x": 0,
+            "y": 0.38,
+            "z": 0
+          },
+          "mountPitchDeg": 168
+        }
       },
       {
         "id": "par-1",
@@ -1868,12 +2184,22 @@
           }
         },
         "position": {
-          "x": -3.2,
+          "x": -2.5,
           "y": 0.7,
           "z": -2.6
         },
         "yawDeg": 0,
-        "pitchOffsetDeg": 168
+        "pitchOffsetDeg": 168,
+        "mount": {
+          "anchorId": "riser-front",
+          "u": 0.39583333333333337,
+          "offset": {
+            "x": 0,
+            "y": 0.38,
+            "z": 0
+          },
+          "mountPitchDeg": 168
+        }
       },
       {
         "id": "par-2",
@@ -1925,12 +2251,22 @@
           }
         },
         "position": {
-          "x": 3.2,
+          "x": 2.5000000000000018,
           "y": 0.7,
           "z": -2.6
         },
         "yawDeg": 0,
-        "pitchOffsetDeg": 168
+        "pitchOffsetDeg": 168,
+        "mount": {
+          "anchorId": "riser-front",
+          "u": 0.6041666666666667,
+          "offset": {
+            "x": 0,
+            "y": 0.38,
+            "z": 0
+          },
+          "mountPitchDeg": 168
+        }
       },
       {
         "id": "par-3",
@@ -1987,7 +2323,17 @@
           "z": -2.6
         },
         "yawDeg": 0,
-        "pitchOffsetDeg": 168
+        "pitchOffsetDeg": 168,
+        "mount": {
+          "anchorId": "riser-front",
+          "u": 0.8125,
+          "offset": {
+            "x": 0,
+            "y": 0.38,
+            "z": 0
+          },
+          "mountPitchDeg": 168
+        }
       }
     ],
     "tracks": []

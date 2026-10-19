@@ -44,6 +44,16 @@ const MIN_CLIP_SEC = 0.1;
 const EDGE_GRAB_PX = 8;
 const HISTORY_LIMIT = 100;
 
+/** Fixture names and ids are user-facing text; never interpolate them raw. */
+const escapeHtml = (value: string): string =>
+  value.replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  })[char] ?? char);
+
 interface CueSnapshot {
   cues: Cue[];
   selectedCueId: string | null;
@@ -81,6 +91,7 @@ export class Arrangement {
   private hoveredCueId: string | null = null;
   private trackWidth = TRACK_LABEL_WIDTH;
   private rowsHeight = 0;
+  private subtitleResolver: ((fixture: FixturePlacement) => string) | null = null;
 
   constructor(
     private readonly root: HTMLElement,
@@ -136,6 +147,47 @@ export class Arrangement {
 
   get selectedFixture(): FixturePlacement | null {
     return this.fixtures.find((fixture) => fixture.id === this.selectedFixtureId) ?? null;
+  }
+
+  /**
+   * Replace the rig (add/remove/reorder). Cues for fixtures that still exist
+   * are kept verbatim; cues for removed fixtures are dropped, matching the
+   * project schema's rule against dangling `fixtureId` references.
+   */
+  setFixtures(fixtures: FixturePlacement[]): void {
+    this.fixtures = fixtures;
+    const ids = new Set(fixtures.map((fixture) => fixture.id));
+
+    const keptCues = this.cues.filter((cue) => ids.has(cue.fixtureId));
+    if (keptCues.length !== this.cues.length) {
+      this.cues = keptCues;
+      this.notifyChange();
+    }
+
+    if (this.selectedFixtureId !== null && !ids.has(this.selectedFixtureId)) {
+      this.selectedFixtureId = fixtures[0]?.id ?? null;
+      this.selectedCueId = null;
+    }
+    for (const fixtureId of [...this.hiddenFixtureIds]) {
+      if (!ids.has(fixtureId)) this.hiddenFixtureIds.delete(fixtureId);
+    }
+
+    this.renderRows();
+    this.notifySelection();
+  }
+
+  /**
+   * Optional second line under a track name, e.g. the mount anchor. The shell
+   * supplies it because the arrangement does not know about venues.
+   */
+  setSubtitleResolver(resolver: ((fixture: FixturePlacement) => string) | null): void {
+    this.subtitleResolver = resolver;
+    this.renderRows();
+  }
+
+  /** Friendly label for a fixture: its name when set, otherwise its id. */
+  labelFor(fixture: FixturePlacement): string {
+    return fixture.name ?? fixture.id;
   }
 
   isFixtureHidden(fixtureId: string): boolean {
@@ -595,11 +647,15 @@ export class Arrangement {
         ? ''
         : `--sixteenth-width:${beatWidth / 4}px;--beat-width:${beatWidth}px;--bar-width:${beatWidth * timeline.beatsPerBar}px;--grid-offset-x:${timeline.firstBeatSec * this.pixelsPerSecond}px;`;
       const loopMarkup = this.loopMarkup(timeline, secondsWidth);
-      return `<div class="fixture-row${selected ? ' selected' : ''}${hidden ? ' hidden' : ''}" data-fixture-id="${fixture.id}">
-        <button type="button" class="track-name" title="${fixture.profile.name}">
+      const label = escapeHtml(this.labelFor(fixture));
+      const subtitle = escapeHtml(
+        this.subtitleResolver?.(fixture) ?? `${this.kindLabel(fixture.profile.kind)} · ${this.capabilitySummary(fixture)}`,
+      );
+      return `<div class="fixture-row${selected ? ' selected' : ''}${hidden ? ' hidden' : ''}" data-fixture-id="${escapeHtml(fixture.id)}">
+        <button type="button" class="track-name" title="${escapeHtml(fixture.profile.name)}">
           <span class="track-indicator" style="--track-color:${this.trackColor(fixture)}"></span>
-          <span class="track-copy"><b>${fixture.id}</b><small>${this.kindLabel(fixture.profile.kind)} · ${this.capabilitySummary(fixture)}</small></span>
-          <span class="track-visibility" role="button" tabindex="0" aria-pressed="${hidden}" aria-label="${hidden ? 'Show' : 'Hide'} ${fixture.id} in the 3D scene" title="${hidden ? 'Show' : 'Hide'} in the scene">${hidden ? '◌' : '◉'}</span>
+          <span class="track-copy"><b>${label}</b><small>${subtitle}</small></span>
+          <span class="track-visibility" role="button" tabindex="0" aria-pressed="${hidden}" aria-label="${hidden ? 'Show' : 'Hide'} ${label} in the 3D scene" title="${hidden ? 'Show' : 'Hide'} in the scene">${hidden ? '◌' : '◉'}</span>
         </button>
         <div class="fixture-lane" style="width:${secondsWidth}px;${gridStyle}">
           ${loopMarkup}${clips}

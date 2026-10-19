@@ -264,6 +264,82 @@
       #panel-clips div { display: flex; justify-content: space-between; gap: 10px; color: var(--dim); font-size: 10px; }
       #panel-clips b { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
 
+      /* --- Rig editor ---------------------------------------------------- */
+      #side-panel .sp-btn, #side-panel .sp-danger, #add-lights-dialog button {
+        padding: 3px 8px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--ink);
+        font: inherit;
+        font-size: 10px;
+        cursor: pointer;
+      }
+      #side-panel .sp-btn { margin-left: auto; }
+      #side-panel .sp-btn:hover, #add-lights-dialog button:hover { border-color: var(--edge); color: var(--accent); }
+      #side-panel .sp-danger { width: 100%; margin-top: 12px; color: #ff9b9b; border-color: rgba(255, 155, 155, 0.3); }
+      #side-panel .sp-danger:hover:not(:disabled) { background: rgba(255, 90, 90, 0.12); border-color: rgba(255, 155, 155, 0.6); }
+      #side-panel .sp-danger:disabled { opacity: 0.4; cursor: not-allowed; }
+
+      #fixture-pane[hidden] { display: none; }
+      #rig-list { display: grid; gap: 2px; }
+      .rig-group { margin: 0 0 2px; color: #5f6b80; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; }
+      .rig-group:not(:first-child) { margin-top: 8px; }
+      .rig-entry {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 4px;
+        border-radius: 4px;
+        color: #a9b4c7;
+        font-size: 10px;
+        cursor: pointer;
+      }
+      .rig-entry:hover { background: rgba(122, 209, 255, 0.08); color: var(--ink); }
+      .rig-entry.selected { background: rgba(122, 209, 255, 0.14); color: #91dcff; }
+      .rig-entry span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .rig-entry em { margin-left: auto; color: #667184; font-style: normal; font-size: 9px; }
+
+      #side-panel select, #side-panel input[type='text'] {
+        grid-column: 1 / span 2;
+        width: 100%;
+        padding: 3px 6px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 5px;
+        background: #111720;
+        color: var(--ink);
+        font: inherit;
+        font-size: 11px;
+        color-scheme: dark;
+      }
+      #side-panel input[type='text']:disabled, #side-panel select:disabled { opacity: 0.45; }
+
+      #add-lights-dialog {
+        min-width: 268px;
+        padding: 14px 16px;
+        border: 1px solid var(--edge);
+        border-radius: 10px;
+        background: #0d1219;
+        color: var(--ink);
+        font: inherit;
+      }
+      #add-lights-dialog::backdrop { background: rgba(2, 4, 8, 0.66); }
+      #add-lights-dialog h3 { margin: 0 0 10px; color: var(--accent); font-size: 12px; font-weight: 500; }
+      #add-lights-dialog label { display: grid; gap: 3px; margin-bottom: 9px; color: #a9b4c7; font-size: 10px; }
+      #add-lights-dialog select,
+      #add-lights-dialog input {
+        padding: 4px 7px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 5px;
+        background: #111720;
+        color: var(--ink);
+        font: inherit;
+        color-scheme: dark;
+      }
+      #add-lights-dialog menu { display: flex; justify-content: flex-end; gap: 7px; margin: 12px 0 0; padding: 0; }
+      #add-lights-dialog .sp-primary { border-color: rgba(122, 209, 255, 0.55); color: var(--accent); }
+      #add-lights-dialog .panel-note { margin: 0; }
+
       #timeline-dock {
         position: fixed;
         left: 0;
@@ -530,7 +606,32 @@
       #btn-loop.on { color: var(--accent); border-color: rgba(122, 209, 255, 0.55); background: rgba(122, 209, 255, 0.1); }
 
       #waveform-row { position: sticky; top: 28px; z-index: 5; height: var(--wave-height); background: #080b11; will-change: transform; }
-      #waveform-label { height: var(--wave-height); color: #aab5c8; background: #0f151e; }
+      /* The AUDIO row is the rig entry point: one click opens the rig pane. */
+      #btn-rig-menu {
+        height: var(--wave-height);
+        color: #aab5c8;
+        background: #0f151e;
+        letter-spacing: 0.1em;
+        font-size: 10px;
+        text-transform: uppercase;
+        gap: 6px;
+      }
+      #btn-rig-menu:hover { background: #16202d; color: var(--accent); }
+      #btn-rig-menu.on { background: #16202d; color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+      #btn-rig-menu .rig-menu-label { font-weight: 500; }
+      #btn-rig-menu .rig-menu-count {
+        margin-left: auto;
+        padding: 0 5px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 999px;
+        color: #7d8a9e;
+        font-size: 9px;
+        letter-spacing: 0;
+      }
+      #btn-rig-menu.on .rig-menu-count { color: var(--accent); border-color: rgba(122, 209, 255, 0.4); }
+
+      #rig-pane[hidden] { display: none; }
+      #rig-note { margin-top: 0; }
       #waveform {
         display: block;
         height: var(--wave-height);
@@ -872,7 +973,10 @@
             </div>
           </div>
           <div id="waveform-row">
-            <div class="track-name" id="waveform-label">♫ &nbsp; AUDIO</div>
+            <button type="button" class="track-name" id="btn-rig-menu" aria-pressed="false" aria-controls="side-panel" title="Open the rig panel">
+              <span class="rig-menu-label">MODIFY RIG</span>
+              <span class="rig-menu-count" id="rig-menu-count">0</span>
+            </button>
             <div class="ruler-track">
               <canvas id="waveform" aria-label="Waveform and playhead"></canvas>
               <span id="waveform-hover" class="timeline-hover-line" hidden></span>
@@ -895,10 +999,30 @@
           <button id="fixture-panel-close" type="button" title="Close panel (Esc)" aria-label="Close fixture panel">×</button>
         </header>
         <div class="panel-body">
+          <div id="rig-pane" hidden>
+            <p class="panel-note" id="rig-note">
+              Lights are grouped by what they hang from. Click a light to edit it.
+            </p>
+            <div class="section-head">
+              <h3>Lights</h3>
+              <button id="btn-add-lights" type="button" class="sp-btn">+ Add lights</button>
+            </div>
+            <div id="rig-list"><span class="sp-empty">No fixtures.</span></div>
+          </div>
+          <div id="fixture-pane">
           <section>
             <div class="section-head">
               <h3>Fixture setup</h3>
             </div>
+            <label id="setup-name-row"><span>Name</span>
+              <input id="setup-name" type="text" maxlength="40" placeholder="Track label" disabled />
+            </label>
+            <label id="setup-mount-row"><span>Mount</span>
+              <select id="setup-mount" aria-label="Fixture mount anchor" disabled></select>
+            </label>
+            <label id="setup-position-row"><span>Position on mount</span><output id="setup-position-value">50%</output>
+              <input id="setup-position" type="range" min="0" max="100" step="1" value="50" aria-label="Position along the mount" disabled />
+            </label>
             <p class="subhead">Mounting</p>
             <label id="setup-yaw-row"><span>Mount yaw</span><output id="setup-yaw-value">0°</output>
               <input id="setup-yaw" type="range" min="-180" max="180" step="1" value="0" aria-label="Fixture mounting yaw" disabled />
@@ -913,6 +1037,7 @@
             <label id="setup-spread-row"><span>Beam angle</span><output id="setup-spread-value">—</output>
               <input id="setup-spread" type="range" min="0" max="100" step="1" value="0" aria-label="Fixture beam angle" disabled />
             </label>
+            <button id="btn-remove-fixture" type="button" class="sp-danger" disabled>Remove light</button>
           </section>
           <section>
             <h3>Capabilities</h3>
@@ -925,8 +1050,35 @@
               <div><span>Under playhead</span><b id="panel-clip-active">0</b></div>
             </div>
           </section>
+          </div>
         </div>
       </aside>
+
+      <dialog id="add-lights-dialog" aria-label="Add lights">
+        <form method="dialog" id="add-lights-form">
+          <h3>Add lights</h3>
+          <label><span>Profile</span>
+            <select id="add-profile" aria-label="Fixture profile"></select>
+          </label>
+          <label><span>Mount</span>
+            <select id="add-mount" aria-label="Mount anchor"></select>
+          </label>
+          <label><span>Count</span>
+            <input id="add-count" type="number" min="1" max="16" step="1" value="4" aria-label="Fixture count" />
+          </label>
+          <label><span>Spacing</span>
+            <select id="add-spacing" aria-label="Spacing">
+              <option value="spread">Spread across mount</option>
+              <option value="cluster">Cluster at centre</option>
+            </select>
+          </label>
+          <p id="add-summary" class="panel-note"></p>
+          <menu>
+            <button value="cancel">Cancel</button>
+            <button value="add" class="sp-primary">Add lights</button>
+          </menu>
+        </form>
+      </dialog>
 
       <div id="zoom-tools" role="toolbar" aria-label="Timeline zoom">
         <button id="btn-zoom-out" type="button" aria-label="Zoom out" title="Zoom out (Ctrl/⌘ -)" disabled>−</button>

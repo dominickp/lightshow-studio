@@ -1,13 +1,17 @@
 # Project File Format (`.dmxsim`)
 
-**Status:** version 1, implemented in `packages/show-model/src/project.ts`.
+**Status:** version 2, implemented in `packages/show-model/src/project.ts`.
 **Schema companion:** `project-file.schema.json` (generated).
 **Reader/writer:** `parseProject()` / `serializeProject()` in `@dmxsim/show-model`.
 
-A `.dmxsim` file is the portable unit of user work: the fixture rig, the
-authored arrangement, the song timeline (beat grid and loop), the audio
+A `.dmxsim` file is the portable unit of user work: the venue, the fixture rig,
+the authored arrangement, the song timeline (beat grid and loop), the audio
 reference, and the app settings needed to reproduce a session. It is UTF-8 JSON
 and is validated before it reaches app state (ADR-008).
+
+Because a project names its venue and embeds full fixture profiles, opening a
+file on another machine reproduces the stage without a profile lookup and
+without a rig-equality check (ADR-011).
 
 The lighting spike loads `resources/sample_projects/koto-chill/koto-chill.dmxsim` at
 startup, so the bundled demo can be edited on disk and opened back with **Open
@@ -21,10 +25,12 @@ the current rig, timeline, clips, and settings back out.
 - Version explicitly and extend without breaking older files.
 - Never embed audio; store a reference instead (ADR-003).
 
-## Non-goals (version 1)
+## Non-goals (version 2)
 
 - Embedding audio samples or rendered video.
 - Referencing fixture profiles by ID only; profiles are embedded snapshots.
+- Storing venue geometry. The file names a venue template and stores each
+  fixture's mount plus resolved transform; the geometry ships with the app.
 - Undo history, autosave state, or in-flight UI selection.
 - Cross-version migrations beyond rejecting newer files with a clear error.
 
@@ -33,9 +39,10 @@ the current rig, timeline, clips, and settings back out.
 ```json
 {
   "format": "dmxsim-project",
-  "version": 1,
+  "version": 2,
   "name": "Koto Chill demo",
   "description": "optional free text",
+  "venue": { "id": "club-stage", "name": "Club Stage" },
   "show": { "...": "rig" },
   "timeline": { "...": "duration, beat grid, loop" },
   "arrangement": { "clips": [] },
@@ -47,31 +54,51 @@ the current rig, timeline, clips, and settings back out.
 | Field | Required | Meaning |
 |---|---|---|
 | `format` | yes | Literal `dmxsim-project`. |
-| `version` | yes | Integer document version. This spec describes `1`. |
+| `version` | yes | Integer document version. This spec describes `2`. |
 | `name` | yes | Human-readable project name; used for the export filename. |
 | `description` | no | Free text. |
+| `venue` | yes | Venue template id and display name. |
 | `show` | yes | Fixture rig and (future) show-level tracks. |
 | `timeline` | yes | Song length, beat grid, and loop region. |
 | `arrangement` | no | Authored clips. Missing means no clips. |
 | `settings` | no | Render/playback/UI state. Missing sections use defaults. |
 | `audio` | no | Reference to the audio file. Defaults to `external`. |
 
-Unknown fields are ignored (stripped) by version 1 readers. Writers must not
-rely on that to transmit data to older readers.
+Unknown fields are ignored (stripped) by readers. Writers must not rely on that
+to transmit data to older readers.
+
+## `venue`
+
+```json
+{ "id": "club-stage", "name": "Club Stage" }
+```
+
+- `id` selects the venue template that ships with the app. Known ids currently
+  include `club-stage`; more templates are additive.
+- `name` is a display name copied at save time so a file stays readable even if
+  the template is renamed.
+- Venue geometry, mount anchors, camera presets, and the template's ready-made
+  rig live in `packages/show-model/src/venue.ts`, not in the file.
+- A reader that does not know the id must fail clearly rather than substitute a
+  different stage: fixtures would float in the wrong room.
+- Opening a project is not a venue *switch*. It rebuilds the venue named in the
+  file, so authored clips are never discarded.
 
 ## `show`
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "name": "Spike — demo rig",
   "fixtures": [
     {
       "id": "mh-front-0",
+      "name": "Front truss 1",
       "profile": { "...": "full fixture profile snapshot" },
       "position": { "x": -8.1, "y": 7.4, "z": 1.6 },
       "yawDeg": -12,
-      "pitchOffsetDeg": 0
+      "pitchOffsetDeg": 0,
+      "mount": { "anchorId": "truss-front", "u": 0.114, "offset": { "x": 0, "y": -0.6, "z": 0 } }
     }
   ],
   "tracks": []
@@ -82,8 +109,34 @@ rely on that to transmit data to older readers.
   capabilities, physical limits, and beam data. A file must be evaluable
   without a fixture library lookup.
 - `fixtures[].id` is the stable key used by `arrangement.clips[].fixtureId`.
+- `fixtures[].name` is an optional lane label. The UI falls back to a generated
+  name when it is omitted.
 - `position` is in metres; `yawDeg` / `pitchOffsetDeg` are mechanical mounting
   orientation only (animated pan/tilt lives in clips).
+- `fixtures[].mount` records which venue structure the fixture hangs from
+  (ADR-011):
+
+  | Field | Rules |
+  |---|---|
+  | `anchorId` | Non-empty. Must exist in the named venue template to resolve. |
+  | `u` | `0..1`, the position along the anchor segment. |
+  | `offset` | Optional world-space metres applied after the anchor point. |
+  | `yawDeg` | Optional override of the anchor's derived yaw. |
+  | `mountPitchDeg` | Optional override of the anchor's default mount pitch (`0` hangs down, `90` points along the anchor normal, `168` is a floor uplight). |
+
+  The mount wins on load when the anchor exists. `position`/`yawDeg`/
+  `pitchOffsetDeg` are a cached resolution and the fallback when a file
+  references an anchor the app no longer has, so a fixture is never dropped
+  silently.
+- `fixtures[].laser` is laser-only setup (ADR-012). Patterns are not
+  clip-animatable; `rotation` and pan/tilt move them through normal clips.
+
+  ```json
+  { "beams": 12, "pattern": "fan", "fanDeg": 55, "divergenceDeg": 1.2, "speedHz": 0.4, "phaseDeg": 90 }
+  ```
+
+  Values clamp to the profile's optional `laser` limits (`maxBeams`,
+  `fanDeg`, `patterns`) at evaluation time.
 - `fixtures[].defaults` holds optional normalized (`0..1`) setup values — the
   fixture's home look when no clip asserts the attribute. Omitted attributes
   use the profile's built-in defaults. Values are the same normalized units as
@@ -233,6 +286,19 @@ section.
 - Readers ignore unknown fields; writers emit only known fields.
 - Changing the meaning of an existing field without renaming it is forbidden.
 
+### v1 → v2
+
+Version 1 predates venue templates. The migration:
+
+- adds `venue: { id: "club-stage", name: "Club Stage" }` (the only venue that
+  existed at v1);
+- sets `show.version` to `2`;
+- leaves fixtures untouched, so they keep their absolute transform and have no
+  `mount`. They render correctly and appear as unattached until re-anchored.
+
+A v1 file therefore remains fully loadable; nothing about the rig, clips, or
+settings changes meaning.
+
 ### Adding a field (checklist)
 
 1. Add it to `project.ts` as optional or with `.default()` / `.prefault()`.
@@ -246,7 +312,10 @@ section.
 
 - `format` is `dmxsim-project`
 - `version` is supported and not newer than the reader
+- `venue.id` is present
 - fixture IDs are unique
+- `fixtures[].mount.u` is within `0..1`
+- laser `beams` is a positive integer and `pattern` is a known pattern
 - clip IDs are unique
 - every `arrangement.clips[].fixtureId` refers to a declared fixture
 - clip `endSec > startSec`
@@ -273,18 +342,21 @@ npm run project:generate # rebuilds the .dmxsim from demo-arrangement.ts
   should become the new default.
 - `npm run project:generate` is a reset: it overwrites the bundled file from
   the procedural demo and also regenerates the JSON Schema companion.
-- The spike's rig is fixed at startup. Opening a project whose fixture IDs do
-  not match the loaded rig is rejected rather than partially applied.
+The spike's rig is authored in the app (or loaded from a project) and saved
+with the file; opening a project whose venue or fixture IDs differ from the
+running build replaces the rig rather than rejecting the file. See
+`stage-rig-editor-plan.md`.
 
 ## Minimal example
 
 ```json
 {
   "format": "dmxsim-project",
-  "version": 1,
+  "version": 2,
   "name": "My song",
+  "venue": { "id": "club-stage", "name": "Club Stage" },
   "show": {
-    "version": 1,
+    "version": 2,
     "name": "One PAR",
     "fixtures": [
       {

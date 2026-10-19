@@ -8,7 +8,7 @@
     },
     "version": {
       "type": "number",
-      "const": 1
+      "const": 2
     },
     "name": {
       "type": "string",
@@ -17,12 +17,30 @@
     "description": {
       "type": "string"
     },
+    "venue": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "additionalProperties": false
+    },
     "show": {
       "type": "object",
       "properties": {
         "version": {
           "type": "number",
-          "const": 1
+          "const": 2
         },
         "name": {
           "type": "string",
@@ -35,6 +53,10 @@
             "type": "object",
             "properties": {
               "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
                 "type": "string",
                 "minLength": 1
               },
@@ -235,6 +257,51 @@
                       "throwM"
                     ],
                     "additionalProperties": false
+                  },
+                  "laser": {
+                    "type": "object",
+                    "properties": {
+                      "maxBeams": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "patterns": {
+                        "minItems": 1,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "fan",
+                            "sweep",
+                            "tunnel",
+                            "wave",
+                            "lattice",
+                            "dots"
+                          ]
+                        }
+                      },
+                      "fanDeg": {
+                        "type": "array",
+                        "prefixItems": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ],
+                        "items": false,
+                        "minItems": 2,
+                        "maxItems": 2
+                      }
+                    },
+                    "required": [
+                      "maxBeams",
+                      "patterns",
+                      "fanDeg"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -274,21 +341,154 @@
               "pitchOffsetDeg": {
                 "type": "number"
               },
-              "defaults": {
-                "description": "Normalized setup values used when no clip asserts the attribute (ADR-010).",
+              "mount": {
                 "type": "object",
                 "properties": {
-                  "dimmer": { "type": "number", "minimum": 0, "maximum": 1 },
-                  "red": { "type": "number", "minimum": 0, "maximum": 1 },
-                  "green": { "type": "number", "minimum": 0, "maximum": 1 },
-                  "blue": { "type": "number", "minimum": 0, "maximum": 1 },
-                  "white": { "type": "number", "minimum": 0, "maximum": 1 },
-                  "pan": { "type": "number", "minimum": 0, "maximum": 1 },
-                  "tilt": { "type": "number", "minimum": 0, "maximum": 1 },
-                  "zoom": { "type": "number", "minimum": 0, "maximum": 1 },
-                  "focus": { "type": "number", "minimum": 0, "maximum": 1 },
-                  "strobe": { "type": "number", "minimum": 0, "maximum": 1 },
-                  "rotation": { "type": "number", "minimum": 0, "maximum": 1 }
+                  "anchorId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "u": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "offset": {
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      },
+                      "z": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y",
+                      "z"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "yawDeg": {
+                    "type": "number"
+                  },
+                  "mountPitchDeg": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "anchorId",
+                  "u"
+                ],
+                "additionalProperties": false
+              },
+              "laser": {
+                "type": "object",
+                "properties": {
+                  "beams": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "pattern": {
+                    "type": "string",
+                    "enum": [
+                      "fan",
+                      "sweep",
+                      "tunnel",
+                      "wave",
+                      "lattice",
+                      "dots"
+                    ]
+                  },
+                  "fanDeg": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "divergenceDeg": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "speedHz": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "phaseDeg": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "beams",
+                  "pattern",
+                  "fanDeg",
+                  "divergenceDeg",
+                  "speedHz",
+                  "phaseDeg"
+                ],
+                "additionalProperties": false
+              },
+              "defaults": {
+                "type": "object",
+                "properties": {
+                  "dimmer": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "red": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "green": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "blue": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "white": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "pan": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "tilt": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "zoom": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "focus": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "strobe": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "rotation": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
                 },
                 "additionalProperties": false
               }
@@ -713,6 +913,7 @@
     "format",
     "version",
     "name",
+    "venue",
     "show",
     "timeline",
     "arrangement",

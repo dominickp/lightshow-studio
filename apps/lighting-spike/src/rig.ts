@@ -76,6 +76,13 @@ function createPoolMaterial() {
 export class FixtureRig {
   readonly root = new THREE.Group();
 
+  /**
+   * Mechanical mounting angle (ADR-010). It sits between the world position
+   * and the pan axis, so pan always spins around the fixture's own clamp
+   * instead of being skewed by an angled mount, and the profile's tilt range
+   * stays whole.
+   */
+  private readonly mount = new THREE.Group();
   private readonly yoke = new THREE.Group();
   private readonly head = new THREE.Group();
   private readonly beam: THREE.Mesh;
@@ -100,6 +107,8 @@ export class FixtureRig {
     const { profile } = placement;
     const kind = profile.kind;
     this.root.position.set(placement.position.x, placement.position.y, placement.position.z);
+    this.root.add(this.mount);
+    this.applyMountAngle();
 
     const isMovingFixture = kind === 'moving-head' || kind === 'wash' || kind === 'laser';
     if (isMovingFixture) {
@@ -111,7 +120,7 @@ export class FixtureRig {
       this.root.add(base);
 
       this.yoke.position.y = -0.14;
-      this.root.add(this.yoke);
+      this.mount.add(this.yoke);
 
       const arm = new THREE.BoxGeometry(0.07, 0.42, 0.18);
       const left = new THREE.Mesh(arm, yokeMaterial);
@@ -135,9 +144,11 @@ export class FixtureRig {
       const housing = new THREE.Mesh(housingGeometry, bodyMaterial);
       housing.position.y = kind === 'par' ? 0 : -0.05;
       housing.castShadow = true;
-      this.root.add(housing);
+      // Fixed fixtures have no yoke: the housing itself is the mount, so it
+      // must tilt with the clamp or a floor uplight would point its can down.
+      this.mount.add(housing);
       this.head.position.y = kind === 'par' ? 0 : -0.05;
-      this.root.add(this.head);
+      this.mount.add(this.head);
     }
 
     if (kind === 'strobe' || kind === 'blinder') {
@@ -188,7 +199,6 @@ export class FixtureRig {
   addTo(scene: THREE.Scene): void {
     scene.add(this.root, this.pool);
   }
-
   removeFrom(scene: THREE.Scene): void {
     scene.remove(this.root, this.pool);
   }
@@ -199,7 +209,23 @@ export class FixtureRig {
     if (!visible) this.pool.visible = false;
   }
 
+  /**
+   * Mechanical pitch, read from the placement each update so fixture-panel
+   * edits and project loads take effect without rebuilding the rig.
+   */
+  private applyMountAngle(): void {
+    this.mount.rotation.x = -(this.placement.pitchOffsetDeg ?? 0) * DEG;
+  }
+
   update(state: FixtureState, timeSec: number, volumetrics: boolean): void {
+    // Placement is editable in the fixture panel, so read it every frame
+    // instead of baking it into the constructor.
+    this.root.position.set(
+      this.placement.position.x,
+      this.placement.position.y,
+      this.placement.position.z,
+    );
+    this.applyMountAngle();
     const yaw = this.placement.yawDeg + state.panDeg;
     this.yoke.rotation.y = yaw * DEG;
     this.head.rotation.x = -state.tiltDeg * DEG;

@@ -45,6 +45,34 @@ export type ControllableAttribute =
   | 'strobe'
   | 'rotation';
 
+/** Emitted beam arrangement for a laser fixture (ADR-012). */
+export type LaserPattern = 'fan' | 'sweep' | 'tunnel' | 'wave' | 'lattice' | 'dots';
+
+/**
+ * Persistent laser setup. Patterns are setup, not clip animation: `rotation`
+ * and pan/tilt move them through the normal clip attributes.
+ */
+export interface LaserSetup {
+  /** Emitted beams, clamped to `FixtureProfile.laser.maxBeams`. */
+  beams: number;
+  pattern: LaserPattern;
+  /** Full fan width in degrees; ignored by patterns with no fan. */
+  fanDeg: number;
+  /** Per-beam divergence in degrees. */
+  divergenceDeg: number;
+  /** Pattern motion in cycles per second; 0 is static. */
+  speedHz: number;
+  /** Pattern phase offset in degrees, for offsetting grouped lasers. */
+  phaseDeg: number;
+}
+
+/** Profile-side limits for laser features. Optional so older snapshots stay valid. */
+export interface LaserLimits {
+  maxBeams: number;
+  patterns: LaserPattern[];
+  fanDeg: [number, number];
+}
+
 export interface FixtureProfile {
   id: string;
   name: string;
@@ -77,6 +105,8 @@ export interface FixtureProfile {
     /** Nominal throw used for haze rendering, in metres. */
     throwM: number;
   };
+  /** Laser-only capabilities. Absent on non-laser profiles and older snapshots. */
+  laser?: LaserLimits;
 }
 
 export interface Vec3 {
@@ -85,14 +115,33 @@ export interface Vec3 {
   z: number;
 }
 
+/** Persisted anchor reference, resolved through the venue template (ADR-011). */
+export interface FixtureMount {
+  anchorId: string;
+  /** Position along the anchor segment, clamped to 0..1. */
+  u: number;
+  /** World-space offset from the resolved anchor point, in metres. */
+  offset?: Vec3;
+  /** Overrides the anchor's derived yaw. */
+  yawDeg?: number;
+  /** Overrides the anchor's default mount pitch. */
+  mountPitchDeg?: number;
+}
+
 export interface FixturePlacement {
   id: string;
+  /** Friendly lane label; falls back to a generated `<kind> <n>` name. */
+  name?: string;
   profile: FixtureProfile;
   position: Vec3;
   /** 0 points the fixture's tilt axis toward +Z (the audience). */
   yawDeg: number;
   /** Mechanical mounting angle, e.g. a PAR can bolted to the stage as an uplight. */
   pitchOffsetDeg?: number;
+  /** Structure this fixture is attached to, when authored in this app. */
+  mount?: FixtureMount;
+  /** Laser beam setup. Only present on laser fixtures (ADR-012). */
+  laser?: LaserSetup;
   /**
    * Setup values used when no clip asserts the attribute (ADR-010).
    *
@@ -161,6 +210,17 @@ export interface Show {
   tracks: Track[];
 }
 
+/** Resolved laser state at one instant. */
+export interface LaserState {
+  beams: number;
+  pattern: LaserPattern;
+  fanDeg: number;
+  divergenceDeg: number;
+  speedHz: number;
+  /** Scanner phase in radians, derived from song time and setup. */
+  phase: number;
+}
+
 /** Resolved fixture state at one instant, in real-world units. */
 export interface FixtureState {
   fixtureId: string;
@@ -176,6 +236,8 @@ export interface FixtureState {
   /** 0 means no strobing. Phase is derived from song time by the renderer. */
   strobeHz: number;
   rotation: number;
+  /** Laser beam state, present only for laser fixtures. */
+  laser?: LaserState;
   /** True when the fixture is contributing any light this frame. */
   active: boolean;
 }

@@ -40,10 +40,11 @@ const profile: FixtureProfile = {
 
 const project: ProjectFile = parseProject({
   format: 'dmxsim-project',
-  version: 1,
+  version: 2,
   name: 'Round trip',
+  venue: { id: 'club-stage', name: 'Club Stage' },
   show: {
-    version: 1,
+    version: 2,
     name: 'Rig',
     fixtures: [{ id: 'mh-0', profile, position: { x: 0, y: 3, z: 0 }, yawDeg: 0 }],
   },
@@ -101,7 +102,7 @@ describe('project mapping', () => {
     const rig = createDemoRig(TRACK.firstBeatSec, TRACK.bpm);
     const withRig = parseProject({
       ...project,
-      show: { version: 1, name: rig.name, fixtures: rig.fixtures },
+      show: { version: 2, name: rig.name, fixtures: rig.fixtures },
     });
     expect(rigMatches(withRig, rig.fixtures)).toBe(true);
     expect(rigMatches(withRig, rig.fixtures.slice(1))).toBe(false);
@@ -132,7 +133,7 @@ describe('fixture setup', () => {
   const saved = parseProject({
     ...project,
     show: {
-      version: 1,
+      version: 2,
       name: 'Rig',
       fixtures: [
         {
@@ -172,5 +173,33 @@ describe('fixture setup', () => {
     expect(running[0]?.yawDeg).toBe(0);
     expect(running[0]?.pitchOffsetDeg).toBeUndefined();
     expect(running[0]?.defaults).toBeUndefined();
+  });
+
+  it('restores the mount, name, position, and laser setup', () => {
+    const mounted = parseProject({
+      ...project,
+      show: {
+        version: 2,
+        name: 'Rig',
+        fixtures: [{
+          id: 'mh-0',
+          name: 'Front truss 1',
+          profile,
+          position: { x: -8.1, y: 7.4, z: 1.6 },
+          yawDeg: 12,
+          mount: { anchorId: 'truss-front', u: 0.25, offset: { x: 0, y: -0.6, z: 0 } },
+          laser: { beams: 12, pattern: 'fan', fanDeg: 55, divergenceDeg: 1.2, speedHz: 0.4, phaseDeg: 0 },
+        }],
+      },
+    });
+    const running: FixturePlacement[] = [
+      { id: 'mh-0', profile, position: { x: 0, y: 0, z: 0 }, yawDeg: 0, mount: { anchorId: 'truss-mid', u: 0 } },
+    ];
+
+    applyProjectFixtureSetup(mounted, running);
+    expect(running[0]?.name).toBe('Front truss 1');
+    expect(running[0]?.position).toEqual({ x: -8.1, y: 7.4, z: 1.6 });
+    expect(running[0]?.mount).toEqual({ anchorId: 'truss-front', u: 0.25, offset: { x: 0, y: -0.6, z: 0 } });
+    expect(running[0]?.laser?.beams).toBe(12);
   });
 });

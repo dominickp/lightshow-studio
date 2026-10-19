@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { barToTime, evaluateFixture, evaluateFixtureStates, secondsPerBeat, snapToGrid, timeToBeat } from './index';
+import { DEFAULT_LASER_SETUP, barToTime, evaluateFixture, evaluateFixtureStates, resolveLaser, secondsPerBeat, snapToGrid, timeToBeat } from './index';
 import type { Clip, FixtureProfile, FixturePlacement, Show } from './index';
 
 const profile: FixtureProfile = {
@@ -144,6 +144,29 @@ describe('fixture defaults', () => {
   });
 });
 
+describe('mechanical mount angle', () => {
+  it('does not consume the animated tilt range', () => {
+    const upright: FixturePlacement = { ...fixture, pitchOffsetDeg: 0 };
+    const uplight: FixturePlacement = { ...fixture, pitchOffsetDeg: 168 };
+
+    // Same clip, same profile: the mount angle is a transform, so the tilt
+    // value must be identical or an angled fixture loses part of its range.
+    const tilt = [{ at: 0, value: 1 }];
+    const uprightState = evaluateFixture(upright, [clip({ attributes: { tilt } })], 12);
+    const uplightState = evaluateFixture(uplight, [clip({ attributes: { tilt } })], 12);
+    expect(uplightState.tiltDeg).toBeCloseTo(uprightState.tiltDeg);
+    expect(uplightState.tiltDeg).toBeCloseTo(135);
+  });
+
+  it('still reports full tilt travel at the limits', () => {
+    const mounted: FixturePlacement = { ...fixture, pitchOffsetDeg: 168 };
+    const low = evaluateFixture(mounted, [clip({ attributes: { tilt: [{ at: 0, value: 0 }] } })], 12);
+    const high = evaluateFixture(mounted, [clip({ attributes: { tilt: [{ at: 0, value: 1 }] } })], 12);
+    expect(low.tiltDeg).toBeCloseTo(-135);
+    expect(high.tiltDeg).toBeCloseTo(135);
+  });
+});
+
 describe('evaluateFixtureStates', () => {
   const show: Show = {
     version: 1,
@@ -158,5 +181,52 @@ describe('evaluateFixtureStates', () => {
     expect(states).toHaveLength(1);
     expect(states[0]?.fixtureId).toBe('fx-1');
     expect(states[0]?.intensity).toBeCloseTo(0.625);
+  });
+});
+
+describe('laser evaluation', () => {
+  const limits = { maxBeams: 16, patterns: ['fan', 'tunnel'] as const, fanDeg: [0, 90] as [number, number] };
+
+  it('falls back to the documented defaults', () => {
+    const laser = resolveLaser(undefined, undefined, 0, 0);
+    expect(laser).toEqual({
+      beams: DEFAULT_LASER_SETUP.beams,
+      pattern: DEFAULT_LASER_SETUP.pattern,
+      fanDeg: DEFAULT_LASER_SETUP.fanDeg,
+      divergenceDeg: DEFAULT_LASER_SETUP.divergenceDeg,
+      speedHz: DEFAULT_LASER_SETUP.speedHz,
+      // `phaseDeg` is setup, folded into the resolved phase.
+      phase: 0,
+    });
+  });
+
+  it('clamps beam count and fan width to the profile limits', () => {
+    const laser = resolveLaser({ beams: 500, pattern: 'fan', fanDeg: 400, divergenceDeg: 1, speedHz: 0, phaseDeg: 0 }, limits, 0, 0);
+    expect(laser.beams).toBe(16);
+    expect(laser.fanDeg).toBe(90);
+
+    const tiny = resolveLaser({ beams: 0, pattern: 'fan', fanDeg: -10, divergenceDeg: 1, speedHz: 0, phaseDeg: 0 }, limits, 0, 0);
+    expect(tiny.beams).toBe(1);
+    expect(tiny.fanDeg).toBe(0);
+  });
+
+  it('advances and wraps scanner phase, and offsets it by rotation', () => {
+    const staticSetup = { ...DEFAULT_LASER_SETUP, speedHz: 1, phaseDeg: 0 };
+    expect(resolveLaser(staticSetup, limits, 0, 0).phase).toBeCloseTo(0);
+    expect(resolveLaser(staticSetup, limits, 0.5, 0).phase).toBeCloseTo(Math.PI);
+    expect(resolveLaser(staticSetup, limits, 1, 0).phase).toBeCloseTo(0);
+    expect(resolveLaser(staticSetup, limits, 0, 0.25).phase).toBeCloseTo(Math.PI / 2);
+  });
+
+  it('exposes laser state on laser fixtures only', () => {
+    const laserFixture: FixturePlacement = {
+      id: 'laser-1',
+      profile: { ...profile, kind: 'laser', laser: limits },
+      position: { x: 0, y: 8, z: 0 },
+      yawDeg: 0,
+      laser: { ...DEFAULT_LASER_SETUP, beams: 12 },
+    };
+    expect(evaluateFixture(laserFixture, [], 0).laser?.beams).toBe(12);
+    expect(evaluateFixture(fixture, [], 0).laser).toBeUndefined();
   });
 });

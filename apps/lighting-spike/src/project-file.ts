@@ -72,11 +72,12 @@ export function fixtureIds(project: ProjectFile): string[] {
 }
 
 /**
- * Copy saved setup values (mount angle and defaults) onto the running rig.
+ * Copy saved fixture state onto the running rig.
  *
- * The spike's rig geometry is fixed for the build, so opening a project only
- * restores the values a user can edit in the fixture panel. Mutating the
- * existing placements keeps the renderer's `FixtureRig` references valid.
+ * A version 2 project stores the mount, the friendly name, and laser setup as
+ * well as the resolved transform. Restoring all of it keeps Open project
+ * lossless; M3's rig editor replaces this function once fixtures are rebuilt
+ * from the file instead of mutated in place.
  */
 export function applyProjectFixtureSetup(project: ProjectFile, fixtures: readonly FixturePlacement[]): void {
   const saved = new Map(project.show.fixtures.map((fixture) => [fixture.id, fixture]));
@@ -84,8 +85,15 @@ export function applyProjectFixtureSetup(project: ProjectFile, fixtures: readonl
     const source = saved.get(fixture.id);
     if (source === undefined) continue;
     fixture.yawDeg = source.yawDeg;
+    fixture.position = { ...source.position };
+    if (source.name === undefined) delete fixture.name;
+    else fixture.name = source.name;
     if (source.pitchOffsetDeg === undefined) delete fixture.pitchOffsetDeg;
     else fixture.pitchOffsetDeg = source.pitchOffsetDeg;
+    if (source.mount === undefined) delete fixture.mount;
+    else fixture.mount = { ...source.mount };
+    if (source.laser === undefined) delete fixture.laser;
+    else fixture.laser = { ...source.laser };
     if (source.defaults === undefined) delete fixture.defaults;
     else fixture.defaults = { ...source.defaults };
   }

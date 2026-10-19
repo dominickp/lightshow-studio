@@ -46,6 +46,7 @@ Enforce with an ESLint `no-restricted-imports` rule in `packages/show-model`.
 - Seed profiles: generic moving head, wash, strobe, laser, PAR, blinder, LED strip
 
 **renderer**
+- Venue builder (`apps/lighting-spike/src/venue-builder.ts` today): structure primitives, LED wall, accent strips, crowd, haze; owns three.js resources and disposal
 - Fixture → scene object factory (`FixtureRig` for spot/wash/fixed, `LaserRig` for multi-beam laser fixtures)
 - Venue builder: structure primitives, LED wall, crowd, booth, haze, exposed surfaces for beam termination
 - TSL beam/volume/fog/emissive materials

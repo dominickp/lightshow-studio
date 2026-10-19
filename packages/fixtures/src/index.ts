@@ -120,6 +120,11 @@ export const LASER: FixtureProfile = {
     strobeHz: [1, 30],
   },
   beam: { spreadDeg: [0.6, 1.8], apertureDiameterM: 0.006, throwM: 24 },
+  laser: {
+    maxBeams: 32,
+    patterns: ['fan', 'sweep', 'tunnel', 'wave', 'lattice', 'dots'],
+    fanDeg: [0, 120],
+  },
 };
 
 export const PAR: FixtureProfile = {

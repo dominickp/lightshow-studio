@@ -1,6 +1,6 @@
 # Stage Templates and Rig Editing Plan
 
-**Status:** proposed (2026-10-18). Nothing here is implemented yet.
+**Status:** in progress (2026-10-18). M0–M3 are implemented; M4–M6 are planned.
 **Scope:** data-driven venues, a second preset stage, and adding/removing/
 placing fixtures so the rig is authored in the app and saved in `.dmxsim`.
 Laser rendering is a separate plan: `laser-rendering-plan.md`.
@@ -107,12 +107,15 @@ export interface VenuePrimitive {
 ```
 
 `addRoom()` becomes `buildVenue(template)` in the stage: one loop over
-`structure` plus feature builders (`ledWall`, `crowd`, `booth`, `haze`) that
-reuse today's code. The current room becomes `CLUB_STAGE` with the same
-numbers (`stage.ts` today: floor 40×34 at z=3, walls at ±17 and z=-12, ceiling
-y=12, riser 24×0.3×9.4 at z=-7.3, trusses y=8 at z=1.6/-2.0/-5.6 spanning
-x=±10.5, LED wall 13.5×6.2 at z=-11.85, crowd of 90, booth at z=-9.7).
-Exit criterion: the club stage renders identically to today.
+`structure` plus feature builders (`ledWall`, `accentStrips`, `crowd`, `haze`)
+that reuse today's code. The scene-side mapping lives in
+`apps/lighting-spike/src/venue-builder.ts` (`buildVenue`, `buildCrowd`,
+`disposeGroup`), so `show-model` stays renderer-free. The current room becomes
+`CLUB_STAGE` with the same numbers (`stage.ts` today: floor 40×34 at z=3, walls
+at ±17 and z=-12, ceiling y=12, riser 24×0.3×9.4 at z=-7.3, trusses y=8 at
+z=1.6/-2.0/-5.6 spanning x=±10.5, LED wall 13.5×6.2 at z=-11.85, crowd of 90,
+booth at z=-9.7). `Stage.setVenue()` tears down and rebuilds everything the
+template owns. Exit criterion: the club stage renders identically to today.
 
 ### 2. Mount anchors define *where* and *which way*
 
@@ -193,23 +196,30 @@ Rules:
 
 ### 4. Fix mount pitch being folded into tilt
 
-Today `evaluate.ts` computes `tiltDeg = lerp(values.tilt, limits.tiltDeg) +
-fixture.pitchOffsetDeg`, and `rig.ts` applies
-`head.rotation.x = -state.tiltDeg`. A floor uplight is authored as
-`pitchOffsetDeg: 168` on the demo PARs. That means a moving fixture mounted at
-an angle cannot use its full tilt range: the offset consumes it.
+**Done.** Before this change `evaluate.ts` computed
+`tiltDeg = lerp(values.tilt, limits.tiltDeg) + fixture.pitchOffsetDeg`, and
+`rig.ts` applied `head.rotation.x = -state.tiltDeg`. A floor uplight is
+authored as `pitchOffsetDeg: 168` on the demo PARs, so a moving fixture mounted
+at an angle could not use its full tilt range: the offset consumed it.
 
-Apply mount pitch in the transform, not the state:
+Mount pitch now lives in the transform, not the state:
 
 ```
 root(position, yawDeg) -> mount(pitchOffsetDeg) -> yoke(panDeg) -> head(tiltDeg)
 ```
 
+`FixtureRig` owns a `mount` group between the root and the pan axis and
+re-reads `placement.pitchOffsetDeg` every update, so fixture-panel edits and
+project loads take effect without rebuilding the rig. Fixed fixtures put their
+housing inside the same group, which is why an uplight's can now points up
+instead of only its beam doing so.
+
 This physically matches a fixture clamped to a truss or floor plate (pan spins
 around the mount axis), frees the profile's tilt limits, and removes the
 offset from `FixtureState.tiltDeg`. The demo PARs keep their visual intent
-with no numeric migration; only the transform order changes, and they are
-fixed fixtures, so no pan behaviour changes.
+with no numeric migration. `evaluate.test.ts` locks the behaviour: the same
+tilt clip yields the same `tiltDeg` at mount pitch 0 and 168, and tilt still
+travels the profile's full range.
 
 ### 5. Schema v2 and migration
 
@@ -259,6 +269,57 @@ count lists in `main.ts` (`counts = [10, 16, 22, 26, 32]`) must be derived from
 the current rig, or demoted to a pure debug render budget.
 
 ### 6. Rig editing UX
+
+**Implemented.** The side panel has two panes and shows one at a time:
+
+- **Modify rig** — opened by the `MODIFY RIG` button in the timeline sidebar
+  (the row that used to read `AUDIO`). Lists lights grouped by mount anchor
+  (`Front truss · 10`) with a live fixture count, and hosts `+ Add lights`.
+  Removal returns here, because removing a light is a rig-level action.
+- **Fixture settings** — opened by clicking a track name. Shows name, mount,
+  yaw/pitch, level, beam angle, capabilities, and clip counts.
+
+Clicking the button or a track name again closes the panel. Picking a light in
+the rig list selects its lane and switches to that light's settings. The header
+describes the venue in rig mode (`Venue · Club Stage · 32 lights`) so the pane
+never looks like a fixture is selected when it is not.
+
+`+ Add lights` opens a dialog with profile, mount, count, and spacing (spread or
+centre cluster). Removal confirms with the light's name and its clip count,
+drops those clips in the same step, and refuses to remove the last light.
+Placement controls add a name field, a mount select, and a **position on
+mount** slider (0–100% along the anchor segment); yaw and mount pitch keep
+their sliders. Track labels show `name ?? id` with the mount anchor on the
+second line.
+
+The position slider matters because choosing a mount only says *which*
+structure a light belongs to. Without it, `resolveMount` used `u: 0.5` and every
+re-mounted light landed in the middle of the bar. Switching mounts now keeps
+the existing `u` and resets orientation and offset to the new anchor's
+defaults, so re-homing a light does not also re-aim it or hang it at the wrong
+height. Moving along a mount changes only the position: aim and mount pitch stay
+as authored, and since `FixtureRig` reads placement every frame, no rig rebuild
+or row re-render is needed.
+
+Not yet exposed: the perpendicular `offset` (x/y/z). It currently comes from
+the anchor's `mountOffset`, which is what puts truss lights below the bar and
+floor lights on top of the deck. Fine-tuning hanging depth is the next
+placement control to add.
+
+The split exists because the rig list and the fixture controls are different
+tasks. Showing both at once made the sidebar long and made the panel ambiguous
+when nothing was selected.
+
+Two behaviours worth knowing:
+
+- `show.fixtures` is the document, so edits replace the array and rebuild the
+  stage rigs. Name and mount edits skip the rebuild because `FixtureRig` reads
+  placement every frame.
+- Id allocation lives in `show-model` (`nextFixtureId`) and must be given the
+  array being built, not the document's starting fixtures; otherwise a bulk add
+  hands every new light the same id and the arrangement treats them as one.
+
+Not in this pass: duplicate, context-menu removal, and rig undo (M6).
 
 **Rig section** at the top of the fixture side panel:
 
@@ -380,10 +441,10 @@ the prompt before then (user decision, 2026-10-18).
 
 | # | Work | Exit criterion |
 |---|---|---|
-| M0 | Schema v2, `VenueTemplate`/`MountAnchor`/`FixtureMount` types, `resolveMount`, migration v1→v2 | Round-trip and migration tests pass; v1 demo opens unchanged |
-| M1 | `CLUB_STAGE` template + `buildVenue()`, `Stage.setVenue()` | Club renders pixel-comparable to today; all 32 fixtures sit on anchors |
-| M2 | Mount pitch transform fix (M0 dependency) and `FixtureState` cleanup | Floor PARs and angled fixtures aim correctly; tilt range is whole |
-| M3 | Rig editor: library dialog, add/remove/duplicate, placement controls, `Arrangement.setFixtures` | Add 6 heads to `truss-mid`, save, reload, same rig and lanes |
+| M0 ✅ | Schema v2, `VenueTemplate`/`MountAnchor`/`FixtureMount` types, `resolveMount`, migration v1→v2 | Round-trip and migration tests pass; v1 demo opens unchanged |
+| M1 ✅ | `CLUB_STAGE` template + `buildVenue()`, `Stage.setVenue()` | Club renders pixel-comparable to today; all 32 fixtures sit on anchors |
+| M2 ✅ | Mount pitch transform fix (M0 dependency) and `FixtureState` cleanup | Floor PARs and angled fixtures aim correctly; tilt range is whole |
+| M3 ✅ | Rig editor: library dialog, add/remove, placement controls, `Arrangement.setFixtures` | Add 6 heads to `truss-mid`, save, reload, same rig and lanes (duplicate + undo deferred: M6) |
 | M4 | Project open replaces the rig; retire `rigMatches` / `applyProjectFixtureSetup` | A project with 5 fixtures opens in a build that knows the venue |
 | M5 | `MAIN_STAGE` template with its `defaultRig`, venue picker, switch-starts-new-project flow | Choosing a venue loads its rig and a clean timeline; audio survives; save prompt appears when there are clips |
 | M6 | Rig undo, lane sort, docs/schema regen, sample-project update | Deleting a light is undoable; `docs/agent_docs/project-file-format.md` and the JSON Schema match v2 |

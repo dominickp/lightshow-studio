@@ -6,6 +6,9 @@ import type {
   FixturePlacement,
   FixtureState,
   Keyframe,
+  LaserLimits,
+  LaserSetup,
+  LaserState,
   Show,
 } from './types';
 
@@ -31,6 +34,51 @@ const EASINGS: Record<Easing, (t: number) => number> = {
 };
 
 const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+/** Laser setup when a project omits it or a profile has no limits block. */
+export const DEFAULT_LASER_SETUP: LaserSetup = {
+  beams: 8,
+  pattern: 'fan',
+  fanDeg: 40,
+  divergenceDeg: 1.2,
+  speedHz: 0.5,
+  phaseDeg: 0,
+};
+
+const FALLBACK_LASER_LIMITS: LaserLimits = {
+  maxBeams: 32,
+  patterns: ['fan', 'sweep', 'tunnel', 'wave', 'lattice', 'dots'],
+  fanDeg: [0, 120],
+};
+
+const TWO_PI = Math.PI * 2;
+
+/** Resolved laser setup plus the scanner phase at `timeSec`. */
+export function resolveLaser(
+  setup: LaserSetup | undefined,
+  limits: LaserLimits | undefined,
+  timeSec: number,
+  rotation: number,
+): LaserState {
+  const merged = { ...DEFAULT_LASER_SETUP, ...setup };
+  const limits2 = limits ?? FALLBACK_LASER_LIMITS;
+  const maxBeams = Math.max(1, Math.round(limits2.maxBeams));
+  const [fanMin, fanMax] = limits2.fanDeg;
+  const fanDeg = Math.min(fanMax, Math.max(fanMin, merged.fanDeg));
+  const beams = Math.min(maxBeams, Math.max(1, Math.round(merged.beams)));
+  const divergenceDeg = Math.max(0, merged.divergenceDeg);
+  const speedHz = Math.max(0, merged.speedHz);
+  const phase = TWO_PI * (speedHz * timeSec + rotation + merged.phaseDeg / 360);
+
+  return {
+    beams,
+    pattern: merged.pattern,
+    fanDeg,
+    divergenceDeg,
+    speedHz,
+    phase: ((phase % TWO_PI) + TWO_PI) % TWO_PI,
+  };
+}
 
 function sampleKeyframes(keyframes: Keyframe[], t01: number, ease: (t: number) => number): number {
   const first = keyframes[0];
@@ -135,17 +183,25 @@ export function evaluateFixture(
   const zoomNorm = caps.zoom ? values.zoom : 0.5;
   const strobe = caps.strobe ? values.strobe : 0;
 
+  const laser = profile.kind === 'laser'
+    ? resolveLaser(fixture.laser, profile.laser, timeSec, caps.rotation ? values.rotation : 0)
+    : undefined;
+
   return {
     fixtureId: fixture.id,
     kind: profile.kind,
     intensity,
     color,
     panDeg: lerpRange(panNorm, profile.limits.panDeg),
-    tiltDeg: lerpRange(tiltNorm, profile.limits.tiltDeg) + (fixture.pitchOffsetDeg ?? 0),
+    // Animated tilt only. The mechanical mount angle is a transform applied by
+    // the renderer between the fixture root and its pan axis (ADR-010), so it
+    // must not consume the profile's tilt range here.
+    tiltDeg: lerpRange(tiltNorm, profile.limits.tiltDeg),
     spreadDeg: lerpRange(zoomNorm, profile.beam.spreadDeg),
     focus: caps.focus ? values.focus : 0.5,
     strobeHz: strobe > 0.001 ? lerpRange(strobe, profile.limits.strobeHz) : 0,
     rotation: caps.rotation ? values.rotation : 0,
+    ...(laser === undefined ? {} : { laser }),
     active: intensity > 0.001,
   };
 }

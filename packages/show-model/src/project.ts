@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DEFAULT_VENUE_ID } from './venue';
 
 /**
  * Project-file schema (`.dmxsim`).
@@ -14,7 +15,7 @@ import { z } from 'zod';
  */
 
 export const PROJECT_FORMAT = 'dmxsim-project';
-export const PROJECT_VERSION = 1;
+export const PROJECT_VERSION = 2;
 
 export const CUE_ACTIONS = ['hold', 'fade', 'pulse', 'sweep', 'strobe'] as const;
 export type ProjectCueAction = (typeof CUE_ACTIONS)[number];
@@ -63,6 +64,8 @@ const CONTROLLABLE_ATTRIBUTES = [
 
 const EASINGS = ['linear', 'sine', 'easeInOut', 'step'] as const;
 
+const LASER_PATTERNS = ['fan', 'sweep', 'tunnel', 'wave', 'lattice', 'dots'] as const;
+
 const rangeSchema = z.tuple([z.number(), z.number()]);
 
 export const fixtureProfileSchema = z.object({
@@ -92,6 +95,14 @@ export const fixtureProfileSchema = z.object({
     apertureDiameterM: z.number().nonnegative(),
     throwM: z.number().positive(),
   }),
+  /** Laser-only capabilities. Optional so older snapshots stay valid. */
+  laser: z
+    .object({
+      maxBeams: z.number().int().positive(),
+      patterns: z.array(z.enum(LASER_PATTERNS)).min(1),
+      fanDeg: rangeSchema,
+    })
+    .optional(),
 });
 
 const normalizedSchema = z.number().min(0).max(1);
@@ -111,8 +122,27 @@ export const fixtureDefaultsSchema = z.object({
   rotation: normalizedSchema.optional(),
 });
 
+export const fixtureMountSchema = z.object({
+  anchorId: z.string().min(1),
+  u: z.number().min(0).max(1),
+  offset: z.object({ x: z.number(), y: z.number(), z: z.number() }).optional(),
+  yawDeg: z.number().optional(),
+  mountPitchDeg: z.number().optional(),
+});
+
+export const laserSetupSchema = z.object({
+  beams: z.number().int().positive(),
+  pattern: z.enum(LASER_PATTERNS),
+  fanDeg: z.number().nonnegative(),
+  divergenceDeg: z.number().nonnegative(),
+  speedHz: z.number().nonnegative(),
+  phaseDeg: z.number(),
+});
+
 export const fixturePlacementSchema = z.object({
   id: z.string().min(1),
+  /** Friendly lane label; the UI falls back to a generated name. */
+  name: z.string().min(1).optional(),
   profile: fixtureProfileSchema,
   position: z.object({
     x: z.number(),
@@ -121,6 +151,10 @@ export const fixturePlacementSchema = z.object({
   }),
   yawDeg: z.number(),
   pitchOffsetDeg: z.number().optional(),
+  /** Venue structure this fixture hangs from (ADR-011). */
+  mount: fixtureMountSchema.optional(),
+  /** Laser beam setup (ADR-012). */
+  laser: laserSetupSchema.optional(),
   /** Values held when no clip is active (ADR-010). */
   defaults: fixtureDefaultsSchema.optional(),
 });
@@ -238,8 +272,14 @@ export const projectAudioSchema = z
   })
   .prefault({});
 
+export const projectVenueSchema = z.object({
+  /** Template id, e.g. `club-stage`. See `venue.ts`. */
+  id: z.string().min(1),
+  name: z.string().min(1),
+});
+
 export const projectShowSchema = z.object({
-  version: z.literal(1),
+  version: z.literal(2),
   name: z.string().min(1),
   /** Full profile snapshots keep the file portable without a profile lookup. */
   fixtures: z.array(fixturePlacementSchema).min(1),
@@ -252,6 +292,7 @@ export const projectFileSchema = z
     version: z.literal(PROJECT_VERSION),
     name: z.string().min(1),
     description: z.string().optional(),
+    venue: projectVenueSchema,
     show: projectShowSchema,
     timeline: projectTimelineSchema,
     arrangement: z
@@ -301,6 +342,7 @@ export function defaultProjectSettings(): ProjectSettings {
 }
 
 export type ProjectFile = z.infer<typeof projectFileSchema>;
+export type ProjectVenue = z.infer<typeof projectVenueSchema>;
 export type ProjectClip = z.infer<typeof projectClipSchema>;
 export type ProjectTimeline = z.infer<typeof projectTimelineSchema>;
 export type ProjectSettings = z.infer<typeof projectSettingsSchema>;
@@ -315,8 +357,31 @@ export class ProjectFileError extends Error {
 }
 
 /**
- * Forward-only migration hook. Version 1 is current; files from the future are
- * rejected with a clear message instead of being silently half-loaded.
+ * Forward-only migration hook.
+ *
+ * v1 predates venue templates: it had no `venue` section and pinned
+ * `show.version` to 1. The only venue that existed then is the club stage, so
+ * v1 files are upgraded by naming it and bumping the show version. Fixtures
+ * keep their absolute transforms and simply have no `mount`; the UI shows them
+ * as unattached until they are re-anchored.
+ */
+function migrateV1toV2(project: Record<string, unknown>): Record<string, unknown> {
+  const show = project.show;
+  const nextShow = typeof show === 'object' && show !== null
+    ? { ...(show as Record<string, unknown>), version: 2 }
+    : show;
+
+  return {
+    ...project,
+    version: 2,
+    venue: project.venue ?? { id: DEFAULT_VENUE_ID, name: 'Club Stage' },
+    show: nextShow,
+  };
+}
+
+/**
+ * Forward-only migration hook. The current version is 2; files from the future
+ * are rejected with a clear message instead of being silently half-loaded.
  */
 export function migrateProject(input: unknown): unknown {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
@@ -337,8 +402,10 @@ export function migrateProject(input: unknown): unknown {
   if (candidate.version < 1) {
     throw new ProjectFileError(`Unsupported project version ${candidate.version}`);
   }
-  // Future migrations run here, e.g. if (candidate.version === 1) { ... v2 ... }.
-  return candidate;
+
+  const project = candidate as Record<string, unknown>;
+  if (candidate.version === 1) return migrateV1toV2(project);
+  return project;
 }
 
 /** Validate an unknown JSON value as a project document. */

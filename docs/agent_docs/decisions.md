@@ -142,6 +142,7 @@ Short form: context → decision → consequence. Update or supersede rather tha
 - The fixture side panel edits setup and is persisted, replacing the transient "Live preview" panel. It makes the clip/default distinction visible with a badge.
 - A future fixture setup editor can add the rest of layer 1 (limits, channel map, invert flags) without touching the clip model.
 - Pan/tilt and zoom remain clip-animatable; only the *mounting* values are physical. "Hardware vs digital" is not the dividing line — "stored vs transmitted per frame" is.
+- Mount pitch is applied as a transform (`root -> mount -> pan axis -> tilt head`), not added to `FixtureState.tiltDeg`. A fixture clamped at an angle therefore keeps its whole tilt range, and pan rotates around its own mount axis. Fixed fixtures rotate their housing with the mount; only the beam's direction was ever angled before.
 
 ---
 

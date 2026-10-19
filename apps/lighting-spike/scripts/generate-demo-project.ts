@@ -44,8 +44,9 @@ const project: ProjectFile = {
   version: PROJECT_VERSION,
   name: 'Koto Chill demo',
   description: 'Bundled demo project: the full rig plus a 16-bar arrangement on The Koto Chill.',
+  venue: { id: 'club-stage', name: 'Club Stage' },
   show: {
-    version: 1,
+    version: 2,
     name: rig.name,
     fixtures: rig.fixtures,
     tracks: [],

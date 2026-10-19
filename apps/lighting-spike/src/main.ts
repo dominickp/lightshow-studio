@@ -1,13 +1,22 @@
 import * as THREE from 'three/webgpu';
 import {
+  CLUB_STAGE,
+  DEFAULT_VENUE_ID,
+  PROJECT_VERSION,
   evaluateFixture,
+  findAnchor,
+  nextFixtureId,
   parseProject,
+  resolveMount,
   timeToBeat,
+  venueById,
   type FixtureDefaults,
+  type FixturePlacement,
   type FixtureState,
   type ProjectFile,
   type ProjectSettings,
 } from '@dmxsim/show-model';
+import { PROFILE_LIBRARY } from '@dmxsim/fixtures';
 import { createDemoRig } from './demo-rig';
 import { createDemoCues } from './demo-arrangement';
 import { AudioClock } from './audio-clock';
@@ -63,6 +72,17 @@ const show = bundledProject === null
   : showFromProject(bundledProject);
 let projectName = bundledProject?.name ?? 'Untitled project';
 let projectDescription = bundledProject?.description;
+/**
+ * Active venue template. Resolved from the project file so opening a project
+ * renders the stage it was authored on. Unknown ids fall back to the club
+ * stage with a warning rather than failing the load; a real venue switch UI is
+ * still to come (see `stage-rig-editor-plan.md`).
+ */
+const requestedVenueId = bundledProject?.venue.id ?? DEFAULT_VENUE_ID;
+const activeVenue = venueById(requestedVenueId) ?? CLUB_STAGE;
+if (activeVenue.id !== requestedVenueId) {
+  console.warn(`unknown venue "${requestedVenueId}"; using ${activeVenue.id}`);
+}
 let projectAudio: ProjectFile['audio'] = bundledProject?.audio ?? {
   source: 'bundled',
   id: 'koto-chill',
@@ -70,7 +90,17 @@ let projectAudio: ProjectFile['audio'] = bundledProject?.audio ?? {
   artist: TRACK.artist,
   fileName: 'The Koto Chill.ogg',
 };
-const counts = [10, 16, 22, 26, 32].filter((n) => n <= show.fixtures.length);
+/**
+ * Fixture-count stops for the debug render budget. The rig is editable now, so
+ * the list is derived from the current rig and always ends at "all fixtures".
+ */
+const countPresets = (): number[] => {
+  const total = show.fixtures.length;
+  const stops = [10, 16, 22, 26, 32].filter((n) => n < total);
+  stops.push(total);
+  return stops;
+};
+const counts = countPresets();
 
 const container = document.getElementById('app');
 if (container === null) throw new Error('missing #app element');
@@ -90,7 +120,7 @@ container.appendChild(renderer.domElement);
 
 await renderer.init();
 
-const stage = new Stage(renderer.domElement, show);
+const stage = new Stage(renderer.domElement, show, activeVenue);
 // The renderer draws into #stage-viewport (window minus the timeline dock), not
 // the whole window, so the initial projection must use the viewport's aspect.
 stage.camera.aspect = viewport.clientWidth / Math.max(1, viewport.clientHeight);
@@ -106,6 +136,15 @@ let lofi = false;
 let strobesOn = false;
 let countIndex = counts.length - 1;
 let activeCount = counts[countIndex] ?? show.fixtures.length;
+
+/** Keep the render budget valid after a rig edit. */
+const clampActiveCount = (): void => {
+  const presets = countPresets();
+  countIndex = Math.min(countIndex, presets.length - 1);
+  const next = presets[countIndex] ?? show.fixtures.length;
+  if (next !== activeCount) setActiveCount(next);
+  else syncButtons();
+};
 
 stage.setActiveCount(activeCount);
 
@@ -194,13 +233,32 @@ const ui = {
   setupSpreadRow: element('setup-spread-row'),
   setupSpread: element<HTMLInputElement>('setup-spread'),
   setupSpreadValue: element('setup-spread-value'),
+  setupName: element<HTMLInputElement>('setup-name'),
+  setupMount: element<HTMLSelectElement>('setup-mount'),
+  setupPositionRow: element('setup-position-row'),
+  setupPosition: element<HTMLInputElement>('setup-position'),
+  setupPositionValue: element('setup-position-value'),
+  rigList: element('rig-list'),
+  rigPane: element('rig-pane'),
+  fixturePane: element('fixture-pane'),
+  rigMenu: element<HTMLButtonElement>('btn-rig-menu'),
+  rigMenuCount: element('rig-menu-count'),
+  addLights: element<HTMLButtonElement>('btn-add-lights'),
+  removeFixture: element<HTMLButtonElement>('btn-remove-fixture'),
+  addDialog: element<HTMLDialogElement>('add-lights-dialog'),
+  addProfile: element<HTMLSelectElement>('add-profile'),
+  addMount: element<HTMLSelectElement>('add-mount'),
+  addCount: element<HTMLInputElement>('add-count'),
+  addSpacing: element<HTMLSelectElement>('add-spacing'),
+  addSummary: element('add-summary'),
 };
 
 /**
- * Fixture side panel state. Declared here so selection sync can keep the panel
- * pointed at the right fixture; the panel behaviour lives with the dock
- * handling further down.
+ * The side panel shows one thing at a time: the rig (opened from the timeline's
+ * RIG row) or a single fixture's settings (opened from its track name).
  */
+type SidePanelMode = 'rig' | 'fixture';
+let sidePanelMode: SidePanelMode = 'fixture';
 let sidePanelOpen = false;
 let sidePanelFixtureId: string | null = null;
 
@@ -278,16 +336,43 @@ const refreshPanelClipStats = (): void => {
   ui.panelClipActive.textContent = String(active);
 };
 
-const syncCueInspector = (fixture: (typeof show.fixtures)[number] | null, cue: Cue | null): void => {
-  stage.setSelectedFixture(fixture?.id ?? null);
-  ui.selectedFixture.textContent = fixture?.id ?? 'Select a fixture track';
+/**
+ * Panel header text. In rig mode the header describes the venue, so the pane
+ * does not read as if a fixture were selected.
+ */
+const syncPanelHeader = (fixture: Fixture | null): void => {
+  if (sidePanelMode === 'rig') {
+    ui.panelFixtureKind.textContent = 'Venue';
+    ui.panelFixtureName.textContent = activeVenue.name;
+    ui.panelFixtureMeta.textContent = `${show.fixtures.length} light${show.fixtures.length === 1 ? '' : 's'} · click one to edit it`;
+    return;
+  }
+
   ui.panelFixtureKind.textContent = fixture === null ? 'Fixture' : kindLabel(fixture.profile.kind);
-  ui.panelFixtureName.textContent = fixture?.id ?? 'No fixture selected';
+  ui.panelFixtureName.textContent = fixture === null
+    ? 'No fixture selected'
+    : arrangement.labelFor(fixture);
   ui.panelFixtureMeta.textContent = fixture === null
     ? 'Click a track name to open this panel'
-    : `${fixture.profile.manufacturer ?? 'Unknown'} · ${fixture.profile.channels.length} DMX channels`;
+    : `${mountLabel(fixture)} · ${fixture.profile.channels.length} DMX channels`;
+};
+
+const syncCueInspector = (fixture: (typeof show.fixtures)[number] | null, cue: Cue | null): void => {
+  const label = fixture === null ? null : arrangement.labelFor(fixture);
+  stage.setSelectedFixture(fixture?.id ?? null);
+  ui.selectedFixture.textContent = label ?? 'Select a fixture track';
+  syncPanelHeader(fixture);
   renderPanelCapabilities(fixture);
   if (sidePanelOpen) sidePanelFixtureId = fixture?.id ?? null;
+
+  // Mount options are venue data, so rebuild them with the current selection.
+  const mountOptions = activeVenue.anchors.map((anchor) => {
+    const option = document.createElement('option');
+    option.value = anchor.id;
+    option.textContent = anchor.name;
+    return option;
+  });
+  ui.setupMount.replaceChildren(...mountOptions);
 
   if (fixture === null) {
     ui.setupDimmer.disabled = true;
@@ -295,7 +380,31 @@ const syncCueInspector = (fixture: (typeof show.fixtures)[number] | null, cue: C
     ui.setupPitch.disabled = true;
     ui.setupSpread.disabled = true;
     ui.setupSpreadRow.hidden = true;
+    ui.setupName.disabled = true;
+    ui.setupName.value = '';
+    ui.setupMount.disabled = true;
+    ui.setupPositionRow.hidden = true;
+    ui.setupPosition.disabled = true;
+    ui.removeFixture.disabled = true;
   } else {
+    ui.setupName.disabled = false;
+    ui.setupName.value = fixture.name ?? '';
+    ui.setupName.placeholder = fixture.id;
+    ui.setupMount.disabled = false;
+    const mounted = fixture.mount !== undefined
+      && findAnchor(activeVenue, fixture.mount.anchorId) !== undefined;
+    if (mounted && fixture.mount !== undefined) {
+      ui.setupMount.value = fixture.mount.anchorId;
+    } else {
+      // Unattached (for example a v1 file): show the placeholder selection.
+      ui.setupMount.selectedIndex = -1;
+    }
+    const u = fixture.mount?.u ?? 0.5;
+    ui.setupPositionRow.hidden = !mounted;
+    ui.setupPosition.disabled = !mounted;
+    ui.setupPosition.value = String(Math.round(u * 100));
+    ui.setupPositionValue.textContent = `${Math.round(u * 100)}%`;
+    ui.removeFixture.disabled = show.fixtures.length <= 1;
     const defaults = defaultsFor(fixture);
     const caps = fixture.profile.capabilities;
     const [spreadMin, spreadMax] = fixture.profile.beam.spreadDeg;
@@ -316,6 +425,7 @@ const syncCueInspector = (fixture: (typeof show.fixtures)[number] | null, cue: C
     ui.setupSpreadValue.textContent = `${(spreadMin + (spreadMax - spreadMin) * zoom).toFixed(1)}°`;
   }
   refreshPanelClipStats();
+  renderRigList();
 
   const available = arrangement.selectedActions;
   ui.cueAction.replaceChildren(...available.map((action) => {
@@ -364,6 +474,234 @@ arrangement = new Arrangement(ui.arrangement, ui.arrangementScroll, show.fixture
   toggleSidePanel(fixture.id);
 });
 
+// --- Rig editing (M3) ------------------------------------------------------
+
+/** Anchor display name, or a clear marker for a fixture with no mount. */
+const mountLabel = (fixture: FixturePlacement): string => {
+  const anchorId = fixture.mount?.anchorId;
+  if (anchorId === undefined) return 'Unattached';
+  return findAnchor(activeVenue, anchorId)?.name ?? `Missing mount (${anchorId})`;
+};
+
+arrangement.setSubtitleResolver(
+  (fixture) => `${mountLabel(fixture)} · ${kindLabel(fixture.profile.kind)}`,
+);
+
+
+/**
+ * Apply a rig change. `show.fixtures` is the document's source of truth, so
+ * replacing the array and rebuilding is simpler and safer than mutating rig
+ * objects in place. `rebuildRigs` is false for placement edits, which the rig
+ * reads from the placement every frame.
+ */
+const applyRig = (fixtures: FixturePlacement[], rebuildRigs: boolean): void => {
+  show.fixtures = fixtures;
+  if (rebuildRigs) stage.setShow(show);
+  arrangement.setFixtures(fixtures);
+  clampActiveCount();
+  renderRigList();
+};
+
+/** Fixtures grouped by mount in venue anchor order, then unattached ones. */
+const renderRigList = (): void => {
+  const selectedId = arrangement.selectedFixture?.id ?? null;
+  const groups = new Map<string, FixturePlacement[]>();
+  for (const fixture of show.fixtures) {
+    const key = mountLabel(fixture);
+    const list = groups.get(key);
+    if (list === undefined) groups.set(key, [fixture]);
+    else list.push(fixture);
+  }
+
+  const fragment = document.createDocumentFragment();
+  for (const [label, fixtures] of groups) {
+    const heading = document.createElement('p');
+    heading.className = 'rig-group';
+    heading.textContent = `${label} · ${fixtures.length}`;
+    fragment.append(heading);
+
+    for (const fixture of fixtures) {
+      const entry = document.createElement('div');
+      entry.className = `rig-entry${fixture.id === selectedId ? ' selected' : ''}`;
+      entry.dataset.fixtureId = fixture.id;
+      entry.title = `${fixture.name ?? fixture.id} — ${fixture.profile.name}`;
+      const name = document.createElement('span');
+      name.textContent = fixture.name ?? fixture.id;
+      const kind = document.createElement('em');
+      kind.textContent = kindLabel(fixture.profile.kind);
+      entry.append(name, kind);
+      fragment.append(entry);
+    }
+  }
+
+  ui.rigMenuCount.textContent = String(show.fixtures.length);
+
+  if (show.fixtures.length === 0) {
+    const empty = document.createElement('span');
+    empty.className = 'sp-empty';
+    empty.textContent = 'No fixtures.';
+    fragment.append(empty);
+  }
+  ui.rigList.replaceChildren(fragment);
+};
+
+/** Picking a light in the rig list selects its lane and opens its settings. */
+const selectFixtureFromRig = (fixtureId: string): void => {
+  arrangement.selectFixture(fixtureId);
+  sidePanelMode = 'fixture';
+  setSidePanelOpen(true, { mode: 'fixture', fixtureId });
+  renderRigList();
+};
+
+ui.rigList.addEventListener('click', (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  const entry = target.closest<HTMLElement>('.rig-entry');
+  const fixtureId = entry?.dataset.fixtureId;
+  if (fixtureId !== undefined) selectFixtureFromRig(fixtureId);
+});
+
+/** Remove a light and its clips. The last fixture cannot be removed. */
+const removeFixture = (fixtureId: string): void => {
+  const fixture = show.fixtures.find((item) => item.id === fixtureId);
+  if (fixture === undefined) return;
+  if (show.fixtures.length <= 1) {
+    setProjectStatus('A show needs at least one light');
+    return;
+  }
+
+  const clipCount = cues.filter((cue) => cue.fixtureId === fixtureId).length;
+  const label = fixture.name ?? fixture.id;
+  const clipNote = clipCount === 0
+    ? ''
+    : ` and its ${clipCount} clip${clipCount === 1 ? '' : 's'}`;
+  if (!window.confirm(`Remove ${label}${clipNote}?`)) return;
+
+  applyRig(show.fixtures.filter((item) => item.id !== fixtureId), true);
+  // Removal is a rig-level action, so return to the rig list rather than
+  // leaving the panel pointed at a fixture that no longer exists. Keep the
+  // panel closed if it already was.
+  if (sidePanelOpen) setSidePanelOpen(true, { mode: 'rig' });
+  setProjectStatus(`Removed ${label}${clipNote}`);
+};
+
+ui.removeFixture.addEventListener('click', () => {
+  const fixture = arrangement.selectedFixture;
+  if (fixture !== null) removeFixture(fixture.id);
+});
+
+/** Evenly spaced positions along an anchor, inset from both ends. */
+const spreadPositions = (count: number): number[] => {
+  if (count <= 1) return [0.5];
+  const inset = 0.06;
+  return Array.from({ length: count }, (_, index) =>
+    inset + ((1 - inset * 2) * index) / (count - 1));
+};
+
+const populateAddDialog = (): void => {
+  const profiles = Object.values(PROFILE_LIBRARY).map((profile) => {
+    const option = document.createElement('option');
+    option.value = profile.id;
+    option.textContent = `${profile.name} · ${profile.channels.length}ch`;
+    return option;
+  });
+  ui.addProfile.replaceChildren(...profiles);
+
+  const anchors = activeVenue.anchors.map((anchor) => {
+    const option = document.createElement('option');
+    option.value = anchor.id;
+    option.textContent = anchor.name;
+    return option;
+  });
+  ui.addMount.replaceChildren(...anchors);
+};
+
+const describeAddDialog = (): void => {
+  const profile = PROFILE_LIBRARY[ui.addProfile.value];
+  const anchor = findAnchor(activeVenue, ui.addMount.value);
+  const count = Number(ui.addCount.value);
+  if (profile === undefined || anchor === undefined) {
+    ui.addSummary.textContent = '';
+    return;
+  }
+  const safeCount = Number.isFinite(count) ? Math.max(1, Math.min(16, Math.round(count))) : 1;
+  ui.addSummary.textContent = `Adds ${safeCount} × ${profile.name} to ${anchor.name}.`;
+};
+
+const addFixtures = (): void => {
+  const profile = PROFILE_LIBRARY[ui.addProfile.value];
+  const anchor = findAnchor(activeVenue, ui.addMount.value);
+  if (profile === undefined || anchor === undefined) return;
+
+  const rawCount = Number(ui.addCount.value);
+  const count = Math.max(1, Math.min(16, Number.isFinite(rawCount) ? Math.round(rawCount) : 1));
+  const spacing = ui.addSpacing.value === 'cluster' ? 'cluster' : 'spread';
+  const positions = spreadPositions(count);
+  const next = [...show.fixtures];
+  const created: FixturePlacement[] = [];
+  const kindTitle = kindLabel(profile.kind);
+
+  for (let index = 0; index < count; index += 1) {
+    const u = spacing === 'spread' ? (positions[index] ?? 0.5) : 0.5;
+    const id = nextFixtureId(next, profile.kind);
+    const hang = anchor.mountOffset ?? { x: 0, y: 0, z: 0 };
+    // A cluster shares one spot on the anchor and steps sideways instead, so
+    // repeated adds do not stack exactly on top of each other.
+    const offset = spacing === 'cluster'
+      ? { x: hang.x + (index - (count - 1) / 2) * 0.7, y: hang.y, z: hang.z }
+      : { ...hang };
+    const mount = { anchorId: anchor.id, u, offset };
+    const resolved = resolveMount(activeVenue, mount);
+    if (resolved === null) continue;
+
+    const suffix = Number(id.slice(id.lastIndexOf('-') + 1));
+    const fixture: FixturePlacement = {
+      id,
+      name: `${kindTitle} ${Number.isFinite(suffix) ? suffix : created.length + 1}`,
+      profile,
+      position: resolved.position,
+      yawDeg: resolved.yawDeg,
+      pitchOffsetDeg: resolved.pitchOffsetDeg,
+      mount,
+    };
+    next.push(fixture);
+    created.push(fixture);
+  }
+
+  if (created.length === 0) return;
+  applyRig(next, true);
+  const first = created[0];
+  if (first !== undefined) {
+    arrangement.selectFixture(first.id);
+    renderRigList();
+    // Stay in the rig pane: adding several batches is the common next step.
+    setSidePanelOpen(true, { mode: 'rig' });
+  }
+  setProjectStatus(`Added ${created.length} light${created.length === 1 ? '' : 's'} to ${anchor.name}`);
+};
+
+populateAddDialog();
+ui.addDialog.addEventListener('close', () => {
+  if (ui.addDialog.returnValue === 'add') addFixtures();
+});
+ui.addLights.addEventListener('click', () => {
+  describeAddDialog();
+  ui.addDialog.showModal();
+});
+for (const control of [ui.addProfile, ui.addMount, ui.addCount, ui.addSpacing]) {
+  control.addEventListener('input', describeAddDialog);
+  control.addEventListener('change', describeAddDialog);
+}
+ui.addMount.addEventListener('change', () => {
+  // Surface the anchor's recommended profiles first.
+  const anchor = findAnchor(activeVenue, ui.addMount.value);
+  const suggested = anchor?.suggestedProfiles?.[0];
+  if (suggested !== undefined && PROFILE_LIBRARY[suggested] !== undefined) {
+    ui.addProfile.value = suggested;
+  }
+  describeAddDialog();
+});
+
 const updateFixtureSetup = (update: (fixture: Fixture) => void): void => {
   const fixture = arrangement.selectedFixture;
   if (fixture === null) return;
@@ -390,6 +728,55 @@ ui.setupSpread.addEventListener('input', () => updateFixtureSetup((fixture) => {
   defaultsFor(fixture).zoom = zoom;
   ui.setupSpreadValue.textContent = `${(spreadMin + (spreadMax - spreadMin) * zoom).toFixed(1)}°`;
 }));
+
+ui.setupPosition.addEventListener('input', () => {
+  const fixture = arrangement.selectedFixture;
+  if (fixture === null || fixture.mount === undefined) return;
+
+  const u = Number(ui.setupPosition.value) / 100;
+  fixture.mount.u = u;
+  ui.setupPositionValue.textContent = `${Math.round(u * 100)}%`;
+
+  // Only the point on the mount moves; aim and mount pitch stay as authored,
+  // so dragging along a truss does not re-aim the light. The rig reads
+  // placement every frame, so nothing needs rebuilding — and re-rendering the
+  // arrangement on every slider tick would rebuild every clip's DOM.
+  const resolved = resolveMount(activeVenue, fixture.mount);
+  if (resolved !== null) fixture.position = resolved.position;
+});
+
+ui.setupName.addEventListener('change', () => {
+  const fixture = arrangement.selectedFixture;
+  if (fixture === null) return;
+  const value = ui.setupName.value.trim();
+  if (value === '') delete fixture.name;
+  else fixture.name = value;
+  // Lane labels live in the arrangement, so re-render the rows.
+  applyRig([...show.fixtures], false);
+});
+
+ui.setupMount.addEventListener('change', () => {
+  const fixture = arrangement.selectedFixture;
+  const anchor = findAnchor(activeVenue, ui.setupMount.value);
+  if (fixture === null || anchor === undefined) return;
+
+  // Keep where the fixture sits along the structure; only the structure, and
+  // therefore the mounting orientation, changes.
+  const mount = {
+    anchorId: anchor.id,
+    u: fixture.mount?.u ?? 0.5,
+    ...(anchor.mountOffset === undefined ? {} : { offset: { ...anchor.mountOffset } }),
+  };
+  const resolved = resolveMount(activeVenue, mount);
+  if (resolved === null) return;
+
+  fixture.mount = mount;
+  fixture.position = resolved.position;
+  fixture.yawDeg = resolved.yawDeg;
+  fixture.pitchOffsetDeg = resolved.pitchOffsetDeg;
+  // The rig reads placement every frame, so no rebuild is needed.
+  applyRig([...show.fixtures], false);
+});
 
 arrangement.selectFixture(show.fixtures[0]?.id ?? '');
 
@@ -685,28 +1072,55 @@ const applyPanelWidth = (): void => {
  * then re-measure the scroll viewport and repaint the canvas-backed pieces.
  */
 const applySidePanel = (): void => {
+  const rigMode = sidePanelOpen && sidePanelMode === 'rig';
   ui.sidePanel.hidden = !sidePanelOpen;
+  ui.rigPane.hidden = !rigMode;
+  ui.fixturePane.hidden = rigMode;
+  ui.rigMenu.classList.toggle('on', rigMode);
+  ui.rigMenu.setAttribute('aria-pressed', String(rigMode));
   ui.dock.classList.toggle('has-panel', sidePanelOpen);
+  syncPanelHeader(arrangement.selectedFixture);
   requestAnimationFrame(() => {
     refreshScrollMetrics();
     waveform.requestPaint();
   });
 };
 
-const setSidePanelOpen = (open: boolean, fixtureId?: string): void => {
+interface SidePanelOptions {
+  mode?: SidePanelMode;
+  fixtureId?: string;
+}
+
+const setSidePanelOpen = (open: boolean, options: SidePanelOptions = {}): void => {
   sidePanelOpen = open;
-  if (open && fixtureId !== undefined) sidePanelFixtureId = fixtureId;
+  if (open) {
+    if (options.mode !== undefined) sidePanelMode = options.mode;
+    if (options.fixtureId !== undefined) sidePanelFixtureId = options.fixtureId;
+  }
   applySidePanel();
 };
 
-/** Clicking a light's name opens its panel; clicking it again closes it. */
+/** Clicking a light's name opens its settings; clicking it again closes them. */
 const toggleSidePanel = (fixtureId: string): void => {
-  if (sidePanelOpen && sidePanelFixtureId === fixtureId) {
+  if (sidePanelOpen && sidePanelMode === 'fixture' && sidePanelFixtureId === fixtureId) {
     setSidePanelOpen(false);
     return;
   }
-  setSidePanelOpen(true, fixtureId);
+  sidePanelMode = 'fixture';
+  setSidePanelOpen(true, { mode: 'fixture', fixtureId });
 };
+
+/** The RIG row opens the rig pane; clicking it again closes the panel. */
+const toggleRigPanel = (): void => {
+  if (sidePanelOpen && sidePanelMode === 'rig') {
+    setSidePanelOpen(false);
+    return;
+  }
+  setSidePanelOpen(true, { mode: 'rig' });
+  renderRigList();
+};
+
+ui.rigMenu.addEventListener('click', toggleRigPanel);
 
 ui.sidePanelClose.addEventListener('click', () => setSidePanelOpen(false));
 window.addEventListener('keydown', (event) => {
@@ -1194,8 +1608,9 @@ ui.view.addEventListener('click', () => {
   persistRender();
 });
 ui.count.addEventListener('click', () => {
-  countIndex = (countIndex + 1) % counts.length;
-  setActiveCount(counts[countIndex] ?? show.fixtures.length);
+  const presets = countPresets();
+  countIndex = (countIndex + 1) % presets.length;
+  setActiveCount(presets[countIndex] ?? show.fixtures.length);
 });
 
 window.addEventListener('keydown', (event) => {
@@ -1241,8 +1656,9 @@ window.addEventListener('keydown', (event) => {
     stage.nextView();
   } else if (event.key === '[' || event.key === ']') {
     const step = event.key === ']' ? 1 : -1;
-    countIndex = (countIndex + step + counts.length) % counts.length;
-    setActiveCount(counts[countIndex] ?? show.fixtures.length);
+    const presets = countPresets();
+    countIndex = (countIndex + step + presets.length) % presets.length;
+    setActiveCount(presets[countIndex] ?? show.fixtures.length);
   }
   syncButtons();
 });
@@ -1428,8 +1844,9 @@ const applyProjectSettings = (settings: ProjectSettings, source: 'project' | 'de
     ? Math.min(local.activeFixtureCount ?? settings.render.activeFixtureCount, show.fixtures.length)
     : show.fixtures.length;
   setActiveCount(requested);
-  const presetIndex = counts.indexOf(requested);
-  countIndex = presetIndex >= 0 ? presetIndex : counts.length - 1;
+  const presets = countPresets();
+  const presetIndex = presets.indexOf(requested);
+  countIndex = presetIndex >= 0 ? presetIndex : presets.length - 1;
   stage.setView(local.cameraView ?? settings.render.cameraView, true);
 
   volume = settings.playback.volume;
@@ -1487,11 +1904,12 @@ const buildProject = (): ProjectFile | null => {
   if (timeline === null) return null;
   return {
     format: 'dmxsim-project',
-    version: 1,
+    version: PROJECT_VERSION,
     name: projectName,
     ...(projectDescription === undefined ? {} : { description: projectDescription }),
+    venue: { id: activeVenue.id, name: activeVenue.name },
     show: {
-      version: 1,
+      version: 2,
       name: show.name,
       fixtures: show.fixtures,
       tracks: [],

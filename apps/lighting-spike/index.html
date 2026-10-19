@@ -236,23 +236,6 @@
         letter-spacing: 0.08em;
         text-transform: uppercase;
       }
-      #preview-output-enabled {
-        width: 100%;
-        padding: 6px 8px;
-        cursor: pointer;
-        appearance: none;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.11);
-        border-radius: 5px;
-        color: var(--ink);
-        font: inherit;
-      }
-      #preview-output-enabled:disabled { opacity: 0.45; cursor: not-allowed; }
-      #preview-output-enabled.on {
-        border-color: rgba(122, 209, 255, 0.55);
-        color: var(--accent);
-        background: rgba(122, 209, 255, 0.1);
-      }
       #side-panel label {
         display: grid;
         grid-template-columns: 1fr auto;
@@ -266,20 +249,6 @@
       #side-panel output { color: var(--ink); font-variant-numeric: tabular-nums; font-size: 11px; }
       #side-panel [hidden] { display: none; }
 
-      #panel-preview-badge {
-        padding: 1px 6px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 999px;
-        color: #6f7b8e;
-        font-size: 9px;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-      }
-      #panel-preview-badge.on {
-        border-color: rgba(122, 209, 255, 0.45);
-        background: rgba(122, 209, 255, 0.1);
-        color: var(--accent);
-      }
       #panel-capabilities { display: flex; flex-wrap: wrap; gap: 4px; }
       .sp-chip {
         padding: 1px 7px;
@@ -418,7 +387,35 @@
         white-space: nowrap;
       }
 
-      #clip-inspector select { max-width: 95px; cursor: pointer; }
+      /* Native select popups take their panel colour from the control's own
+         background. Keep it opaque (not translucent white) and style the
+         options explicitly so the list stays dark and readable in browsers
+         that force/auto-apply dark mode. */
+      #clip-inspector select {
+        max-width: 95px;
+        cursor: pointer;
+        color-scheme: dark;
+        background-color: #111720;
+        color: var(--ink);
+      }
+
+      #clip-inspector select option {
+        background-color: #111720;
+        color: var(--ink);
+      }
+
+      #clip-inspector select option:disabled { color: var(--dim); }
+
+      #clip-inspector select option:checked,
+      #clip-inspector select option:hover {
+        background-color: #1d4f6b;
+        color: #f3fbff;
+      }
+
+      #clip-inspector select:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
 
       #arrangement-scroll {
         grid-column: 1;
@@ -900,23 +897,21 @@
         <div class="panel-body">
           <section>
             <div class="section-head">
-              <h3>Live preview</h3>
-              <span id="panel-preview-badge">off</span>
+              <h3>Fixture setup</h3>
             </div>
-            <p class="panel-note">Overrides this fixture in the scene while you tune it. Nothing here is saved to clips or the show.</p>
-            <button id="preview-output-enabled" type="button" aria-pressed="false" disabled>Test output: off</button>
-            <label><span>Intensity</span><output id="preview-intensity-value">50%</output>
-              <input id="preview-intensity" type="range" min="0" max="100" step="1" value="50" aria-label="Fixture test output level" disabled />
+            <p class="subhead">Mounting</p>
+            <label id="setup-yaw-row"><span>Mount yaw</span><output id="setup-yaw-value">0°</output>
+              <input id="setup-yaw" type="range" min="-180" max="180" step="1" value="0" aria-label="Fixture mounting yaw" disabled />
             </label>
-            <p class="subhead">Mount &amp; aim</p>
-            <label id="preview-yaw-row"><span>Pan offset</span><output id="preview-yaw-value">0°</output>
-              <input id="preview-yaw" type="range" min="-180" max="180" step="1" value="0" aria-label="Fixture mount or aim pan offset" disabled />
+            <label id="setup-pitch-row"><span>Mount pitch</span><output id="setup-pitch-value">0°</output>
+              <input id="setup-pitch" type="range" min="-90" max="90" step="1" value="0" aria-label="Fixture mounting pitch" disabled />
             </label>
-            <label id="preview-pitch-row"><span>Tilt offset</span><output id="preview-pitch-value">0°</output>
-              <input id="preview-pitch" type="range" min="-90" max="90" step="1" value="0" aria-label="Fixture mount or aim tilt offset" disabled />
+            <p class="subhead">Beam &amp; level</p>
+            <label><span>Level</span><output id="setup-dimmer-value">0%</output>
+              <input id="setup-dimmer" type="range" min="0" max="100" step="1" value="0" aria-label="Fixture level" disabled />
             </label>
-            <label id="preview-spread-row"><span>Beam angle</span><output id="preview-spread-value">—</output>
-              <input id="preview-spread" type="range" min="0" max="100" step="1" value="50" aria-label="Fixture beam angle" disabled />
+            <label id="setup-spread-row"><span>Beam angle</span><output id="setup-spread-value">—</output>
+              <input id="setup-spread" type="range" min="0" max="100" step="1" value="0" aria-label="Fixture beam angle" disabled />
             </label>
           </section>
           <section>

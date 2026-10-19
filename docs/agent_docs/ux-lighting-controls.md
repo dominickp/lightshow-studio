@@ -117,7 +117,7 @@ Separate **fixture setup**, **static look controls**, and **time-varying behavio
 
 ### Prototype now in the lighting spike
 
-The selected fixture's panel is a side panel docked to the right of the arrangement, not a floating overlay. Clicking a fixture's track name opens it for that fixture, clicking the same name again closes it, and the timeline column reclaims the full width while it is closed. Resizing the panel persists. The panel shows the fixture kind, id and model, capability chips, and clip counts (total and under the playhead) alongside the render-only test output, mount/aim yaw and pitch offsets, and beam angle for zoom-capable profiles. Test output is an explicit override so a fixture can be inspected while its arrangement lane is dark. This is for visual iteration only: settings are not saved and do not alter clips or the show document. Beam angle is mapped through the profile's spread range. The demo sweep remains a hard-coded canned action, not an editable movement-pattern authoring system.
+The selected fixture's panel is a side panel docked to the right of the arrangement, not a floating overlay. Clicking a fixture's track name opens it for that fixture, clicking the same name again closes it, and the timeline column reclaims the full width while it is closed. Resizing the panel persists. The panel shows the fixture kind, id and model, capability chips, and clip counts (total and under the playhead) alongside the **fixture setup** controls: mount yaw and pitch, level, and beam angle for zoom-capable profiles. Setup is the persisted layer that applies when no clip asserts an attribute. Beam angle is mapped through the profile's spread range. **The current clip vocabulary is coarse** — action (hold/fade/pulse/sweep/strobe) and one of five palette colours. It authors dimmer, RGB, pan/tilt, and strobe envelopes, but never `zoom`, so beam angle is a fixture-only setting today even though the show model supports animating it. The demo sweep remains a hard-coded canned action, not an editable movement-pattern authoring system.
 
 ### User-facing control behavior by fixture family
 
@@ -155,7 +155,7 @@ Severity reflects user impact on the next authoring pass.
 | Gap | Evidence | Severity |
 |---|---|---|
 | Authoring model is a coarse preset, not an envelope editor | `Cue` in `arrangement.ts` stores only `action` + `colorIndex`; `toClip()` hardcodes dimmer/pan/tilt/strobe keyframes. | **High** |
-| Clip inspector only edits action and colour | `syncCueInspector` in `src/main.ts` builds two selects; the fixture side panel is render-only and does not author clip values. No clip fade, strobe rate, zoom, focus, pan/tilt target, or white control exists. | **High** |
+| Clip inspector only edits action and colour | `syncCueInspector` in `src/main.ts` builds two selects; the fixture side panel edits persisted setup (mount and defaults) but does not author clip values. No clip fade, strobe rate, zoom, focus, pan/tilt target, or white control exists. | **High** |
 | No per-clip fade editing; fixed values | `toClip()` sets `fadeInSec` 0/0.04 and `fadeOutSec` 0.08; `evaluate.ts` only applies fade when a dimmer envelope exists. | **High** |
 | Strobe is one fixed value, no rate/duration | `toClip()` sets `strobe: [{ at: 0, value: 0.78 }]`; `evaluateFixture` maps it to Hz continuously. | **High** |
 | No undo/redo, multi-select, clipboard, split, duplicate | `arrangement.ts` mutates `this.cues` directly in `pointerMove`, `createCue`, `deleteSelected`; `pointerDown` tracks one selection only. | **High** |

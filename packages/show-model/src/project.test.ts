@@ -105,6 +105,36 @@ describe('project file schema', () => {
     expect(parseProject(JSON.parse(serializeProject(project)))).toEqual(project);
   });
 
+  it('round-trips fixture setup defaults', () => {
+    const project = minimalProject();
+    const withSetup = parseProject({
+      ...project,
+      show: {
+        ...project.show,
+        fixtures: project.show.fixtures.map((fixture) => ({
+          ...fixture,
+          pitchOffsetDeg: -7,
+          defaults: { dimmer: 0.3, zoom: 0.8 },
+        })),
+      },
+    });
+    expect(parseProject(JSON.parse(serializeProject(withSetup)))).toEqual(withSetup);
+  });
+
+  it('rejects setup values outside 0..1', () => {
+    const project = minimalProject();
+    expect(() => parseProject({
+      ...project,
+      show: {
+        ...project.show,
+        fixtures: project.show.fixtures.map((fixture) => ({
+          ...fixture,
+          defaults: { dimmer: 1.5 },
+        })),
+      },
+    })).toThrow(/defaults|dimmer/);
+  });
+
   it('rejects a project from a newer app version', () => {
     expect(() => parseProject({ ...minimalProject(), version: 2 })).toThrow(ProjectFileError);
     expect(() => parseProject({ ...minimalProject(), version: 2 })).toThrow(/newer app/);

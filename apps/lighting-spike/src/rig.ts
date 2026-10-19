@@ -14,14 +14,6 @@ import type { FixturePlacement, FixtureState } from '@dmxsim/show-model';
 
 const DEG = Math.PI / 180;
 
-export interface FixturePreview {
-  outputEnabled: boolean;
-  intensity: number;
-  yawOffsetDeg: number;
-  pitchOffsetDeg: number;
-  spreadDeg?: number;
-}
-
 const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x15171d, roughness: 0.6, metalness: 0.65 });
 const yokeMaterial = new THREE.MeshStandardMaterial({ color: 0x0e1014, roughness: 0.45, metalness: 0.8 });
 
@@ -207,23 +199,18 @@ export class FixtureRig {
     if (!visible) this.pool.visible = false;
   }
 
-  update(
-    state: FixtureState,
-    timeSec: number,
-    volumetrics: boolean,
-    preview?: Partial<FixturePreview>,
-  ): void {
-    const yaw = this.placement.yawDeg + state.panDeg + (preview?.yawOffsetDeg ?? 0);
+  update(state: FixtureState, timeSec: number, volumetrics: boolean): void {
+    const yaw = this.placement.yawDeg + state.panDeg;
     this.yoke.rotation.y = yaw * DEG;
-    this.head.rotation.x = -(state.tiltDeg + (preview?.pitchOffsetDeg ?? 0)) * DEG;
+    this.head.rotation.x = -state.tiltDeg * DEG;
 
-    const strobeOn = preview?.outputEnabled || state.strobeHz <= 0
+    const strobeOn = state.strobeHz <= 0
       ? true
       : Math.floor(timeSec * state.strobeHz) % 2 === 0;
-    const level = (preview?.outputEnabled ? preview.intensity ?? 0 : state.intensity) * (strobeOn ? 1 : 0);
+    const level = state.intensity * (strobeOn ? 1 : 0);
 
     const color = this.color.setRGB(state.color.r, state.color.g, state.color.b, THREE.SRGBColorSpace);
-    const spread = Math.max(0.2, preview?.spreadDeg ?? state.spreadDeg);
+    const spread = Math.max(0.2, state.spreadDeg);
     const isLaser = this.placement.profile.kind === 'laser';
     const gain = isLaser ? 9 : 1;
 

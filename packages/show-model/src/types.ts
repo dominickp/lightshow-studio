@@ -93,6 +93,29 @@ export interface FixturePlacement {
   yawDeg: number;
   /** Mechanical mounting angle, e.g. a PAR can bolted to the stage as an uplight. */
   pitchOffsetDeg?: number;
+  /**
+   * Setup values used when no clip asserts the attribute (ADR-010).
+   *
+   * Unlike clip envelopes these do not vary with song time: they are the
+   * fixture's home look, the equivalent of a console's stored defaults. Omitted
+   * attributes fall back to the profile's built-in defaults.
+   */
+  defaults?: FixtureDefaults;
+}
+
+/** Normalized (`0..1`) setup values for one fixture. */
+export interface FixtureDefaults {
+  dimmer?: number;
+  red?: number;
+  green?: number;
+  blue?: number;
+  white?: number;
+  pan?: number;
+  tilt?: number;
+  zoom?: number;
+  focus?: number;
+  strobe?: number;
+  rotation?: number;
 }
 
 export interface BeatGrid {

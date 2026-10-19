@@ -94,6 +94,23 @@ export const fixtureProfileSchema = z.object({
   }),
 });
 
+const normalizedSchema = z.number().min(0).max(1);
+
+/** Setup-layer values; only attributes the fixture can actually drive. */
+export const fixtureDefaultsSchema = z.object({
+  dimmer: normalizedSchema.optional(),
+  red: normalizedSchema.optional(),
+  green: normalizedSchema.optional(),
+  blue: normalizedSchema.optional(),
+  white: normalizedSchema.optional(),
+  pan: normalizedSchema.optional(),
+  tilt: normalizedSchema.optional(),
+  zoom: normalizedSchema.optional(),
+  focus: normalizedSchema.optional(),
+  strobe: normalizedSchema.optional(),
+  rotation: normalizedSchema.optional(),
+});
+
 export const fixturePlacementSchema = z.object({
   id: z.string().min(1),
   profile: fixtureProfileSchema,
@@ -104,6 +121,8 @@ export const fixturePlacementSchema = z.object({
   }),
   yawDeg: z.number(),
   pitchOffsetDeg: z.number().optional(),
+  /** Values held when no clip is active (ADR-010). */
+  defaults: fixtureDefaultsSchema.optional(),
 });
 
 export const keyframeSchema = z.object({

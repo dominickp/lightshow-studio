@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseProject, type ProjectFile } from '@dmxsim/show-model';
 import {
+  applyProjectFixtureSetup,
   cueTimelineFromProject,
   cueToProjectClip,
   projectClipToCue,
@@ -9,10 +10,11 @@ import {
   showFromProject,
 } from './project-file';
 import type { Cue } from './arrangement';
+import type { FixturePlacement, FixtureProfile } from '@dmxsim/show-model';
 import { createDemoRig } from './demo-rig';
 import { loopEndSec, loopStartSec, TRACK } from './track';
 
-const profile = {
+const profile: FixtureProfile = {
   id: 'generic-par',
   name: 'Generic PAR',
   kind: 'par' as const,
@@ -123,5 +125,52 @@ describe('project mapping', () => {
     const timeline = cueTimelineFromProject(bundled);
     expect(timeline.loopStartSec).toBeCloseTo(loopStartSec, 6);
     expect(timeline.loopEndSec).toBeCloseTo(loopEndSec, 6);
+  });
+});
+
+describe('fixture setup', () => {
+  const saved = parseProject({
+    ...project,
+    show: {
+      version: 1,
+      name: 'Rig',
+      fixtures: [
+        {
+          id: 'mh-0',
+          profile,
+          position: { x: 0, y: 3, z: 0 },
+          yawDeg: 42,
+          pitchOffsetDeg: -7,
+          defaults: { dimmer: 0.3, zoom: 0.8 },
+        },
+      ],
+    },
+  });
+
+  it('restores saved mount angles and defaults onto the running rig', () => {
+    const running: FixturePlacement[] = [
+      { id: 'mh-0', profile, position: { x: 0, y: 3, z: 0 }, yawDeg: 0 },
+    ];
+    applyProjectFixtureSetup(saved, running);
+    expect(running[0]?.yawDeg).toBe(42);
+    expect(running[0]?.pitchOffsetDeg).toBe(-7);
+    expect(running[0]?.defaults).toEqual({ dimmer: 0.3, zoom: 0.8 });
+  });
+
+  it('clears setup that the opened project does not define', () => {
+    const running: FixturePlacement[] = [
+      {
+        id: 'mh-0',
+        profile,
+        position: { x: 0, y: 3, z: 0 },
+        yawDeg: 0,
+        pitchOffsetDeg: 5,
+        defaults: { dimmer: 1 },
+      },
+    ];
+    applyProjectFixtureSetup(project, running);
+    expect(running[0]?.yawDeg).toBe(0);
+    expect(running[0]?.pitchOffsetDeg).toBeUndefined();
+    expect(running[0]?.defaults).toBeUndefined();
   });
 });

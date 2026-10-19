@@ -71,6 +71,26 @@ export function fixtureIds(project: ProjectFile): string[] {
   return project.show.fixtures.map((fixture) => fixture.id);
 }
 
+/**
+ * Copy saved setup values (mount angle and defaults) onto the running rig.
+ *
+ * The spike's rig geometry is fixed for the build, so opening a project only
+ * restores the values a user can edit in the fixture panel. Mutating the
+ * existing placements keeps the renderer's `FixtureRig` references valid.
+ */
+export function applyProjectFixtureSetup(project: ProjectFile, fixtures: readonly FixturePlacement[]): void {
+  const saved = new Map(project.show.fixtures.map((fixture) => [fixture.id, fixture]));
+  for (const fixture of fixtures) {
+    const source = saved.get(fixture.id);
+    if (source === undefined) continue;
+    fixture.yawDeg = source.yawDeg;
+    if (source.pitchOffsetDeg === undefined) delete fixture.pitchOffsetDeg;
+    else fixture.pitchOffsetDeg = source.pitchOffsetDeg;
+    if (source.defaults === undefined) delete fixture.defaults;
+    else fixture.defaults = { ...source.defaults };
+  }
+}
+
 /** Clip lane order is project/fixture order, so compare as sets. */
 export function rigMatches(project: ProjectFile, fixtures: readonly FixturePlacement[]): boolean {
   const a = fixtureIds(project).slice().sort();

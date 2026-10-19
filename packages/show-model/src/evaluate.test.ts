@@ -110,6 +110,40 @@ describe('evaluateFixture', () => {
   });
 });
 
+describe('fixture defaults', () => {
+  const withDefaults: FixturePlacement = {
+    ...fixture,
+    defaults: {
+      dimmer: 0.4,
+      red: 0,
+      green: 0,
+      blue: 1,
+      pan: 0.25,
+      tilt: 0.75,
+    },
+  };
+
+  it('holds the setup values when no clip is active', () => {
+    const state = evaluateFixture(withDefaults, [clip()], 5);
+    expect(state.intensity).toBeCloseTo(0.4);
+    expect(state.color).toEqual({ r: 0, g: 0, b: 1 });
+    expect(state.panDeg).toBeCloseTo(-135);
+    expect(state.tiltDeg).toBeCloseTo(67.5);
+    expect(state.active).toBe(true);
+  });
+
+  it('lets clip envelopes override the setup layer', () => {
+    const state = evaluateFixture(withDefaults, [clip()], 15);
+    expect(state.intensity).toBeCloseTo(0.625);
+    expect(state.color).toEqual({ r: 1, g: 0, b: 0 });
+  });
+
+  it('applies the default level to clips that only set colour', () => {
+    const colorOnly = clip({ attributes: { red: [{ at: 0, value: 1 }] } });
+    expect(evaluateFixture(withDefaults, [colorOnly], 15).intensity).toBeCloseTo(0.4);
+  });
+});
+
 describe('evaluateFixtureStates', () => {
   const show: Show = {
     version: 1,

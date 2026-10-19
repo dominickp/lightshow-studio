@@ -84,6 +84,10 @@ rely on that to transmit data to older readers.
 - `fixtures[].id` is the stable key used by `arrangement.clips[].fixtureId`.
 - `position` is in metres; `yawDeg` / `pitchOffsetDeg` are mechanical mounting
   orientation only (animated pan/tilt lives in clips).
+- `fixtures[].defaults` holds optional normalized (`0..1`) setup values — the
+  fixture's home look when no clip asserts the attribute. Omitted attributes
+  use the profile's built-in defaults. Values are the same normalized units as
+  clip keyframes, so a future editor can copy one to the other.
 - `tracks` is reserved for envelope-based `Track`/`Clip` data from
   `show-model`. The spike authors `arrangement.clips` instead and emits an
   empty array. Both may coexist during a transition.
@@ -198,8 +202,8 @@ section.
 - `render.cameraView` is an index into the app's camera presets.
 - `ui.dockHeightPx: 0` keeps the stylesheet default dock height.
 - `ui.waveformHeightPx` is clamped to `40..200`.
-- Render-only fixture preview overrides (test output, aim offsets, spread) are
-  intentionally **not** saved.
+- Fixture setup (mount yaw/pitch and `show.fixtures[].defaults`) **is** saved;
+  clips override those values only while they are active.
 
 ## `audio`
 

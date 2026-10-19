@@ -2,6 +2,7 @@ import type {
   Clip,
   ControllableAttribute,
   Easing,
+  FixtureDefaults,
   FixturePlacement,
   FixtureState,
   Keyframe,
@@ -65,8 +66,19 @@ function fadeEnvelope(clip: Clip, timeSec: number): number {
 function resolveAttributes(
   clips: readonly Clip[],
   timeSec: number,
+  defaults?: FixtureDefaults,
 ): { values: Record<ControllableAttribute, number>; fade: number; hasActiveClip: boolean } {
   const values: Record<ControllableAttribute, number> = { ...DEFAULTS };
+
+  // Setup values are the starting point: a clip that does not animate an
+  // attribute leaves the fixture's stored default in place (ADR-010).
+  if (defaults !== undefined) {
+    for (const [attribute, value] of Object.entries(defaults)) {
+      if (value === undefined) continue;
+      values[attribute as ControllableAttribute] = clamp01(value);
+    }
+  }
+
   let fade = 1;
   let hasActiveClip = false;
 
@@ -102,11 +114,13 @@ export function evaluateFixture(
   clips: readonly Clip[],
   timeSec: number,
 ): FixtureState {
-  const { values, fade, hasActiveClip } = resolveAttributes(clips, timeSec);
+  const { values, fade, hasActiveClip } = resolveAttributes(clips, timeSec, fixture.defaults);
   const { profile } = fixture;
   const caps = profile.capabilities;
 
-  const intensity = hasActiveClip ? (caps.dimmer ? values.dimmer * fade : fade) : 0;
+  // A dimmer default is a real level: it lights the fixture even with no clip.
+  // Fixtures without a dimmer only contribute while a clip is active.
+  const intensity = caps.dimmer ? clamp01(values.dimmer * fade) : (hasActiveClip ? fade : 0);
   const hasColor = caps.color !== false;
 
   const white = caps.color === 'rgbw' ? values.white : 0;

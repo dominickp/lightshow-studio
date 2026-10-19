@@ -273,6 +273,24 @@
               },
               "pitchOffsetDeg": {
                 "type": "number"
+              },
+              "defaults": {
+                "description": "Normalized setup values used when no clip asserts the attribute (ADR-010).",
+                "type": "object",
+                "properties": {
+                  "dimmer": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "red": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "green": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "blue": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "white": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "pan": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "tilt": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "zoom": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "focus": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "strobe": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "rotation": { "type": "number", "minimum": 0, "maximum": 1 }
+                },
+                "additionalProperties": false
               }
             },
             "required": [

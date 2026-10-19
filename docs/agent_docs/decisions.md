@@ -122,3 +122,24 @@ Short form: context → decision → consequence. Update or supersede rather tha
 **Consequences.**
 - Keep browser APIs, audio, and rendering in the web app; keep the show model runtime-agnostic.
 - Avoid adopting a second runtime until it brings measurable value.
+
+---
+
+## ADR-010 — Fixture setup is persisted state, not a render override
+
+**Context.** The spike shipped a fixture panel with a render-only "test output" override: it forced a fixture on and offset its aim and beam angle for inspection, but nothing was saved. That made it a debug tool rather than a way to describe a rig — a user could find a good mounting angle or beam angle and then lose it. It also hid a real modelling gap: parameters such as zoom and pan/tilt are DMX-controlled, yet the model had no place to store the value a fixture holds when no clip asserts it.
+
+**Decision.** Split fixture control into layers by *how the value is produced*, not by whether it is "digital":
+
+1. **Physical / personality** — position, mount yaw, mounting pitch, pan/tilt limits, channel map, DMX address. Stored on `FixturePlacement` and `FixtureProfile`; cannot be animated by a clip.
+2. **Setup defaults** — normalized values in `FixturePlacement.defaults`, used when no clip asserts that attribute. Saved with the project. This is the fixture's home look.
+3. **Program** — clip envelopes (`ControllableAttribute` keyframes). A clip overrides a setup default for as long as it animates that attribute.
+4. **Render-only debug** — removed. There is no override layer in the renderer any more.
+
+**Consequences.**
+- `evaluateFixture` starts from the built-in `DEFAULTS`, merges `fixture.defaults`, then overlays clips. A default dimmer level lights a fixture with no clips; a clip that only sets colour keeps the default level.
+- Mount yaw, mount pitch, and setup defaults round-trip through `.dmxsim` (`fixtures[].yawDeg`, `pitchOffsetDeg`, `defaults`); older files remain valid because the field is optional.
+- The fixture side panel edits setup and is persisted, replacing the transient "Live preview" panel. It makes the clip/default distinction visible with a badge.
+- A future fixture setup editor can add the rest of layer 1 (limits, channel map, invert flags) without touching the clip model.
+- Pan/tilt and zoom remain clip-animatable; only the *mounting* values are physical. "Hardware vs digital" is not the dividing line — "stored vs transmitted per frame" is.
+

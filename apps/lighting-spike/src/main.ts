@@ -3,6 +3,7 @@ import {
   evaluateFixture,
   parseProject,
   timeToBeat,
+  type FixtureDefaults,
   type FixtureState,
   type ProjectFile,
   type ProjectSettings,
@@ -14,6 +15,7 @@ import { loopEndSec, loopStartSec, TRACK, TRACK_URL } from './track';
 import { computePeaks, WaveformStrip } from './waveform';
 import demoProjectUrl from '../../../resources/sample_projects/koto-chill/koto-chill.dmxsim?url';
 import {
+  applyProjectFixtureSetup,
   cueTimelineFromProject,
   cueToProjectClip,
   downloadProject,
@@ -160,7 +162,6 @@ const ui = {
     panelCapabilities: element('panel-capabilities'),
     panelClipCount: element('panel-clip-count'),
     panelClipActive: element('panel-clip-active'),
-    panelPreviewBadge: element('panel-preview-badge'),
   waveform: element<HTMLCanvasElement>('waveform'),
   waveformPlayhead: element('waveform-playhead'),
   waveformHover: element('waveform-hover'),
@@ -184,16 +185,15 @@ const ui = {
   rulerPlayhead: element('ruler-playhead'),
   selectedFixture: element('selected-fixture'),
   loading: element('loading'),
-  previewOutputEnabled: element<HTMLButtonElement>('preview-output-enabled'),
-  previewIntensity: element<HTMLInputElement>('preview-intensity'),
-  previewIntensityValue: element('preview-intensity-value'),
-  previewYaw: element<HTMLInputElement>('preview-yaw'),
-  previewYawValue: element('preview-yaw-value'),
-  previewPitch: element<HTMLInputElement>('preview-pitch'),
-  previewPitchValue: element('preview-pitch-value'),
-  previewSpreadRow: element('preview-spread-row'),
-  previewSpread: element<HTMLInputElement>('preview-spread'),
-  previewSpreadValue: element('preview-spread-value'),
+  setupDimmer: element<HTMLInputElement>('setup-dimmer'),
+  setupDimmerValue: element('setup-dimmer-value'),
+  setupYaw: element<HTMLInputElement>('setup-yaw'),
+  setupYawValue: element('setup-yaw-value'),
+  setupPitch: element<HTMLInputElement>('setup-pitch'),
+  setupPitchValue: element('setup-pitch-value'),
+  setupSpreadRow: element('setup-spread-row'),
+  setupSpread: element<HTMLInputElement>('setup-spread'),
+  setupSpreadValue: element('setup-spread-value'),
 };
 
 /**
@@ -204,31 +204,16 @@ const ui = {
 let sidePanelOpen = false;
 let sidePanelFixtureId: string | null = null;
 
-interface FixturePreviewSettings {
-  outputEnabled: boolean;
-  intensity: number;
-  yawOffsetDeg: number;
-  pitchOffsetDeg: number;
-  spreadDeg?: number;
-}
+type Fixture = (typeof show.fixtures)[number];
 
-const fixturePreviews = new Map<string, FixturePreviewSettings>();
-const previewFor = (fixture: (typeof show.fixtures)[number]): FixturePreviewSettings => {
-  let preview = fixturePreviews.get(fixture.id);
-  if (preview === undefined) {
-    preview = {
-      outputEnabled: false,
-      intensity: 0.5,
-      yawOffsetDeg: 0,
-      pitchOffsetDeg: 0,
-    };
-    fixturePreviews.set(fixture.id, preview);
-  }
-  return preview;
-};
-
-const applyFixturePreview = (fixture: (typeof show.fixtures)[number], preview: FixturePreviewSettings): void => {
-  stage.setFixturePreview(fixture.id, preview);
+/**
+ * Fixture setup (ADR-010). These values live on the placement and are saved
+ * with the project: they are what the fixture does when no clip asserts the
+ * attribute, so there is no separate render-only override path any more.
+ */
+const defaultsFor = (fixture: Fixture): FixtureDefaults => {
+  fixture.defaults ??= {};
+  return fixture.defaults;
 };
 
 const backend = (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend ? 'WebGPU' : 'WebGL2';
@@ -245,14 +230,6 @@ let loopRegion = bundledProject === null
       startSec: bundledProject.timeline.loop.startSec,
       endSec: bundledProject.timeline.loop.endSec,
     };
-
-const syncPreviewOutputButton = (preview: FixturePreviewSettings): void => {
-  ui.previewOutputEnabled.textContent = `Test output: ${preview.outputEnabled ? 'on' : 'off'}`;
-  ui.previewOutputEnabled.classList.toggle('on', preview.outputEnabled);
-  ui.previewOutputEnabled.setAttribute('aria-pressed', String(preview.outputEnabled));
-  ui.panelPreviewBadge.textContent = preview.outputEnabled ? 'on' : 'off';
-  ui.panelPreviewBadge.classList.toggle('on', preview.outputEnabled);
-};
 
 const kindLabel = (kind: string): string =>
   kind.split('-').map((word) => word[0]!.toUpperCase() + word.slice(1)).join(' ');
@@ -308,49 +285,35 @@ const syncCueInspector = (fixture: (typeof show.fixtures)[number] | null, cue: C
   ui.panelFixtureName.textContent = fixture?.id ?? 'No fixture selected';
   ui.panelFixtureMeta.textContent = fixture === null
     ? 'Click a track name to open this panel'
-    : fixture.profile.name;
+    : `${fixture.profile.manufacturer ?? 'Unknown'} · ${fixture.profile.channels.length} DMX channels`;
   renderPanelCapabilities(fixture);
   if (sidePanelOpen) sidePanelFixtureId = fixture?.id ?? null;
 
   if (fixture === null) {
-    ui.previewOutputEnabled.disabled = true;
-    ui.previewOutputEnabled.textContent = 'Test output: off';
-    ui.previewOutputEnabled.classList.remove('on');
-    ui.previewOutputEnabled.setAttribute('aria-pressed', 'false');
-    ui.panelPreviewBadge.textContent = 'off';
-    ui.panelPreviewBadge.classList.remove('on');
-    ui.previewIntensity.disabled = true;
-    ui.previewYaw.disabled = true;
-    ui.previewPitch.disabled = true;
-    ui.previewSpread.disabled = true;
-    ui.previewSpreadRow.hidden = true;
+    ui.setupDimmer.disabled = true;
+    ui.setupYaw.disabled = true;
+    ui.setupPitch.disabled = true;
+    ui.setupSpread.disabled = true;
+    ui.setupSpreadRow.hidden = true;
   } else {
-    const preview = previewFor(fixture);
+    const defaults = defaultsFor(fixture);
+    const caps = fixture.profile.capabilities;
     const [spreadMin, spreadMax] = fixture.profile.beam.spreadDeg;
-    ui.previewOutputEnabled.disabled = false;
-    syncPreviewOutputButton(preview);
-    ui.previewIntensity.disabled = false;
-    ui.previewIntensity.value = String(Math.round(preview.intensity * 100));
-    ui.previewIntensityValue.textContent = `${Math.round(preview.intensity * 100)}%`;
-    ui.previewYaw.disabled = false;
-    ui.previewYaw.value = String(preview.yawOffsetDeg);
-    ui.previewYawValue.textContent = `${Math.round(preview.yawOffsetDeg)}°`;
-    ui.previewPitch.disabled = false;
-    ui.previewPitch.value = String(preview.pitchOffsetDeg);
-    ui.previewPitchValue.textContent = `${Math.round(preview.pitchOffsetDeg)}°`;
-    ui.previewSpreadRow.hidden = !fixture.profile.capabilities.zoom;
-    ui.previewSpread.disabled = !fixture.profile.capabilities.zoom;
-    const activeClips = cues
-      .filter((item) => item.fixtureId === fixture.id && clock.time >= item.startSec && clock.time <= item.endSec)
-      .map((item) => arrangement.toClip(item));
-    const evaluatedSpread = evaluateFixture(fixture, activeClips, clock.time).spreadDeg;
-    const displayedSpread = Number.isFinite(preview.spreadDeg)
-      ? preview.spreadDeg!
-      : Number.isFinite(evaluatedSpread) ? evaluatedSpread : spreadMin;
-    const spreadRange = Math.max(Number.EPSILON, spreadMax - spreadMin);
-    ui.previewSpread.value = String(Math.round(((displayedSpread - spreadMin) / spreadRange) * 100));
-    ui.previewSpreadValue.textContent = `${displayedSpread.toFixed(1)}°`;
-    applyFixturePreview(fixture, preview);
+    const dimmer = defaults.dimmer ?? 0;
+    const zoom = defaults.zoom ?? 0;
+    ui.setupDimmer.disabled = !caps.dimmer;
+    ui.setupDimmer.value = String(Math.round(dimmer * 100));
+    ui.setupDimmerValue.textContent = `${Math.round(dimmer * 100)}%`;
+    ui.setupYaw.disabled = false;
+    ui.setupYaw.value = String(Math.round(fixture.yawDeg));
+    ui.setupYawValue.textContent = `${Math.round(fixture.yawDeg)}°`;
+    ui.setupPitch.disabled = false;
+    ui.setupPitch.value = String(Math.round(fixture.pitchOffsetDeg ?? 0));
+    ui.setupPitchValue.textContent = `${Math.round(fixture.pitchOffsetDeg ?? 0)}°`;
+    ui.setupSpreadRow.hidden = !caps.zoom;
+    ui.setupSpread.disabled = !caps.zoom;
+    ui.setupSpread.value = String(Math.round(zoom * 100));
+    ui.setupSpreadValue.textContent = `${(spreadMin + (spreadMax - spreadMin) * zoom).toFixed(1)}°`;
   }
   refreshPanelClipStats();
 
@@ -401,34 +364,31 @@ arrangement = new Arrangement(ui.arrangement, ui.arrangementScroll, show.fixture
   toggleSidePanel(fixture.id);
 });
 
-const updateSelectedPreview = (update: (preview: FixturePreviewSettings, fixture: (typeof show.fixtures)[number]) => void): void => {
+const updateFixtureSetup = (update: (fixture: Fixture) => void): void => {
   const fixture = arrangement.selectedFixture;
   if (fixture === null) return;
-  const preview = previewFor(fixture);
-  update(preview, fixture);
-  applyFixturePreview(fixture, preview);
+  update(fixture);
+  // The next frame re-evaluates the show, so setup edits are visible immediately.
+  refreshPanelClipStats();
 };
 
-ui.previewOutputEnabled.addEventListener('click', () => updateSelectedPreview((preview) => {
-  preview.outputEnabled = !preview.outputEnabled;
-  syncPreviewOutputButton(preview);
+ui.setupDimmer.addEventListener('input', () => updateFixtureSetup((fixture) => {
+  defaultsFor(fixture).dimmer = Number(ui.setupDimmer.value) / 100;
+  ui.setupDimmerValue.textContent = `${ui.setupDimmer.value}%`;
 }));
-ui.previewIntensity.addEventListener('input', () => updateSelectedPreview((preview) => {
-  preview.intensity = Number(ui.previewIntensity.value) / 100;
-  ui.previewIntensityValue.textContent = `${ui.previewIntensity.value}%`;
+ui.setupYaw.addEventListener('input', () => updateFixtureSetup((fixture) => {
+  fixture.yawDeg = Number(ui.setupYaw.value);
+  ui.setupYawValue.textContent = `${ui.setupYaw.value}°`;
 }));
-ui.previewYaw.addEventListener('input', () => updateSelectedPreview((preview) => {
-  preview.yawOffsetDeg = Number(ui.previewYaw.value);
-  ui.previewYawValue.textContent = `${ui.previewYaw.value}°`;
+ui.setupPitch.addEventListener('input', () => updateFixtureSetup((fixture) => {
+  fixture.pitchOffsetDeg = Number(ui.setupPitch.value);
+  ui.setupPitchValue.textContent = `${ui.setupPitch.value}°`;
 }));
-ui.previewPitch.addEventListener('input', () => updateSelectedPreview((preview) => {
-  preview.pitchOffsetDeg = Number(ui.previewPitch.value);
-  ui.previewPitchValue.textContent = `${ui.previewPitch.value}°`;
-}));
-ui.previewSpread.addEventListener('input', () => updateSelectedPreview((preview, fixture) => {
+ui.setupSpread.addEventListener('input', () => updateFixtureSetup((fixture) => {
   const [spreadMin, spreadMax] = fixture.profile.beam.spreadDeg;
-  preview.spreadDeg = spreadMin + ((spreadMax - spreadMin) * Number(ui.previewSpread.value)) / 100;
-  ui.previewSpreadValue.textContent = `${preview.spreadDeg.toFixed(1)}°`;
+  const zoom = Number(ui.setupSpread.value) / 100;
+  defaultsFor(fixture).zoom = zoom;
+  ui.setupSpreadValue.textContent = `${(spreadMin + (spreadMax - spreadMin) * zoom).toFixed(1)}°`;
 }));
 
 arrangement.selectFixture(show.fixtures[0]?.id ?? '');
@@ -1511,6 +1471,7 @@ const applyProject = (project: ProjectFile, source: 'project' | 'default' = 'pro
 
   ui.transportTrack.textContent = describeAudio(project.audio, timeline.bpm);
   arrangement.setTimeline(timeline);
+  applyProjectFixtureSetup(project, show.fixtures);
   arrangement.setCues(project.arrangement.clips.map(projectClipToCue));
   clock.setLoopEnabled(project.settings.playback.loopEnabled);
   applyProjectSettings(project.settings, source);

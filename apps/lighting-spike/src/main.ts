@@ -138,7 +138,6 @@ const ui = {
   projectFile: element<HTMLInputElement>('project-file'),
   projectStatus: element('project-status'),
   volume: element<HTMLInputElement>('volume'),
-  mute: element<HTMLButtonElement>('btn-mute'),
   vol: element<HTMLButtonElement>('btn-vol'),
   bloom: element<HTMLButtonElement>('btn-bloom'),
   shadow: element<HTMLButtonElement>('btn-shadow'),
@@ -563,12 +562,15 @@ const storedVolume = Number.parseFloat(localStorage.getItem(VOLUME_KEY) ?? '');
 let volume = Number.isFinite(storedVolume) ? Math.min(1, Math.max(0, storedVolume)) : 1;
 let muted = false;
 
+/**
+ * `muted` is a keyboard-only state now (`M`): there is no mute button, so the
+ * slider reflects it through colour and its tooltip.
+ */
 const applyVolume = (persist = true): void => {
   clock.setVolume(muted ? 0 : volume);
   ui.volume.value = String(Math.round(volume * 100));
-  ui.mute.textContent = muted ? '🔇' : '🔊';
-  ui.mute.classList.toggle('on', muted);
-  ui.mute.setAttribute('aria-pressed', String(muted));
+  ui.volume.classList.toggle('muted', muted);
+  ui.volume.title = muted ? 'Muted — press M or move the slider to unmute' : 'Playback volume (M mutes)';
   if (persist) localStorage.setItem(VOLUME_KEY, String(volume));
 };
 
@@ -576,10 +578,6 @@ ui.volume.addEventListener('input', () => {
   volume = Number(ui.volume.value) / 100;
   muted = false;
   applyVolume();
-});
-ui.mute.addEventListener('click', () => {
-  muted = !muted;
-  applyVolume(false);
 });
 applyVolume(false);
 
@@ -1503,6 +1501,7 @@ const applyProject = (project: ProjectFile, source: 'project' | 'default' = 'pro
   projectName = project.name;
   projectDescription = project.description;
   projectAudio = project.audio;
+  ui.projectStatus.title = project.description ?? '';
   const timeline = cueTimelineFromProject(project);
   currentTimeline = timeline;
   loopRegion = {
@@ -1602,7 +1601,9 @@ const openProject = async (file: File): Promise<void> => {
       return;
     }
     applyProject(project);
-    setProjectStatus(`Opened ${project.name} · ${project.arrangement.clips.length} clips`);
+    // `project.name` comes from the opened file's own `name` field, so the
+    // status always describes the project the user actually loaded.
+    setProjectStatus(`Opened ${project.name} · ${project.arrangement.clips.length} clips · ${file.name}`);
   } catch (error) {
     console.error(`could not open project "${file.name}"`, error);
     setProjectStatus(error instanceof Error ? `Could not open ${file.name}: ${error.message}` : `Could not open ${file.name}`);
@@ -1627,11 +1628,12 @@ try {
   const buffer = await clock.decode(await response.arrayBuffer());
   clock.load(buffer);
   waveform.setPeaks(computePeaks(buffer, 1600));
-  ui.audioStatus.textContent = 'Ready';
+  // The track line already names the song; a generic "Ready" here was noise.
+  ui.audioStatus.textContent = '';
 
   if (bundledProject !== null) {
     applyProject(bundledProject, 'default');
-    setProjectStatus(`Loaded ${bundledProject.name} · ${bundledProject.arrangement.clips.length} clips`);
+    setProjectStatus(`Bundled demo: ${bundledProject.name} · ${bundledProject.arrangement.clips.length} clips`);
   } else {
     clock.setLoop({ startSec: loopStartSec, endSec: loopEndSec }, true);
     clock.seek(loopStartSec);

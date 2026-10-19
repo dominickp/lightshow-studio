@@ -186,8 +186,15 @@ export class Arrangement {
 
   /** Replace the authored clips, e.g. with a seeded demo arrangement. */
   setCues(cues: readonly Cue[]): void {
-    this.cues = cues.map((cue) => ({ ...cue }));
-    this.cues = this.cues.filter((cue) => this.fixtures.some((fixture) => fixture.id === cue.fixtureId));
+    // Cue ids are the identity used by selection, gestures and delete, so two
+    // cues sharing one must be repaired on load. See `reserveCueIds`.
+    const reserved = reserveCueIds(
+      cues.filter((cue) => this.fixtures.some((fixture) => fixture.id === cue.fixtureId)),
+    );
+    this.cues = reserved.cues;
+    // Never move the counter backwards: a later save can then not reissue an
+    // id that this session already handed out.
+    this.nextId = Math.max(this.nextId, reserved.nextId);
     this.selectedCueId = null;
     this.preview = null;
     this.clearHistory();
@@ -296,8 +303,7 @@ export class Arrangement {
     this.notifySelection();
   }
 
-  private toggleFixtureVisibility(fixtureId: string): void {
-    if (!this.fixtures.some((fixture) => fixture.id === fixtureId)) return;
+  private toggleFixtureVisibility(fixtureId: string): void {    if (!this.fixtures.some((fixture) => fixture.id === fixtureId)) return;
     const hidden = !this.hiddenFixtureIds.has(fixtureId);
     if (hidden) this.hiddenFixtureIds.add(fixtureId);
     else this.hiddenFixtureIds.delete(fixtureId);
@@ -473,12 +479,24 @@ export class Arrangement {
     this.renderRows();
   }
 
+  /**
+   * Allocate an unused cue id. Loading a project used to restart the counter,
+   * so a new clip could reuse an id that an existing clip already owned; that
+   * made a gesture move every cue sharing the id.
+   */
+  private nextCueId(): string {
+    const used = new Set(this.cues.map((cue) => cue.id));
+    let id = `cue-${this.nextId++}`;
+    while (used.has(id)) id = `cue-${this.nextId++}`;
+    return id;
+  }
+
   private createCue(fixtureId: string, startSec: number, action: CueAction, requestedEnd?: number): void {
     const duration = this.timeline?.durationSec ?? 0;
     const endSec = Math.min(duration, Math.max(startSec + MIN_CLIP_SEC, requestedEnd ?? startSec + this.defaultLength()));
     if (endSec - startSec < MIN_CLIP_SEC) return;
     const cue: Cue = {
-      id: `cue-${this.nextId++}`,
+      id: this.nextCueId(),
       fixtureId,
       startSec,
       endSec,
@@ -838,11 +856,39 @@ export class Arrangement {
 }
 
 /**
+ * Give every cue a unique id and report the next free `cue-N` counter.
+ *
+ * Cue ids are the identity used by selection, gestures and delete, and gestures
+ * rewrite every cue whose id matches. Ids must therefore be unique. A session
+ * used to restart its counter when a project loaded, so a newly created clip
+ * could take an id a loaded clip already owned and the two then moved together.
+ * Duplicates are repaired here so projects saved during that time still open.
+ */
+export function reserveCueIds(cues: readonly Cue[]): { cues: Cue[]; nextId: number } {
+  const used = new Set<string>();
+  let nextId = 1;
+  const reserved = cues.map((cue) => {
+    const copy: Cue = { ...cue };
+    if (copy.id === '' || used.has(copy.id)) {
+      let id = `cue-${nextId++}`;
+      while (used.has(id)) id = `cue-${nextId++}`;
+      copy.id = id;
+    }
+    used.add(copy.id);
+    return copy;
+  });
+  for (const id of used) {
+    const match = /^cue-(\d+)$/.exec(id);
+    if (match !== null) nextId = Math.max(nextId, Number(match[1]) + 1);
+  }
+  return { cues: reserved, nextId };
+}
+
+/**
  * Converts one arrangement cue into the evaluator's clip form. Pure so the
  * stage and headless tests share exactly the same interpretation of a cue.
  */
-export function cueToClip(fixture: FixturePlacement | undefined, cue: Cue): Clip {
-  const caps = fixture?.profile.capabilities;
+export function cueToClip(fixture: FixturePlacement | undefined, cue: Cue): Clip {  const caps = fixture?.profile.capabilities;
   const color = CUE_COLORS[cue.colorIndex % CUE_COLORS.length] ?? CUE_COLORS[0];
   const attrs: Clip['attributes'] = {
     dimmer: cue.action === 'fade'

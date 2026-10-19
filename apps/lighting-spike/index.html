@@ -376,8 +376,8 @@
       #transport button:disabled, #clip-inspector select:disabled { opacity: 0.45; cursor: not-allowed; }
 
       #volume-control { display: flex; align-items: center; gap: 6px; }
-      #btn-mute { min-width: 34px; padding: 5px 7px; text-align: center; }
       #volume { width: 92px; accent-color: var(--accent); cursor: pointer; }
+      #volume.muted { accent-color: #5f6b80; }
 
       #transport-meta {
         display: grid;
@@ -393,6 +393,7 @@
       #transport-meta span { overflow: hidden; color: var(--dim); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
       #transport-meta #transport-track { grid-column: 2; grid-row: 1; }
       #transport-meta #audio-status { grid-column: 2; grid-row: 2; color: var(--accent); }
+      #transport-meta #audio-status:empty { display: none; }
       #transport-meta #project-status { grid-column: 2; grid-row: 3; color: #9aa6b8; }
       #transport-meta #project-status:empty { display: none; }
       #audio-file { display: none; }
@@ -841,8 +842,7 @@
         <input id="audio-file" type="file" accept="audio/*" aria-label="Choose an audio file" />
         <input id="project-file" type="file" accept=".dmxsim,.json,application/json" aria-label="Choose a project file" />
         <div id="volume-control">
-          <button id="btn-mute" type="button" aria-label="Mute playback" aria-pressed="false" title="Mute (M)">🔊</button>
-          <input id="volume" type="range" min="0" max="100" step="1" value="100" aria-label="Playback volume" title="Playback volume" />
+          <input id="volume" type="range" min="0" max="100" step="1" value="100" aria-label="Playback volume" title="Playback volume (M mutes)" />
         </div>
         <div id="transport-meta">
           <b id="transport-time">–</b>

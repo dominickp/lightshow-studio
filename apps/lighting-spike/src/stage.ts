@@ -8,7 +8,8 @@ import {
   type Show,
   type VenueTemplate,
 } from '@dmxsim/show-model';
-import { FixtureRig } from './rig';
+import { createFixtureRig, type LaserRig } from './laser-rig';
+import type { FixtureRig } from './rig';
 import { buildCrowd, buildVenue, disposeGroup } from './venue-builder';
 
 interface CameraView {
@@ -57,7 +58,7 @@ export class Stage {
   readonly camera: THREE.PerspectiveCamera;
   readonly controls: OrbitControls;
 
-  private readonly rigs: FixtureRig[] = [];
+  private readonly rigs: (FixtureRig | LaserRig)[] = [];
   private readonly hiddenFixtures = new Set<string>();
   private readonly selectionMarker = new THREE.Group();
   private selectedFixtureId: string | null = null;
@@ -286,7 +287,7 @@ export class Stage {
     this.rigs.length = 0;
 
     for (const placement of show.fixtures) {
-      const rig = new FixtureRig(placement);
+      const rig = createFixtureRig(placement);
       rig.addTo(this.scene);
       this.rigs.push(rig);
     }

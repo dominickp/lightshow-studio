@@ -1998,7 +1998,15 @@
             "z": 0
           }
         },
-        "pitchOffsetDeg": 0
+        "pitchOffsetDeg": 0,
+        "laser": {
+          "beams": 10,
+          "pattern": "fan",
+          "fanDeg": 52,
+          "divergenceDeg": 0.6,
+          "speedHz": 0,
+          "phaseDeg": 0
+        }
       },
       {
         "id": "laser-1",
@@ -2065,7 +2073,15 @@
             "z": 0
           }
         },
-        "pitchOffsetDeg": 0
+        "pitchOffsetDeg": 0,
+        "laser": {
+          "beams": 12,
+          "pattern": "tunnel",
+          "fanDeg": 26,
+          "divergenceDeg": 0.5,
+          "speedHz": 0.12,
+          "phaseDeg": 90
+        }
       },
       {
         "id": "par-0",

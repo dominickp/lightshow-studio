@@ -1,9 +1,10 @@
 import type { Clip, FixturePlacement } from '@dmxsim/show-model';
+import { kelvinToCss, kelvinToRgb } from './kelvin';
 
 export const CUE_COLORS = [
   { name: 'blue', css: '#397cff', rgb: [0.08, 0.35, 1] },
   { name: 'violet', css: '#8c35ff', rgb: [0.55, 0.08, 1] },
-  { name: 'magenta', css: '#ff3380', rgb: [1, 0.1, 0.5] },
+  { name: 'magenta', css: '#ff3d9a', rgb: [1, 0.24, 0.6] },
   { name: 'cyan', css: '#16d9cc', rgb: [0.05, 0.85, 0.8] },
   { name: 'amber', css: '#ff8a18', rgb: [1, 0.42, 0.05] },
   { name: 'red', css: '#ff2f2f', rgb: [1, 0.08, 0.08] },
@@ -11,6 +12,16 @@ export const CUE_COLORS = [
 ] as const;
 
 export type CueAction = 'hold' | 'fade' | 'pulse' | 'sweep' | 'strobe';
+
+/**
+ * Per-cue color override. When present it wins over the `CUE_COLORS` entry
+ * at `colorIndex` (which stays valid and is kept as a fallback + undo key).
+ * `white` stores intent as color temperature; the channel split (white pin
+ * vs tinted rgb) happens per fixture in `cueToClip`.
+ */
+export type CueColorOverride =
+  | { kind: 'rgb'; r: number; g: number; b: number }
+  | { kind: 'white'; cct: number };
 
 export interface Cue {
   id: string;
@@ -21,6 +32,30 @@ export interface Cue {
   action: CueAction;
   /** Overrides the default 40 ms fade-in when the cue starts (seconds). */
   fadeInSec?: number;
+  /** Custom color when the cue was authored with the color picker. */
+  colorOverride?: CueColorOverride;
+}
+
+/** The color a cue actually renders with: palette entry or override. */
+export function resolveCueColor(cue: Cue): { css: string; rgb: readonly [number, number, number]; name: string } {
+  const override = cue.colorOverride;
+  if (override?.kind === 'rgb') {
+    const toCss = (value: number): string => Math.round(value * 255).toString(16).padStart(2, '0');
+    return {
+      css: `#${toCss(override.r)}${toCss(override.g)}${toCss(override.b)}`,
+      rgb: [override.r, override.g, override.b],
+      name: 'custom',
+    };
+  }
+  if (override?.kind === 'white') {
+    return {
+      css: kelvinToCss(override.cct),
+      rgb: kelvinToRgb(override.cct),
+      name: `${Math.round(override.cct / 100) / 10}k`,
+    };
+  }
+  const color = CUE_COLORS[cue.colorIndex % CUE_COLORS.length] ?? CUE_COLORS[0];
+  return { css: color.css, rgb: color.rgb, name: color.name };
 }
 
 export interface CueTimeline {
@@ -43,6 +78,46 @@ const HIDDEN_ROW_OPACITY = 0.32;
 const MIN_CLIP_SEC = 0.1;
 const EDGE_GRAB_PX = 8;
 const HISTORY_LIMIT = 100;
+
+/**
+ * Relative luminance (sRGB, rough) for contrast decisions on clip fills.
+ * `rgb` is the 0..1 channel triple the fill was drawn with.
+ */
+const textOnColor = (rgb: readonly [number, number, number] | readonly number[]): string => {
+  const [r, g, b] = rgb;
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  // Saturated hues read poorly with pure white even at high luminance, so
+  // require a fairly bright fill before inverting to dark text.
+  return luminance > 0.6 ? 'rgba(8, 12, 18, 0.88)' : 'rgba(255, 255, 255, 0.94)';
+};
+
+/**
+ * Tone a clip fill down for the timeline: blend ~25% toward the dock
+ * background so a wall of saturated cards doesn't vibrate against the UI.
+ * Swatches and the 3D rendering keep the full-intensity color.
+ */
+const TONE_BG: readonly [number, number, number] = [0x0e / 255, 0x14 / 255, 0x1c / 255];
+const TONE_STRENGTH = 0.25;
+const toneClipColor = (rgb: readonly [number, number, number] | readonly number[]): string => {
+  const mix = (channel: number, bg: number): number =>
+    Math.round((channel * (1 - TONE_STRENGTH) + bg * TONE_STRENGTH) * 255);
+  const [r, g, b] = rgb;
+  return `rgb(${mix(r, TONE_BG[0])}, ${mix(g, TONE_BG[1])}, ${mix(b, TONE_BG[2])})`;
+};
+
+/**
+ * Truncate a label with an ellipsis to roughly fit `maxWidthPx` at the clip
+ * label font size. Small clips keep a shortened label instead of none.
+ */
+const truncateLabel = (text: string, maxWidthPx: number): string => {
+  if (maxWidthPx <= 0) return '';
+  // ~5.4px per glyph at 9px monospace; one ellipsis glyph costs the same.
+  const glyphPx = 5.4;
+  const fit = Math.floor(maxWidthPx / glyphPx);
+  if (text.length <= fit) return text;
+  if (fit <= 1) return '…';
+  return `${text.slice(0, fit - 1)}…`;
+};
 
 /** Fixture names and ids are user-facing text; never interpolate them raw. */
 const escapeHtml = (value: string): string =>
@@ -86,6 +161,7 @@ export class Arrangement {
   private pixelsPerSecond = PIXELS_PER_SECOND;
   private pendingAction: CueAction | null = null;
   private pendingColorIndex: number | null = null;
+  private pendingColorOverride: CueColorOverride | null = null;
   private preview: { fixtureId: string; startSec: number; endSec: number } | null = null;
   private hoverGhost: HTMLElement | null = null;
   private playheadLine: HTMLElement | null = null;
@@ -235,6 +311,11 @@ export class Arrangement {
     return this.pendingColorIndex ?? (this.cues.length % CUE_COLORS.length);
   }
 
+  /** Custom color that applies to the next clip, when one is pending. */
+  get suggestedColorOverride(): CueColorOverride | null {
+    return this.pendingColorOverride;
+  }
+
   get zoomLevel(): number {
     return this.pixelsPerSecond;
   }
@@ -274,7 +355,7 @@ export class Arrangement {
     this.notifySelection();
   }
 
-  /** Revert the last clip edit (add, delete, move, resize, action or colour). */
+  /** Revert the last clip edit (add, delete, move, resize, action or color). */
   undo(): void {
     const previous = this.undoStack.pop();
     if (previous === undefined) return;
@@ -338,11 +419,13 @@ export class Arrangement {
     this.notifySelection();
   }
 
-  setSelectedColor(colorIndex: number): void {
+  setSelectedColor(colorIndex: number, colorOverride?: CueColorOverride): void {
     const cue = this.selectedCue;
     if (cue === null || !this.selectedFixture?.profile.capabilities.color) return;
     this.pushHistory();
-    this.cues = this.cues.map((item) => item.id === cue.id ? { ...item, colorIndex } : item);
+    this.cues = this.cues.map((item) => item.id === cue.id
+      ? { ...item, colorIndex, ...(colorOverride === undefined ? {} : { colorOverride }) }
+      : item);
     this.renderRows();
     this.notifyChange();
     this.notifySelection();
@@ -356,11 +439,12 @@ export class Arrangement {
     this.notifySelection();
   }
 
-  /** The colour used for the next clip when nothing is selected. */
-  setPendingColor(colorIndex: number): void {
+  /** The color used for the next clip when nothing is selected. */
+  setPendingColor(colorIndex: number, colorOverride?: CueColorOverride): void {
     if (!this.selectedFixture?.profile.capabilities.color) return;
     const count = CUE_COLORS.length;
     this.pendingColorIndex = ((colorIndex % count) + count) % count;
+    this.pendingColorOverride = colorOverride ?? null;
     this.notifySelection();
   }
 
@@ -573,6 +657,7 @@ export class Arrangement {
       endSec,
       colorIndex: this.suggestedColorIndex,
       action,
+      ...(this.pendingColorOverride === null ? {} : { colorOverride: this.pendingColorOverride }),
     };
     this.pushHistory();
     this.cues = [...this.cues, cue];
@@ -613,7 +698,6 @@ export class Arrangement {
       this.timeline.durationSec - startSec,
     ));
     const action = this.defaultAction(fixture);
-    const color = CUE_COLORS[this.suggestedColorIndex] ?? CUE_COLORS[0];
 
     let ghost = this.hoverGhost;
     if (ghost === null || !ghost.isConnected) {
@@ -624,7 +708,7 @@ export class Arrangement {
     if (ghost.parentElement !== lane) lane.appendChild(ghost);
     ghost.style.left = `${startSec * this.pixelsPerSecond}px`;
     ghost.style.width = `${Math.max(2, length * this.pixelsPerSecond)}px`;
-    ghost.textContent = `${action} · ${color.name}`;
+    ghost.textContent = action;
   }
 
   private hideHover(): void {
@@ -655,10 +739,10 @@ export class Arrangement {
       const clips = this.cues
         .filter((cue) => cue.fixtureId === fixture.id)
         .map((cue) => {
-          const color = CUE_COLORS[cue.colorIndex % CUE_COLORS.length] ?? CUE_COLORS[0];
+          const color = resolveCueColor(cue);
           const left = cue.startSec * this.pixelsPerSecond;
           const width = (cue.endSec - cue.startSec) * this.pixelsPerSecond;
-          return `<div class="arrangement-clip" data-cue-id="${cue.id}" data-start-px="${left}" data-end-px="${left + width}" style="left:${left}px;width:${width}px" title="${cue.action} · ${color.name}">
+          return `<div class="arrangement-clip" data-cue-id="${cue.id}" data-start-px="${left}" data-end-px="${left + width}" style="left:${left}px;width:${width}px" title="${cue.action}">
             <span class="clip-resize start"></span><span class="clip-resize end"></span>
           </div>`;
         }).join('');
@@ -755,12 +839,12 @@ export class Arrangement {
         const x = cue.startSec * pps - scrollLeft;
         const w = (cue.endSec - cue.startSec) * pps;
         if (x + w < 0 || x > width) continue;
-        const color = CUE_COLORS[cue.colorIndex % CUE_COLORS.length] ?? CUE_COLORS[0];
+        const color = resolveCueColor(cue);
         const selected = cue.id === this.selectedCueId;
         const hovered = cue.id === this.hoveredCueId;
         ctx.beginPath();
         ctx.roundRect(x, y, Math.max(2, w), h, 4);
-        ctx.fillStyle = color.css;
+        ctx.fillStyle = toneClipColor(color.rgb);
         ctx.fill();
         if (hovered) {
           ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
@@ -769,9 +853,17 @@ export class Arrangement {
         ctx.lineWidth = selected ? 1.5 : 1;
         ctx.strokeStyle = selected ? '#ffffff' : 'rgba(255, 255, 255, 0.22)';
         ctx.stroke();
-        if (w >= 54) {
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
-          ctx.fillText(`${cue.action} · ${color.name}`, x + 6, y + h / 2, Math.max(1, w - 10));
+        // Labels truncate to the card width instead of disappearing; the
+        // text color follows the fill's luminance so bright fills stay
+        // readable.
+        if (w >= 20) {
+          ctx.fillStyle = textOnColor(color.rgb);
+          ctx.fillText(
+            truncateLabel(cue.action, w - 12),
+            x + 6,
+            y + h / 2,
+            Math.max(1, w - 12),
+          );
         }
       }
     }
@@ -964,7 +1056,7 @@ export function reserveCueIds(cues: readonly Cue[]): { cues: Cue[]; nextId: numb
  * stage and headless tests share exactly the same interpretation of a cue.
  */
 export function cueToClip(fixture: FixturePlacement | undefined, cue: Cue): Clip {  const caps = fixture?.profile.capabilities;
-  const color = CUE_COLORS[cue.colorIndex % CUE_COLORS.length] ?? CUE_COLORS[0];
+  const color = resolveCueColor(cue);
   const attrs: Clip['attributes'] = {
     dimmer: cue.action === 'fade'
       ? [{ at: 0, value: 0 }, { at: 1, value: 0.9 }]
@@ -984,9 +1076,19 @@ export function cueToClip(fixture: FixturePlacement | undefined, cue: Cue): Clip
   };
 
   if (caps?.color) {
-    attrs.red = [{ at: 0, value: color.rgb[0] }];
-    attrs.green = [{ at: 0, value: color.rgb[1] }];
-    attrs.blue = [{ at: 0, value: color.rgb[2] }];
+    // White-temperature overrides drive the white channel on rgbw fixtures
+    // (tinted rgb on top) and fall back to tinted rgb on rgb-only fixtures.
+    const isWhiteOverride = cue.colorOverride?.kind === 'white';
+    if (isWhiteOverride && caps.color === 'rgbw') {
+      attrs.red = [{ at: 0, value: color.rgb[0] }];
+      attrs.green = [{ at: 0, value: color.rgb[1] }];
+      attrs.blue = [{ at: 0, value: color.rgb[2] }];
+      attrs.white = [{ at: 0, value: 0.9 }];
+    } else {
+      attrs.red = [{ at: 0, value: color.rgb[0] }];
+      attrs.green = [{ at: 0, value: color.rgb[1] }];
+      attrs.blue = [{ at: 0, value: color.rgb[2] }];
+    }
   }
   if (cue.action === 'sweep' && caps?.panTilt) {
     attrs.pan = [{ at: 0, value: 0.15 }, { at: 0.5, value: 0.85 }, { at: 1, value: 0.15 }];
@@ -1118,7 +1220,8 @@ function sameCues(a: readonly Cue[], b: readonly Cue[]): boolean {
       || left.endSec !== right.endSec
       || left.colorIndex !== right.colorIndex
       || left.action !== right.action
-      || left.fadeInSec !== right.fadeInSec) return false;
+      || left.fadeInSec !== right.fadeInSec
+      || JSON.stringify(left.colorOverride ?? null) !== JSON.stringify(right.colorOverride ?? null)) return false;
   }
   return true;
 }

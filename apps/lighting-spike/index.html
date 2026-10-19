@@ -446,15 +446,32 @@
       #project-file { display: none; }
 
       #clip-inspector {
+        position: relative;
         grid-column: 1;
         grid-row: 2;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
         min-width: 0;
-        padding: 6px 12px;
+        padding: 5px 12px;
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         background: #0e141c;
+      }
+      #clip-inspector .inspector-title {
+        flex: 0 0 auto;
+        padding-right: 10px;
+        border-right: 1px solid rgba(255, 255, 255, 0.09);
+        color: #7f8ca1;
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      #clip-inspector .inspector-target {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 5px;
+        min-width: 0;
       }
       #selected-fixture {
         max-width: 135px;
@@ -463,8 +480,181 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+      #selected-fixture.empty { color: var(--dim); font-style: italic; }
+      #clip-inspector .clip-field {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 5px;
+        min-width: 0;
+      }
+      #clip-inspector .clip-field-label {
+        flex: 0 0 auto;
+        color: #5f6b80;
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      #clip-inspector .clip-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
+      #clip-inspector button {
+        appearance: none;
+        padding: 4px 10px;
+        border: 1px solid rgba(255, 255, 255, 0.11);
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--ink);
+        font: inherit;
+        white-space: nowrap;
+        cursor: pointer;
+      }
+      #clip-inspector button:disabled { opacity: 0.4; cursor: not-allowed; }
+      #btn-cue-add:not(:disabled) {
+        border-color: rgba(122, 209, 255, 0.45);
+        color: var(--accent);
+      }
+      #btn-cue-add:not(:disabled):hover { background: rgba(122, 209, 255, 0.12); border-color: var(--accent); }
+      #btn-cue-delete:not(:disabled) {
+        border-color: rgba(255, 155, 155, 0.28);
+        color: #ff9b9b;
+      }
+      #btn-cue-delete:not(:disabled):hover { background: rgba(255, 90, 90, 0.12); border-color: rgba(255, 155, 155, 0.6); }
 
-      /* Native select popups take their panel colour from the control's own
+      /* The bar shows the current color plus the picker button. All palettes
+         and recent colors live in the popover, so the bar never grows. */
+      #cue-color { display: flex; align-items: center; gap: 6px; }
+      #cue-color[data-disabled='true'] { opacity: 0.4; }
+      /* Both bar swatches share one size/shape so they read as a pair. */
+      #cue-color .color-swatch {
+        width: 24px;
+        height: 24px;
+        border-radius: 5px;
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+      #cue-color .color-swatch:not(:disabled):hover { transform: none; filter: brightness(1.15); }
+      .cp-palette { display: flex; flex-wrap: wrap; gap: 5px; }
+      .cp-palette .color-swatch { width: 20px; height: 20px; border-radius: 50%; }
+      .color-swatch {
+        position: relative;
+        width: 18px;
+        height: 18px;
+        padding: 0;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 50%;
+        /* ID-qualified so the generic `#clip-inspector button` background
+           cannot override the swatch color. */
+        background: var(--swatch) !important;
+        cursor: pointer;
+      }
+      .color-swatch:not(:disabled):hover { transform: scale(1.12); }
+      .color-swatch:disabled { cursor: not-allowed; }
+      .color-swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .color-swatch.selected {
+        border-color: #f3fbff;
+        box-shadow: 0 0 0 2px rgba(4, 6, 10, 0.9), 0 0 0 3px var(--accent);
+        transform: scale(1.08);
+      }
+      /* The custom swatch advertises "anything else": a conic rainbow until a
+         custom color is applied, then it shows that color. */
+      .color-swatch.custom {
+        background: conic-gradient(#ff2f2f, #ff8a18, #16d9cc, #397cff, #8c35ff, #ff3380, #ff2f2f) !important;
+      }
+      .color-swatch.custom[data-has-custom='true'] { background: var(--swatch) !important; }
+      /* Recent colors learned from custom picks sit after the palette. */
+      .color-swatch.user { border-radius: 4px; }
+
+      /* --- Custom color picker popover ------------------------------- */
+      #color-picker {
+        position: absolute;
+        top: calc(100% - 2px);
+        left: 220px;
+        z-index: 12;
+        width: 268px;
+        padding: 10px 12px 12px;
+        border: 1px solid var(--edge);
+        border-radius: 8px;
+        background: #0b1017;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+      }
+      #color-picker[hidden] { display: none; }
+      #color-picker .cp-head {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-bottom: 8px;
+      }
+      #color-picker .cp-title {
+        color: #7f8ca1;
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      #cp-close {
+        margin-left: auto;
+        padding: 0 5px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 4px;
+        background: transparent;
+        color: var(--dim);
+        cursor: pointer;
+      }
+      #cp-close:hover { color: var(--accent); border-color: var(--edge); }
+      #cp-preview {
+        width: 22px;
+        height: 22px;
+        flex: 0 0 auto;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        background: #397cff;
+      }
+      #color-picker label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #a9b4c7;
+        font-size: 10px;
+      }
+      /* Native color input: the browser supplies a full HSV picker, so users
+         pick visually instead of typing codes. */
+      #cp-color {
+        flex: 1 1 auto;
+        width: 100%;
+        height: 26px;
+        padding: 2px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 5px;
+        background: #111720;
+        cursor: pointer;
+      }
+      #cp-color::-webkit-color-swatch-wrapper { padding: 0; }
+      #cp-color::-webkit-color-swatch { border: none; border-radius: 3px; }
+      #cp-color::-moz-color-swatch { border: none; border-radius: 3px; }
+      #color-picker .cp-hue-grid { display: flex; gap: 4px; margin-top: 6px; }
+      #color-picker .cp-hue-grid button {
+        flex: 1 1 auto;
+        height: 16px;
+        padding: 0;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 3px;
+        background: var(--swatch);
+        cursor: pointer;
+      }
+      #color-picker .cp-hue-grid button:hover { border-color: #f3fbff; }
+      #color-picker .cp-section {
+        margin-top: 10px;
+        padding-top: 9px;
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
+      }
+      #color-picker .cp-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 5px;
+        color: #a9b4c7;
+        font-size: 10px;
+      }
+
+      /* Native select popups take their panel color from the control's own
          background. Keep it opaque (not translucent white) and style the
          options explicitly so the list stays dark and readable in browsers
          that force/auto-apply dark mode. */
@@ -809,7 +999,16 @@
         pointer-events: none;
       }
 
-      #cue-status { min-width: 0; overflow: hidden; color: var(--dim); text-overflow: ellipsis; white-space: nowrap; }
+      #cue-status {
+        flex: 1 1 auto;
+        min-width: 0;
+        margin-left: auto;
+        overflow: hidden;
+        color: var(--dim);
+        font-size: 10px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
 
       #hint {
         position: absolute;
@@ -855,7 +1054,8 @@
 
       @media (max-width: 1000px) {
         :root { --dock-height: 50vh; --side-panel-width: 244px; }
-        #clip-inspector { gap: 5px; padding: 5px 8px; }
+        #clip-inspector { gap: 6px; padding: 5px 8px; }
+        #clip-inspector .inspector-title { display: none; }
         #selected-fixture { max-width: 80px; }
         #transport-meta { column-gap: 8px; }
       }
@@ -869,7 +1069,10 @@
         #transport button { min-width: 0; padding: 5px; }
         #transport-meta { display: none; }
         #clip-inspector #btn-cue-delete, #cue-status { display: none; }
-        #selected-fixture { display: none; }
+        #clip-inspector .clip-field-label, #selected-fixture { display: none; }
+        #clip-inspector .clip-field { gap: 0; }
+        .color-swatch { width: 14px; height: 14px; }
+        #cue-color .color-swatch { width: 20px; height: 20px; }
         #zoom-tools { right: 8px; bottom: 8px; gap: 4px; padding: 4px 6px; }
         #zoom-tools input { width: 64px; }
         #volume { width: 64px; }
@@ -952,13 +1155,48 @@
         <button id="btn-dock" type="button" title="Collapse or expand the timeline dock">Collapse timeline</button>
       </div>
 
-      <div id="clip-inspector">
-        <span id="selected-fixture">Select a fixture track</span>
-        <select id="cue-action" aria-label="Clip action" disabled></select>
-        <select id="cue-color" aria-label="Clip color" disabled></select>
-        <button id="btn-cue-add" type="button" disabled>+ Clip</button>
-        <button id="btn-cue-delete" type="button" title="Delete the selected clip (Backspace)" disabled>Delete</button>
-        <span id="cue-status" role="status">Load audio to arrange cues</span>
+      <div id="clip-inspector" aria-label="Clip inspector">
+        <span class="inspector-title" title="Clip inspector">Clip inspector</span>
+        <span class="inspector-target">
+          <span class="clip-field-label">Track</span>
+          <span id="selected-fixture" class="empty">None selected</span>
+        </span>
+        <label class="clip-field">
+          <span class="clip-field-label">Action</span>
+          <select id="cue-action" aria-label="Clip action" disabled></select>
+        </label>
+        <div class="clip-field">
+          <span class="clip-field-label" id="cue-color-label">Color</span>
+          <div id="cue-color" class="color-swatches" role="radiogroup" aria-labelledby="cue-color-label" data-disabled="true"></div>
+        </div>
+        <!-- The bar shows only the current color + the picker button; the
+             palette and recent colors live inside the popover. -->
+        <span class="clip-actions">
+          <button id="btn-cue-add" type="button" title="Add a clip at the playhead on the selected track" disabled>+ Add clip</button>
+          <button id="btn-cue-delete" type="button" title="Delete the selected clip (Backspace)" disabled>Delete clip</button>
+        </span>
+        <span id="cue-status" role="status">Load audio to arrange clips</span>
+        <div id="color-picker" role="dialog" aria-label="Custom clip color" hidden>
+          <div class="cp-head">
+            <span id="cp-preview" aria-hidden="true"></span>
+            <span class="cp-title">Custom color</span>
+            <button id="cp-close" type="button" title="Close color picker (Esc)" aria-label="Close color picker">×</button>
+          </div>
+          <label>Pick a color <input id="cp-color" type="color" value="#7ad1ff" aria-label="Pick a custom color" /></label>
+          <div class="cp-hue-grid" id="cp-hue-grid" role="group" aria-label="Quick colors">
+            <button type="button" style="--swatch:#ff2f2f" title="Red" aria-label="Quick red"></button>
+            <button type="button" style="--swatch:#ff8a18" title="Orange" aria-label="Quick orange"></button>
+            <button type="button" style="--swatch:#ffe21f" title="Yellow" aria-label="Quick yellow"></button>
+            <button type="button" style="--swatch:#35e05a" title="Green" aria-label="Quick green"></button>
+            <button type="button" style="--swatch:#397cff" title="Blue" aria-label="Quick blue"></button>
+            <button type="button" style="--swatch:#8c35ff" title="Violet" aria-label="Quick violet"></button>
+            <button type="button" style="--swatch:#ff3380" title="Pink" aria-label="Quick pink"></button>
+          </div>
+          <div class="cp-section">
+            <div class="cp-row"><span>Palette &amp; recent</span></div>
+            <div id="cp-palette" class="color-swatches cp-palette" role="radiogroup" aria-label="Palette and recent colors"></div>
+          </div>
+        </div>
       </div>
 
       <div id="arrangement-scroll" tabindex="0" aria-label="Scrollable fixture tracks and timeline">

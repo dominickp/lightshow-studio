@@ -9,6 +9,7 @@ import {
   rigMatches,
   showFromProject,
 } from './project-file';
+import { cueToClip } from './arrangement';
 import type { Cue } from './arrangement';
 import type { FixturePlacement, FixtureProfile } from '@dmxsim/show-model';
 import { createDemoRig } from './demo-rig';

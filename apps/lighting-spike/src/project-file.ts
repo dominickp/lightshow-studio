@@ -17,6 +17,7 @@ export function cueToProjectClip(cue: Cue): ProjectClip {
     endSec: cue.endSec,
     action: cue.action,
     colorIndex: cue.colorIndex,
+    ...(cue.colorOverride === undefined ? {} : { colorOverride: cue.colorOverride }),
     ...(cue.fadeInSec === undefined ? {} : { fadeInSec: cue.fadeInSec }),
   };
 }
@@ -30,6 +31,7 @@ export function projectClipToCue(clip: ProjectClip): Cue {
     endSec: clip.endSec,
     action: clip.action,
     colorIndex: clip.colorIndex,
+    ...(clip.colorOverride === undefined ? {} : { colorOverride: clip.colorOverride }),
     ...(clip.fadeInSec === undefined ? {} : { fadeInSec: clip.fadeInSec }),
   };
 }

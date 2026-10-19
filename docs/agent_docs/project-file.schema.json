@@ -732,6 +732,30 @@
                 "minimum": 0,
                 "maximum": 9007199254740991
               },
+              "colorOverride": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": { "const": "rgb" },
+                      "r": { "type": "number", "minimum": 0, "maximum": 1 },
+                      "g": { "type": "number", "minimum": 0, "maximum": 1 },
+                      "b": { "type": "number", "minimum": 0, "maximum": 1 }
+                    },
+                    "required": ["kind", "r", "g", "b"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": { "const": "white" },
+                      "cct": { "type": "number", "minimum": 1000, "maximum": 20000 }
+                    },
+                    "required": ["kind", "cct"],
+                    "additionalProperties": false
+                  }
+                ]
+              },
               "fadeInSec": {
                 "type": "number",
                 "minimum": 0

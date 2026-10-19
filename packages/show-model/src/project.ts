@@ -190,6 +190,25 @@ export const projectClipSchema = z
     endSec: z.number().positive(),
     action: z.enum(CUE_ACTIONS),
     colorIndex: z.number().int().nonnegative().default(0),
+    /**
+     * Custom colour authored in the clip inspector. Absent means the clip uses
+     * the palette entry at `colorIndex`.
+     */
+    colorOverride: z
+      .union([
+        z.object({
+          kind: z.literal('rgb'),
+          r: z.number().min(0).max(1),
+          g: z.number().min(0).max(1),
+          b: z.number().min(0).max(1),
+        }),
+        z.object({
+          kind: z.literal('white'),
+          /** Colour temperature in kelvin. */
+          cct: z.number().min(1000).max(20000),
+        }),
+      ])
+      .optional(),
     /** Overrides the default fade-in when the clip starts (seconds). */
     fadeInSec: z.number().nonnegative().optional(),
   })

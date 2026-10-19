@@ -1,8 +1,14 @@
 # Laser Rendering Plan
 
-**Status:** in progress (2026-10-18). L0 model support is implemented; L1–L5
-are planned. Laser patterns do not render as fans yet: `FixtureRig` still draws
-one cone, so the visual problem described below is still the live behaviour.
+**Status:** in progress (2026-10-19). L0 and L1 are implemented; L2–L5 are
+planned. `LaserRig` (`src/laser-rig.ts`) renders each laser as camera-facing
+ribbon quads (one quad per beam, one draw call per fixture) built in the
+vertex shader from a per-beam direction attribute, with `fan`, `sweep`,
+`tunnel`, `wave`, and `lattice` patterns computed on the CPU. Beams terminate
+on venue surfaces and draw an additive dot splat per hit (`dots` pattern
+still falls back to `fan` — it needs sprite diffraction, L5). `Stage` creates
+rigs through the `createFixtureRig` factory. Room-light contribution is
+intentionally zero (`beamInfo.level = 0`).
 **Scope:** make laser fixtures look and behave like lasers. Depends on the rig
 model in `stage-rig-editor-plan.md` for placement and persistence; the render
 path itself is independent.
@@ -256,9 +262,9 @@ Update `resources/sample_projects/koto-chill/koto-chill.dmxsim` through
 | # | Work | Exit criterion |
 |---|---|---|
 | L0 ✅ | `LaserSetup` + profile limits + `FixtureState.laser` + evaluation/clamping + schema | Model tests pass; a project round-trips a laser setup |
-| L1 | `LaserRig` ribbon renderer for `fan`; factory used by `Stage` | A laser renders as N thin beams, not a cone |
-| L2 | Venue surfaces + beam termination and splats for all pointable fixtures | Beams stop on the floor/walls/LED wall; no beams through geometry |
-| L3 | `sweep`, `tunnel`, `wave` patterns driven by `rotation`/`speedHz` | Existing laser clips visibly scan; groups can be phase-offset |
+| L1 ✅ | `LaserRig` ribbon renderer; factory used by `Stage` | A laser renders as N thin beams, not a cone |
+| L2 ✅ | Beam termination on venue surfaces + splat dots (lasers only) | Beams stop on the floor/walls/LED wall; no beams through geometry |
+| L3 ✅ | `sweep`, `tunnel`, `wave`, `lattice` patterns driven by `rotation`/`speedHz` | Existing laser clips visibly scan; groups can be phase-offset |
 | L4 | Laser master enable and beam budget HUD; bloom/exposure tuning against the references | Look review against `docs/user_docs/lightshow_inspiration`; measured frame cost |
 | L5 | `lattice` and `dots`, optional animated `fan` attribute | Deferred unless the authoring flow needs them |
 

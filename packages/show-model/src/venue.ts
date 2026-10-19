@@ -1,4 +1,11 @@
-import type { FixtureKind, FixtureMount, FixturePlacement, FixtureProfile, Vec3 } from './types';
+import type {
+  FixtureKind,
+  FixtureMount,
+  FixturePlacement,
+  FixtureProfile,
+  LaserSetup,
+  Vec3,
+} from './types';
 
 /**
  * Venue templates.
@@ -111,6 +118,8 @@ export interface RigPresetEntry {
   yawDeg?: number;
   mountPitchDeg?: number;
   name?: string;
+  /** Laser beam setup for laser fixtures (ADR-012). */
+  laser?: LaserSetup;
 }
 
 export interface RigPreset {
@@ -271,6 +280,7 @@ export function instantiateRig(
       position: resolved.position,
       yawDeg: resolved.yawDeg,
       pitchOffsetDeg: resolved.pitchOffsetDeg,
+      ...(entry.laser === undefined ? {} : { laser: entry.laser }),
       mount: {
         anchorId: entry.anchorId,
         u: clamp01(entry.u),
@@ -345,6 +355,14 @@ function clubDefaultRig(): RigPreset {
     });
   });
 
+  /* Two lasers with different setups: a wide scanning fan and a rotating
+   * tunnel ring. Separate patterns and phase offsets keep them from reading
+   * as one duplicated fixture, and give the scanner motion something to move
+   * between. */
+  const laserSetups: LaserSetup[] = [
+    { beams: 10, pattern: 'fan', fanDeg: 52, divergenceDeg: 0.6, speedHz: 0, phaseDeg: 0 },
+    { beams: 12, pattern: 'tunnel', fanDeg: 26, divergenceDeg: 0.5, speedHz: 0.12, phaseDeg: 90 },
+  ];
   [0, 1].forEach((index) => {
     fixtures.push({
       id: `laser-${index}`,
@@ -352,6 +370,7 @@ function clubDefaultRig(): RigPreset {
       anchorId: 'truss-rear',
       u: index === 0 ? 9.1 / 21 : 11.9 / 21,
       offset: { x: 0, y: -0.5, z: 0 },
+      laser: laserSetups[index]!,
     });
   });
 

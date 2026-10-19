@@ -25,7 +25,7 @@ export interface FixtureUpdateOptions {
   surfaces: readonly VenueSurface[];
 }
 
-interface SurfaceHit {
+export interface SurfaceHit {
   distance: number;
   point: THREE.Vector3;
   /** Points back toward the beam so decals sit on the lit side. */
@@ -44,7 +44,7 @@ function surfaceNormal(surface: VenueSurface, direction: THREE.Vector3, target: 
 }
 
 /** Nearest venue surface along a ray, or `null` when the ray escapes. */
-function intersectSurfaces(
+export function intersectSurfaces(
   origin: THREE.Vector3,
   direction: THREE.Vector3,
   surfaces: readonly VenueSurface[],

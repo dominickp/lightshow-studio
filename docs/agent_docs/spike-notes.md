@@ -17,7 +17,7 @@ The beams are additive cone meshes with animated TSL noise and scene fog. They a
 
 ## Visual finding
 
-The low-poly venue plus saturated moving beams is visually promising. Additive floor pools and broad overlapping beams can wash out the scene; keep beam/pool intensity conservative. Disabling a full-frame strobe flash materially improved readability. Fixture strobes remain localized and are off by default; they can be enabled for brief downbeat hits. Add a photosensitivity warning before strobe-heavy shows are a normal default.
+The low-poly venue plus saturated moving beams is visually promising. Additive floor pools and broad overlapping beams can wash out the scene; keep beam/pool intensity conservative. Disabling a full-frame strobe flash materially improved readability. Fixture strobes remain localized and are off by default; they can be enabled for brief downbeat hits.
 
 ## Audio clock prototype
 
@@ -86,5 +86,4 @@ See `docs/agent_docs/ux-lighting-controls.md` for the evaluated control surface 
 2. Increase the stress test to 48–64 fixtures; test with bloom and shadows independently.
 3. Validate WebGL2 fallback and compare output/quality.
 4. Improve physical fixture geometry and DMX profile/channel fidelity before carrying spike code into `packages/renderer`.
-5. Add a photosensitivity warning/control before making strobe-heavy shows a normal default.
-6. Add editable BPM/offset and real import-time beat analysis (correctable), then validate the grid and snapping with local tracks.
+5. Add editable BPM/offset and real import-time beat analysis (correctable), then validate the grid and snapping with local tracks.

@@ -143,3 +143,48 @@ Short form: context → decision → consequence. Update or supersede rather tha
 - A future fixture setup editor can add the rest of layer 1 (limits, channel map, invert flags) without touching the clip model.
 - Pan/tilt and zoom remain clip-animatable; only the *mounting* values are physical. "Hardware vs digital" is not the dividing line — "stored vs transmitted per frame" is.
 
+---
+
+## ADR-011 — Venues are templates; fixtures attach to anchors
+
+**Context.** The venue geometry was hardcoded in `Stage.addRoom()` and the rig was a generated array. A project could change fixture setup but not which fixtures existed; `openProject()` rejected any file whose fixture IDs differed from the build. Two product needs conflict with that: choosing between preset stages, and authoring a smaller or larger rig. Placement also needs to know *where* a fixture hangs (truss, riser edge, wall), not just an absolute coordinate, or a template change leaves lights floating.
+
+**Decision.**
+- A `VenueTemplate` in `packages/show-model` describes the room shell, optional features (riser, LED wall, booth, crowd, haze), static structure, mount anchors, camera presets, and a ready-made `defaultRig` preset as plain data. The app builds three.js meshes from it; the package stays renderer-free (ADR-006).
+- Templates exist so a user can pick a stage and press play without authoring a rig; each template's `defaultRig` is what an untouched project starts from.
+- A `MountAnchor` is a segment (or point) with a normal and a default mount pitch. Fixtures store `mount: { anchorId, u, offset }` plus the resolved `position`/`yawDeg`/`pitchOffsetDeg`. The mount wins on load when the anchor exists; the cached transform is the fallback for unknown venues, so no fixture is ever dropped silently.
+- Opening a project replaces `show.fixtures`, the venue, the stage rig, and the arrangement lanes. Rig equality checks are removed; embedded profile snapshots already make any rig renderable (ADR-008).
+- Mount pitch is applied as a transform between the fixture root and its yoke, not added to `FixtureState.tiltDeg`. This frees the profile's tilt limits and matches a real clamp: pan spins around the mount axis.
+- Removing a fixture removes its clips in the same undoable command, because the schema forbids dangling `fixtureId` references.
+- **Switching venue starts a new project.** Anchors, lanes, and clips are venue-specific, so carrying them across venues leaves floating fixtures and dead lanes. The switch loads the new template's `defaultRig`, clears clips, resets the loop/zoom, and **keeps the loaded song**. When clips exist it warns that the timeline will be cleared (save / clear and continue / cancel); with no clips it switches without a prompt. The venue picker is an explicit command, not a live dropdown.
+- Opening a project reads `venue.id` and rebuilds that venue; it is not treated as a switch, so no authored work is discarded.
+
+**Consequences.**
+- `.dmxsim` gains a `venue` section and `fixtures[].mount` / `name`; version 2 with a v1 migration that assumes the only venue that existed at v1.
+- A second preset stage (main-stage geometry with an overhead grid and side ladders) is data, not a code fork.
+- Venue switching is the one destructive rig action. The save prompt and the picker's "clips will be cleared" note are the safety net; undo for venue changes is not required in the first pass.
+- Fixture count is no longer a fixed build property; the render-budget toggle becomes a debug/perf control, and removing lights is the real way to simplify the timeline.
+- Anchor drift across venue versions is a real failure mode; the cached transform plus an "unattached" UI state contains it.
+- Venue *editing* (moving trusses, resizing rooms) stays out of scope; templates are fixed data.
+
+---
+
+## ADR-012 — Lasers use a dedicated beam renderer
+
+**Context.** Every fixture rendered through one cone proxy. A laser was only a brighter cone with a 6 mm aperture and a 0.6–1.8° spread, so at 20 m it looked like a narrow spotlight rather than the razor-thin fans and scanning patterns in the reference photos. A cone is the wrong primitive: a laser emits multiple near-parallel beams, stays bright across the room, and terminates in a visible dot on a surface.
+
+**Decision.**
+- A `LaserRig` renders one quad ribbon per beam in a single draw call per fixture, billboarded in the vertex shader, with a small world width and a screen-space minimum width; bloom supplies the glow.
+- The beam pattern (`fan`, `sweep`, `tunnel`, `wave`, later `lattice`/`dots`) is computed in the shader from a phase uniform. Beam count, pattern, fan width, divergence, speed, and phase are **setup** values on `FixturePlacement.laser`; `rotation` (and pan/tilt) animate motion through existing clip attributes.
+- Beams terminate on venue surfaces (floor, riser, walls, LED wall) that the template exposes, and the same surface list replaces the renderer's hardcoded stage-footprint test for floor pools.
+- Beam counts and fan width clamp to profile limits; a scene-wide beam budget and a laser master enable are required.
+- Pattern choice is a persisted setup value in the first pass; only `rotation` and pan/tilt are clip-animated. A later pattern/fan attribute must be additive, and no control ships without a document field.
+
+**Consequences.**
+- Laser state extends `FixtureState` and the project schema additively; existing projects remain valid.
+- `speedHz`/phase is stored in real units, so tempo changes do not distort a laser cue unless the author re-times it.
+- Pattern selection is not clip-animatable yet. Adding a `fan` attribute later must remain additive; do not ship a control without a document field.
+- Audience-scanning zones are deferred: they are a good idea, but they need venue geometry, UI, and per-beam checks. Revisit once the pattern renderer is proven.
+- Laser safety is limited to a show-level master enable and a scene-wide beam budget. No photosensitivity warning is planned (user decision, 2026-10-18); do not re-add one without being asked.
+- Beam visibility is a function of atmospheric haze, not a per-fixture brightness multiplier. The laser and spot shaders read a shared haze value from the start, so adding fog/haze machines changes one input instead of rewriting materials. At zero haze, a laser shows its emitter and surface dot only.
+

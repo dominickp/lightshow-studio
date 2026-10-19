@@ -24,6 +24,23 @@ Build on the working audio clock in this order:
 
 **Keep the current fixture set.** Defer additional fixture types and lighting effects until this authoring flow is proven; those expand the content surface before the core workflow is validated. In parallel, validate the renderer on a 60 Hz / mid-range GPU and compare proxy beams with half-resolution volumetrics.
 
+### Planned next: stage templates, rig editing, and lasers
+
+Detailed plans live in `docs/agent_docs/stage-rig-editor-plan.md` and
+`docs/agent_docs/laser-rendering-plan.md`. In short:
+
+- data-driven venue templates with ready-made default rigs, so choosing a
+  stage needs no rig authoring; two venues for now (club stage and main stage),
+  more later;
+- add/remove/duplicate fixtures with truss, riser, floor, and wall anchors;
+  placement is persisted in `.dmxsim` version 2;
+- switching venue starts a new project and timeline on the template's default
+  rig; the song stays loaded, and a prompt warns that placed clips will be
+  cleared;
+- opening a project replaces the rig instead of rejecting a mismatch;
+- laser fixtures get a dedicated multi-beam renderer (fans, tunnels, scanning)
+  instead of the current thin cone.
+
 ## Phase 1 — Vertical slice
 
 One room, four fixture types (moving head, wash, strobe, laser), fog/haze, local audio upload with analysis, waveform + beat grid, timeline with clips/envelopes and snapping, play/pause/scrub at 60 fps.
@@ -42,7 +59,7 @@ Exit criteria: a 30-second clip can be authored end-to-end and looks/sounds sync
 - Camera presets and fixture placement gizmo
 - Save/load `.dmxsim`, autosave, version migrations
 - Inspector with per-fixture capability constraints
-- **Atmosphere authoring:** global haze/fog density plus positioned fog-machine sources that can be triggered and faded by arrangement clips. A fog cue can build before a laser/beam cue; define timing, persistence/decay, coverage radius, and whether density accumulates or clears. Surface the photosensitivity warning/control for strobe-heavy looks.
+- **Atmosphere authoring:** global haze/fog density plus positioned fog-machine sources that can be triggered and faded by arrangement clips. A fog cue can build before a laser/beam cue; define timing, persistence/decay, coverage radius, and whether density accumulates or clears. Haze is not decorative: beam and laser visibility must scale with it, so no-haze rooms show emitters and surface dots rather than full beams.
 
 ## Phase 3 — Spectacle
 

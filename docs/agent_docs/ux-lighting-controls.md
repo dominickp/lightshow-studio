@@ -46,7 +46,7 @@ All controls must be gated by `profile.capabilities` and must map only to attrib
 | **Wash** | Fill the stage/floor with smooth colour and a controllable pool size | Dimmer + fade; RGB or RGBW colour; zoom; strobe; pan/tilt if present | Same 2D pad as a moving head but emphasise a large zoom range and colour-first workflow. "Softness" has no model attribute; express it through zoom/beam spread and renderer falloff, not a fake slider. |
 | **Strobe / blinder** | Hit accents, not just "on" | Dimmer; colour/white where available; strobe rate; shutter/open duration; fade/attack | No pan/tilt. Use a **rate control with Hz and note-division units** (1/4, 1/8, 1/16), a duration/shutter width control, and a one-shot "hit" preset. Blinder should default to warm white and a short attack. |
 | **LED strip / pixel** | Chases, segments, and directional movement | Dimmer; RGBW colour; strobe; segment count, chase direction, chase speed, pattern | No per-segment model exists: `LED_STRIP` is one fixture with a single RGBW state. Offer whole-strip colour/chase presets now; add a sub-fixture/cell model later. Direction should be a segmented arrow control, not a number. |
-| **Laser** | Aim, rotate patterns, and control intensity/safety | Dimmer; RGB colour; pan/tilt (small range); rotation; pattern selection; pattern speed; safety/master | Use a 2D aim pad plus a pattern/rotation dial. Safety is show-level, not per-clip: a persistent laser-enable/blackout control and a warning state. Pattern and speed are model gaps; map rotation now and add pattern later. |
+| **Laser** | Aim, rotate patterns, and control intensity/safety | Dimmer; RGB colour; pan/tilt (small range); rotation; pattern selection; pattern speed; safety/master | Use a 2D aim pad plus a pattern/rotation dial. Safety is show-level, not per-clip: a persistent laser-enable/blackout control. Audience-scanning zones are deferred; no photosensitivity warning is planned. Pattern and speed are model gaps; map rotation now and add pattern later. |
 | **PAR** | Simple colour and level | Dimmer + fade; RGBW; zoom if present | No pad. A colour swatch grid plus level is enough; avoid exposing irrelevant movement controls. |
 
 ## Authoring workflow
@@ -100,7 +100,7 @@ This product is a **song-first timecode arranger**, not a theatre cue-list conso
 
 ### Show-level
 
-- BPM/offset, master dimmer, blackout, strobe enable/photosensitivity warning, laser enable.
+- BPM/offset, master dimmer, blackout, strobe enable, laser enable.
 - Fixture groups and palettes/presets library.
 - Track visibility/lock/mute, reorder, collapse, height.
 - Save/load/autosave, undo/redo, show name, export.
@@ -124,7 +124,7 @@ The selected fixture's panel is a side panel docked to the right of the arrangem
 - **Moving head / spot:** mount orientation stays fixed; pan/tilt set the static aim or animate around it. Beam angle/zoom, focus, dimmer, color, strobe, gobo/prism, and rotation appear only when supported by the profile. The first full editor should use a 2D aim pad, with range bounds and an optional movement-pattern editor rather than raw normalized sliders.
 - **Wash:** mount/aim and pan/tilt behave like moving heads; beam angle controls coverage. Prefer broad area/color controls; do not invent a separate softness parameter unless the renderer models it.
 - **Fixed PAR / blinder / strobe / LED strip:** position and mount angle set direction; no pan/tilt animation unless the physical profile supports it. Expose beam/field angle only if zoom is supported. Strobe controls should distinguish rate from on-time/shutter width; wide LED emitters need shape-aware output rather than a round spotlight proxy.
-- **Laser:** mount/aim plus constrained pan/tilt, pattern and rotation controls; retain a show-level safety enable/blackout and warning. Laser patterns require a distinct rendering model; do not treat a laser as an ordinary wide cone.
+- **Laser:** mount/aim plus constrained pan/tilt, pattern and rotation controls; retain a show-level laser enable/blackout. Laser patterns require a distinct rendering model; do not treat a laser as an ordinary wide cone.
 
 ## Interaction and navigation spec
 
@@ -203,7 +203,7 @@ Severity reflects user impact on the next authoring pass.
 2. **Sub-fixture/cell model** for LED strips: segments, chase direction, pixel patterns, and per-cell envelopes.
 3. **Gobo/prism and laser patterns** as first-class controllable attributes, with effect presets and rotation/speed.
 4. Group editing with fan/chase offsets; relative values; palettes that update referenced clips.
-5. Export video and DMX compile; show file portability; photosensitivity and laser-safety gates.
+5. Export video and DMX compile; show file portability; laser enable and beam budget.
 6. Full keyboard-only workflow, ARIA grid semantics, and screen-reader labels for clips and lanes.
 
 ## Open questions

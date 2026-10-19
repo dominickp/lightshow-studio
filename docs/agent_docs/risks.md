@@ -14,4 +14,11 @@
 | Scope creep (all SFX, all rooms, DMX) | Never ships a slice | Phase gates in `roadmap.md`; Phase 1 fixed to one room and four fixture types | Managed |
 | Asset production bottleneck | Slow visual progress | Procedural low-poly geometry; fixture models from primitives/curves | Design decision |
 | Fixture capability model too shallow | Editor allows impossible actions | Profile capabilities + limits defined before timeline UI; per-fixture validation in inspector | Open |
-| Single-person project maintenance | Stagnation | Keep `show-model` small and tested; keep spike code disposable | Managed |
+| Rig edits invalidate authored clips | Data loss when a light is removed | Removal deletes that fixture's clips in one undoable command and names the count; schema rejects dangling `fixtureId` | Open — see `stage-rig-editor-plan.md` |
+| Anchor drift when a venue template changes | Fixtures float or disappear on load | Store the mount **and** the resolved transform; use the cached transform when an anchor is unknown; flag unattached fixtures in the UI | Open |
+| Venue data-driven rewrite regresses the look | Lost visual progress | Keep `addRoom()` until `buildVenue()` matches it, compare captures, then delete the old path | Open |
+| Switching venue discards clips | User loses authored work | Switching venue warns that placed clips will be cleared and keeps the song loaded; save is offered in the prompt; venue picker is an explicit command; `venue.id` is saved so reopening a project is not a switch | Open — see `stage-rig-editor-plan.md` |
+| Laser beam overdraw and bloom cost | Frame drops and washed-out image | One draw call per laser, scene-wide beam budget, no shadows, tune exposure/bloom against reference captures and measure frame cost | Open — see `laser-rendering-plan.md` |
+| Laser safety (audience scanning) | Beams aimed into the crowd | Show-level laser enable and a scene-wide beam budget; audience scanning zones are deferred (liked, but need venue data, UI, and per-beam checks). No photosensitivity warning is planned | Managed |
+| Haze decoupled from beam visibility | Lights look identical in foggy and clear rooms; atmosphere work becomes cosmetic | Beam shaders read a shared normalized haze value from the start; hazeless scenes legitimately show emitter + surface dot only | Managed — see `laser-rendering-plan.md` |
+| One lane per fixture makes large rigs unwieldy | Timeline noise | Removal is the primary simplification; follow with collapsible mount-group lanes and persisted track order | Managed |

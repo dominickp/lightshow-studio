@@ -32,6 +32,8 @@ Enforce with an ESLint `no-restricted-imports` rule in `packages/show-model`.
 **show-model**
 - `Show` document types + Zod schema + `version` migrations
 - `.dmxsim` project-file schema (rig + timeline + arrangement + settings) in `project.ts`
+- Venue templates: room structure, procedural feature descriptors, mount anchors, camera presets (plain data, no three.js)
+- `resolveMount(template, mount)` — pure placement resolution with cached fallbacks
 - `evaluateFixtureStates(show, timeSec)` — pure, deterministic
 - Timeline math: clips, envelopes, beat grid ↔ seconds conversion
 - Preset expansion (preset → clips)
@@ -44,11 +46,12 @@ Enforce with an ESLint `no-restricted-imports` rule in `packages/show-model`.
 - Seed profiles: generic moving head, wash, strobe, laser, PAR, blinder, LED strip
 
 **renderer**
-- Fixture → scene object factory
+- Fixture → scene object factory (`FixtureRig` for spot/wash/fixed, `LaserRig` for multi-beam laser fixtures)
+- Venue builder: structure primitives, LED wall, crowd, booth, haze, exposed surfaces for beam termination
 - TSL beam/volume/fog/emissive materials
 - Post-processing stack (bloom, streaks, lo-fi pass, dynamic resolution)
 - `setFixtureStates(states)` per frame; no show logic
-- Perf instrumentation (frame ms, draw calls, visible lights)
+- Perf instrumentation (frame ms, draw calls, visible lights, active laser beams)
 
 **apps/web**
 - Layout: viewport, timeline, inspector

@@ -213,6 +213,7 @@ export const FIXTURE_ID_PREFIXES: Record<FixtureKind, string> = {
   par: 'par',
   blinder: 'blinder',
   'led-strip': 'led',
+  'cryo-jet': 'cryo',
 };
 
 /**
@@ -385,6 +386,20 @@ function clubDefaultRig(): RigPreset {
     });
   });
 
+  /* Cold-spray jets at the outer corners of the stage front. They fire
+   * straight up, so the demo can use them as punctuation on the drops. */
+  [0.06, 0.94].forEach((u, index) => {
+    fixtures.push({
+      id: `cryo-${index}`,
+      profileId: 'generic-cryo-jet',
+      anchorId: 'riser-front',
+      u,
+      offset: { x: 0, y: 0.06, z: 0 },
+      mountPitchDeg: 180,
+      name: `Cryo Jet ${index + 1}`,
+    });
+  });
+
   return { id: 'club-default', name: 'Club stage rig', fixtures };
 }
 
@@ -499,7 +514,7 @@ export const CLUB_STAGE: VenueTemplate = {
       normal: { x: 0, y: 0, z: 1 },
       mountPitchDeg: UPLIGHT_PITCH,
       mountOffset: { x: 0, y: 0.38, z: 0 },
-      suggestedProfiles: ['generic-par', 'generic-blinder'],
+      suggestedProfiles: ['generic-par', 'generic-blinder', 'generic-cryo-jet'],
     },
     {
       id: 'stage-floor',

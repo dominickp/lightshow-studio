@@ -10,6 +10,7 @@ import {
 } from '@dmxsim/show-model';
 import { createFixtureRig, type LaserRig } from './laser-rig';
 import type { FixtureRig } from './rig';
+import type { CryoJetRig } from './cryo-jet-rig';
 import { buildCrowd, buildVenue, disposeGroup } from './venue-builder';
 
 interface CameraView {
@@ -74,6 +75,8 @@ function viewsFrom(template: VenueTemplate): CameraView[] {
 
 interface StageUpdateOptions {
   volumetrics: boolean;
+  /** True while the transport is playing; cue effects freeze when paused. */
+  playing?: boolean;
 }
 
 export class Stage {
@@ -81,7 +84,7 @@ export class Stage {
   readonly camera: THREE.PerspectiveCamera;
   readonly controls: OrbitControls;
 
-  private readonly rigs: (FixtureRig | LaserRig)[] = [];
+  private readonly rigs: (FixtureRig | LaserRig | CryoJetRig)[] = [];
   private readonly hiddenFixtures = new Set<string>();
   /**
    * When set, rigs whose fixture kind does not match are hidden from the
@@ -484,6 +487,7 @@ export class Stage {
       if (!state) continue;
       rig.update(state, timeSec, {
         volumetrics: options.volumetrics,
+        playing: options.playing ?? true,
         haze: this.haze,
         camera: this.camera,
         surfaces: this.venue.surfaces,
@@ -509,7 +513,8 @@ export class Stage {
     let b = 0;
     let active = 0;
     for (const state of states) {
-      if (!state.active) continue;
+      // A cryo jet emits vapour, not light: keep it out of the room ambience.
+      if (!state.active || state.kind === 'cryo-jet') continue;
       r += state.color.r * state.intensity;
       g += state.color.g * state.intensity;
       b += state.color.b * state.intensity;

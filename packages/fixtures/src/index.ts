@@ -202,6 +202,37 @@ export const LED_STRIP: FixtureProfile = {
   beam: { spreadDeg: [120, 160], apertureDiameterM: 0.9, throwM: 4 },
 };
 
+/**
+ * Cold-spray (CO2/cryo) jet. It is deliberately a fixture rather than a
+ * separate effect layer: the jet lives on the timeline, can be placed and
+ * hidden like a light, and is driven by the same clip evaluator. `dimmer` is
+ * the spray level; the profile has no light-producing capabilities.
+ */
+export const CRYO_JET: FixtureProfile = {
+  id: 'generic-cryo-jet',
+  name: 'Generic Cryo Jet',
+  kind: 'cryo-jet',
+  manufacturer: 'Generic',
+  channels: ['dimmer'],
+  capabilities: {
+    dimmer: true,
+    color: false,
+    panTilt: false,
+    zoom: false,
+    focus: false,
+    strobe: false,
+    gobo: false,
+    prism: false,
+    rotation: false,
+  },
+  limits: {
+    panDeg: [0, 0],
+    tiltDeg: [0, 0],
+    strobeHz: [0, 0],
+  },
+  beam: { spreadDeg: [0, 0], apertureDiameterM: 0.08, throwM: 4 },
+};
+
 export const PROFILE_LIBRARY: Record<string, FixtureProfile> = {
   [MOVING_HEAD.id]: MOVING_HEAD,
   [WASH.id]: WASH,
@@ -210,4 +241,5 @@ export const PROFILE_LIBRARY: Record<string, FixtureProfile> = {
   [PAR.id]: PAR,
   [BLINDER.id]: BLINDER,
   [LED_STRIP.id]: LED_STRIP,
+  [CRYO_JET.id]: CRYO_JET,
 };

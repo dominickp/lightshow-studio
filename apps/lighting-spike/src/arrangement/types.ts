@@ -1,4 +1,4 @@
-export type CueAction = 'hold' | 'fade' | 'pulse' | 'sweep' | 'strobe';
+export type CueAction = 'hold' | 'fade' | 'pulse' | 'sweep' | 'strobe' | 'fire';
 
 /**
  * Per-cue color override. When present it wins over the `CUE_COLORS` entry

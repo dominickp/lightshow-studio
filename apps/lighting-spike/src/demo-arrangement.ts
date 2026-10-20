@@ -16,6 +16,7 @@ const colorIndex = (name: ColorName): number => {
 
 const supports = (fixture: FixturePlacement, action: CueAction): boolean => {
   const caps = fixture.profile.capabilities;
+  if (action === 'fire') return fixture.profile.kind === 'cryo-jet';
   if (action === 'sweep') return caps.panTilt;
   if (action === 'strobe') return caps.strobe;
   return caps.dimmer;
@@ -74,6 +75,7 @@ export function createDemoCues(
   const strobes = group(fixtures, 'strobe-');
   const lasers = group(fixtures, 'laser-');
   const pars = group(fixtures, 'par-');
+  const cryos = group(fixtures, 'cryo-');
 
   // Bars 0–2: slow intro. Fades buy time for the first downbeat to land.
   for (const [i, wash] of washes.entries()) add(wash, 'fade', 0, 2, i % 2 === 0 ? 'blue' : 'violet');
@@ -175,9 +177,14 @@ export function createDemoCues(
     }
   }
 
+  // Drop punctuation: both jets fire straight up at the big transitions.
+  for (const bar of [8, 12, 14]) {
+    if (bar >= barCount) continue;
+    for (const cryo of cryos) add(cryo, 'fire', bar, bar, 'white', 0, 2);
+  }
+
   // Bars 12–14: peak. Everything moves on the same half-bar grid.
-  for (let bar = 12; bar < 14 && bar < barCount; bar += 1) {
-    for (const [i, head] of frontHeads.entries()) {
+  for (let bar = 12; bar < 14 && bar < barCount; bar += 1) {    for (const [i, head] of frontHeads.entries()) {
       for (const half of [0, 0.5]) {
         add(head, 'sweep', bar + half, bar + half + 0.5, (i + Math.round(half * 2)) % 2 === 0 ? 'magenta' : 'cyan');
       }

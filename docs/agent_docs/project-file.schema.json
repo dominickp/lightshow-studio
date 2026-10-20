@@ -80,7 +80,8 @@
                       "laser",
                       "par",
                       "blinder",
-                      "led-strip"
+                      "led-strip",
+                      "cryo-jet"
                     ]
                   },
                   "manufacturer": {
@@ -723,7 +724,8 @@
                   "fade",
                   "pulse",
                   "sweep",
-                  "strobe"
+                  "strobe",
+                  "fire"
                 ]
               },
               "colorIndex": {
@@ -733,25 +735,55 @@
                 "maximum": 9007199254740991
               },
               "colorOverride": {
-                "oneOf": [
+                "anyOf": [
                   {
                     "type": "object",
                     "properties": {
-                      "kind": { "const": "rgb" },
-                      "r": { "type": "number", "minimum": 0, "maximum": 1 },
-                      "g": { "type": "number", "minimum": 0, "maximum": 1 },
-                      "b": { "type": "number", "minimum": 0, "maximum": 1 }
+                      "kind": {
+                        "type": "string",
+                        "const": "rgb"
+                      },
+                      "r": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "g": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "b": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
                     },
-                    "required": ["kind", "r", "g", "b"],
+                    "required": [
+                      "kind",
+                      "r",
+                      "g",
+                      "b"
+                    ],
                     "additionalProperties": false
                   },
                   {
                     "type": "object",
                     "properties": {
-                      "kind": { "const": "white" },
-                      "cct": { "type": "number", "minimum": 1000, "maximum": 20000 }
+                      "kind": {
+                        "type": "string",
+                        "const": "white"
+                      },
+                      "cct": {
+                        "type": "number",
+                        "minimum": 1000,
+                        "maximum": 20000
+                      }
                     },
-                    "required": ["kind", "cct"],
+                    "required": [
+                      "kind",
+                      "cct"
+                    ],
                     "additionalProperties": false
                   }
                 ]

@@ -481,6 +481,7 @@
         gap: 5px;
         min-width: 0;
       }
+      #clip-inspector .clip-field[hidden] { display: none; }
       #clip-inspector .clip-field-label {
         flex: 0 0 auto;
         color: #5f6b80;

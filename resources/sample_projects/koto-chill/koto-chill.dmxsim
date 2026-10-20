@@ -76,6 +76,7 @@
           "z": 1.6
         },
         "yawDeg": -12,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-front",
           "u": 0.11428571428571428,
@@ -85,8 +86,7 @@
             "z": 0
           },
           "yawDeg": -12
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "mh-front-1",
@@ -153,6 +153,7 @@
           "z": 1.6
         },
         "yawDeg": -9.333333333333371,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-front",
           "u": 0.19999999999999998,
@@ -162,8 +163,7 @@
             "z": 0
           },
           "yawDeg": -9.333333333333334
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "mh-front-2",
@@ -230,6 +230,7 @@
           "z": 1.6
         },
         "yawDeg": -6.666666666666629,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-front",
           "u": 0.2857142857142857,
@@ -239,8 +240,7 @@
             "z": 0
           },
           "yawDeg": -6.666666666666667
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "mh-front-3",
@@ -307,6 +307,7 @@
           "z": 1.6
         },
         "yawDeg": -4,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-front",
           "u": 0.3714285714285714,
@@ -316,8 +317,7 @@
             "z": 0
           },
           "yawDeg": -4
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "mh-front-4",
@@ -384,6 +384,7 @@
           "z": 1.6
         },
         "yawDeg": -1.3333333333333712,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-front",
           "u": 0.4571428571428571,
@@ -393,8 +394,7 @@
             "z": 0
           },
           "yawDeg": -1.333333333333334
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "mh-front-5",
@@ -461,6 +461,7 @@
           "z": 1.6
         },
         "yawDeg": 1.3333333333333712,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-front",
           "u": 0.5428571428571428,
@@ -470,8 +471,7 @@
             "z": 0
           },
           "yawDeg": 1.333333333333334
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "mh-front-6",
@@ -538,6 +538,7 @@
           "z": 1.6
         },
         "yawDeg": 4,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-front",
           "u": 0.6285714285714286,
@@ -547,8 +548,7 @@
             "z": 0
           },
           "yawDeg": 3.999999999999999
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "mh-front-7",
@@ -615,6 +615,7 @@
           "z": 1.6
         },
         "yawDeg": 6.666666666666629,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-front",
           "u": 0.7142857142857143,
@@ -624,8 +625,7 @@
             "z": 0
           },
           "yawDeg": 6.666666666666667
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "mh-front-8",
@@ -692,6 +692,7 @@
           "z": 1.6
         },
         "yawDeg": 9.333333333333371,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-front",
           "u": 0.7999999999999999,
@@ -701,8 +702,7 @@
             "z": 0
           },
           "yawDeg": 9.333333333333332
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "mh-front-9",
@@ -769,6 +769,7 @@
           "z": 1.6
         },
         "yawDeg": 12,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-front",
           "u": 0.8857142857142857,
@@ -778,8 +779,7 @@
             "z": 0
           },
           "yawDeg": 12
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "mh-rear-0",
@@ -846,6 +846,7 @@
           "z": -5.6
         },
         "yawDeg": 15,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-rear",
           "u": 0.1952380952380952,
@@ -855,8 +856,7 @@
             "z": 0
           },
           "yawDeg": 15
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "mh-rear-1",
@@ -923,6 +923,7 @@
           "z": -5.6
         },
         "yawDeg": 9,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-rear",
           "u": 0.3171428571428571,
@@ -932,8 +933,7 @@
             "z": 0
           },
           "yawDeg": 9
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "mh-rear-2",
@@ -1000,6 +1000,7 @@
           "z": -5.6
         },
         "yawDeg": 3,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-rear",
           "u": 0.439047619047619,
@@ -1009,8 +1010,7 @@
             "z": 0
           },
           "yawDeg": 2.999999999999999
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "mh-rear-3",
@@ -1077,6 +1077,7 @@
           "z": -5.6
         },
         "yawDeg": -3,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-rear",
           "u": 0.560952380952381,
@@ -1086,8 +1087,7 @@
             "z": 0
           },
           "yawDeg": -2.999999999999999
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "mh-rear-4",
@@ -1154,6 +1154,7 @@
           "z": -5.6
         },
         "yawDeg": -9,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-rear",
           "u": 0.6828571428571428,
@@ -1163,8 +1164,7 @@
             "z": 0
           },
           "yawDeg": -9.000000000000002
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "mh-rear-5",
@@ -1231,6 +1231,7 @@
           "z": -5.6
         },
         "yawDeg": -15,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-rear",
           "u": 0.8047619047619048,
@@ -1240,8 +1241,7 @@
             "z": 0
           },
           "yawDeg": -15
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "wash-0",
@@ -1302,6 +1302,7 @@
           "z": -2
         },
         "yawDeg": -10,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-mid",
           "u": 0.16666666666666666,
@@ -1311,8 +1312,7 @@
             "z": 0
           },
           "yawDeg": -10
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "wash-1",
@@ -1373,6 +1373,7 @@
           "z": -2
         },
         "yawDeg": -6,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-mid",
           "u": 0.30000000000000004,
@@ -1382,8 +1383,7 @@
             "z": 0
           },
           "yawDeg": -6
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "wash-2",
@@ -1444,6 +1444,7 @@
           "z": -2
         },
         "yawDeg": -2,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-mid",
           "u": 0.43333333333333335,
@@ -1453,8 +1454,7 @@
             "z": 0
           },
           "yawDeg": -1.9999999999999996
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "wash-3",
@@ -1515,6 +1515,7 @@
           "z": -2
         },
         "yawDeg": 2,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-mid",
           "u": 0.5666666666666667,
@@ -1524,8 +1525,7 @@
             "z": 0
           },
           "yawDeg": 1.9999999999999996
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "wash-4",
@@ -1586,6 +1586,7 @@
           "z": -2
         },
         "yawDeg": 6,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-mid",
           "u": 0.7000000000000001,
@@ -1595,8 +1596,7 @@
             "z": 0
           },
           "yawDeg": 6.000000000000001
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "wash-5",
@@ -1657,6 +1657,7 @@
           "z": -2
         },
         "yawDeg": 10,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "truss-mid",
           "u": 0.8333333333333334,
@@ -1666,8 +1667,7 @@
             "z": 0
           },
           "yawDeg": 10
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "strobe-0",
@@ -1724,6 +1724,7 @@
           "z": 2.4000000000000004
         },
         "yawDeg": 90,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "tower-left",
           "u": 0.8133,
@@ -1732,8 +1733,7 @@
             "y": 0,
             "z": 4.4
           }
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "strobe-1",
@@ -1790,6 +1790,7 @@
           "z": -1
         },
         "yawDeg": 90,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "tower-left",
           "u": 0.8133,
@@ -1798,8 +1799,7 @@
             "y": 0,
             "z": 1
           }
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "strobe-2",
@@ -1856,6 +1856,7 @@
           "z": 2.4000000000000004
         },
         "yawDeg": -90,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "tower-right",
           "u": 0.8133,
@@ -1864,8 +1865,7 @@
             "y": 0,
             "z": 4.4
           }
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "strobe-3",
@@ -1922,6 +1922,7 @@
           "z": -1
         },
         "yawDeg": -90,
+        "pitchOffsetDeg": 0,
         "mount": {
           "anchorId": "tower-right",
           "u": 0.8133,
@@ -1930,8 +1931,7 @@
             "y": 0,
             "z": 1
           }
-        },
-        "pitchOffsetDeg": 0
+        }
       },
       {
         "id": "laser-0",
@@ -1981,6 +1981,21 @@
             ],
             "apertureDiameterM": 0.006,
             "throwM": 24
+          },
+          "laser": {
+            "maxBeams": 32,
+            "patterns": [
+              "fan",
+              "sweep",
+              "tunnel",
+              "wave",
+              "lattice",
+              "dots"
+            ],
+            "fanDeg": [
+              0,
+              120
+            ]
           }
         },
         "position": {
@@ -1989,15 +2004,6 @@
           "z": -5.6
         },
         "yawDeg": 0,
-        "mount": {
-          "anchorId": "truss-rear",
-          "u": 0.4333333333333333,
-          "offset": {
-            "x": 0,
-            "y": -0.5,
-            "z": 0
-          }
-        },
         "pitchOffsetDeg": 0,
         "laser": {
           "beams": 10,
@@ -2006,6 +2012,15 @@
           "divergenceDeg": 0.6,
           "speedHz": 0,
           "phaseDeg": 0
+        },
+        "mount": {
+          "anchorId": "truss-rear",
+          "u": 0.4333333333333333,
+          "offset": {
+            "x": 0,
+            "y": -0.5,
+            "z": 0
+          }
         }
       },
       {
@@ -2056,6 +2071,21 @@
             ],
             "apertureDiameterM": 0.006,
             "throwM": 24
+          },
+          "laser": {
+            "maxBeams": 32,
+            "patterns": [
+              "fan",
+              "sweep",
+              "tunnel",
+              "wave",
+              "lattice",
+              "dots"
+            ],
+            "fanDeg": [
+              0,
+              120
+            ]
           }
         },
         "position": {
@@ -2064,15 +2094,6 @@
           "z": -5.6
         },
         "yawDeg": 0,
-        "mount": {
-          "anchorId": "truss-rear",
-          "u": 0.5666666666666667,
-          "offset": {
-            "x": 0,
-            "y": -0.5,
-            "z": 0
-          }
-        },
         "pitchOffsetDeg": 0,
         "laser": {
           "beams": 12,
@@ -2081,6 +2102,15 @@
           "divergenceDeg": 0.5,
           "speedHz": 0.12,
           "phaseDeg": 90
+        },
+        "mount": {
+          "anchorId": "truss-rear",
+          "u": 0.5666666666666667,
+          "offset": {
+            "x": 0,
+            "y": -0.5,
+            "z": 0
+          }
         }
       },
       {
@@ -2349,6 +2379,132 @@
             "z": 0
           },
           "mountPitchDeg": 168
+        }
+      },
+      {
+        "id": "cryo-0",
+        "name": "Cryo Jet 1",
+        "profile": {
+          "id": "generic-cryo-jet",
+          "name": "Generic Cryo Jet",
+          "kind": "cryo-jet",
+          "manufacturer": "Generic",
+          "channels": [
+            "dimmer"
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": false,
+            "panTilt": false,
+            "zoom": false,
+            "focus": false,
+            "strobe": false,
+            "gobo": false,
+            "prism": false,
+            "rotation": false
+          },
+          "limits": {
+            "panDeg": [
+              0,
+              0
+            ],
+            "tiltDeg": [
+              0,
+              0
+            ],
+            "strobeHz": [
+              0,
+              0
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              0,
+              0
+            ],
+            "apertureDiameterM": 0.08,
+            "throwM": 4
+          }
+        },
+        "position": {
+          "x": -10.56,
+          "y": 0.38,
+          "z": -2.6
+        },
+        "yawDeg": 0,
+        "pitchOffsetDeg": 180,
+        "mount": {
+          "anchorId": "riser-front",
+          "u": 0.06,
+          "offset": {
+            "x": 0,
+            "y": 0.06,
+            "z": 0
+          },
+          "mountPitchDeg": 180
+        }
+      },
+      {
+        "id": "cryo-1",
+        "name": "Cryo Jet 2",
+        "profile": {
+          "id": "generic-cryo-jet",
+          "name": "Generic Cryo Jet",
+          "kind": "cryo-jet",
+          "manufacturer": "Generic",
+          "channels": [
+            "dimmer"
+          ],
+          "capabilities": {
+            "dimmer": true,
+            "color": false,
+            "panTilt": false,
+            "zoom": false,
+            "focus": false,
+            "strobe": false,
+            "gobo": false,
+            "prism": false,
+            "rotation": false
+          },
+          "limits": {
+            "panDeg": [
+              0,
+              0
+            ],
+            "tiltDeg": [
+              0,
+              0
+            ],
+            "strobeHz": [
+              0,
+              0
+            ]
+          },
+          "beam": {
+            "spreadDeg": [
+              0,
+              0
+            ],
+            "apertureDiameterM": 0.08,
+            "throwM": 4
+          }
+        },
+        "position": {
+          "x": 10.559999999999999,
+          "y": 0.38,
+          "z": -2.6
+        },
+        "yawDeg": 0,
+        "pitchOffsetDeg": 180,
+        "mount": {
+          "anchorId": "riser-front",
+          "u": 0.94,
+          "offset": {
+            "x": 0,
+            "y": 0.06,
+            "z": 0
+          },
+          "mountPitchDeg": 180
         }
       }
     ],
@@ -4421,6 +4577,24 @@
         "fadeInSec": 0
       },
       {
+        "id": "demo-428",
+        "fixtureId": "cryo-0",
+        "startSec": 88.63538461538462,
+        "endSec": 89.55846153846154,
+        "action": "fire",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-429",
+        "fixtureId": "cryo-1",
+        "startSec": 88.63538461538462,
+        "endSec": 89.55846153846154,
+        "action": "fire",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
         "id": "demo-274",
         "fixtureId": "laser-0",
         "startSec": 88.63538461538462,
@@ -6221,7 +6395,25 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-486",
+        "id": "demo-430",
+        "fixtureId": "cryo-0",
+        "startSec": 96.02000000000001,
+        "endSec": 96.94307692307693,
+        "action": "fire",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-431",
+        "fixtureId": "cryo-1",
+        "startSec": 96.02000000000001,
+        "endSec": 96.94307692307693,
+        "action": "fire",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-492",
         "fixtureId": "laser-0",
         "startSec": 96.02000000000001,
         "endSec": 96.94307692307693,
@@ -6230,7 +6422,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-488",
+        "id": "demo-494",
         "fixtureId": "laser-1",
         "startSec": 96.02000000000001,
         "endSec": 96.94307692307693,
@@ -6239,7 +6431,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-428",
+        "id": "demo-434",
         "fixtureId": "mh-front-0",
         "startSec": 96.02000000000001,
         "endSec": 96.94307692307693,
@@ -6248,7 +6440,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-430",
+        "id": "demo-436",
         "fixtureId": "mh-front-1",
         "startSec": 96.02000000000001,
         "endSec": 96.94307692307693,
@@ -6257,7 +6449,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-432",
+        "id": "demo-438",
         "fixtureId": "mh-front-2",
         "startSec": 96.02000000000001,
         "endSec": 96.94307692307693,
@@ -6266,7 +6458,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-434",
+        "id": "demo-440",
         "fixtureId": "mh-front-3",
         "startSec": 96.02000000000001,
         "endSec": 96.94307692307693,
@@ -6275,7 +6467,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-436",
+        "id": "demo-442",
         "fixtureId": "mh-front-4",
         "startSec": 96.02000000000001,
         "endSec": 96.94307692307693,
@@ -6284,7 +6476,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-438",
+        "id": "demo-444",
         "fixtureId": "mh-front-5",
         "startSec": 96.02000000000001,
         "endSec": 96.94307692307693,
@@ -6293,7 +6485,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-440",
+        "id": "demo-446",
         "fixtureId": "mh-front-6",
         "startSec": 96.02000000000001,
         "endSec": 96.94307692307693,
@@ -6302,7 +6494,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-442",
+        "id": "demo-448",
         "fixtureId": "mh-front-7",
         "startSec": 96.02000000000001,
         "endSec": 96.94307692307693,
@@ -6311,7 +6503,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-444",
+        "id": "demo-450",
         "fixtureId": "mh-front-8",
         "startSec": 96.02000000000001,
         "endSec": 96.94307692307693,
@@ -6320,7 +6512,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-446",
+        "id": "demo-452",
         "fixtureId": "mh-front-9",
         "startSec": 96.02000000000001,
         "endSec": 96.94307692307693,
@@ -6329,7 +6521,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-448",
+        "id": "demo-454",
         "fixtureId": "mh-rear-0",
         "startSec": 96.02000000000001,
         "endSec": 96.94307692307693,
@@ -6338,7 +6530,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-450",
+        "id": "demo-456",
         "fixtureId": "mh-rear-1",
         "startSec": 96.02000000000001,
         "endSec": 96.94307692307693,
@@ -6347,7 +6539,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-452",
+        "id": "demo-458",
         "fixtureId": "mh-rear-2",
         "startSec": 96.02000000000001,
         "endSec": 96.94307692307693,
@@ -6356,7 +6548,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-454",
+        "id": "demo-460",
         "fixtureId": "mh-rear-3",
         "startSec": 96.02000000000001,
         "endSec": 96.94307692307693,
@@ -6365,7 +6557,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-456",
+        "id": "demo-462",
         "fixtureId": "mh-rear-4",
         "startSec": 96.02000000000001,
         "endSec": 96.94307692307693,
@@ -6374,7 +6566,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-458",
+        "id": "demo-464",
         "fixtureId": "mh-rear-5",
         "startSec": 96.02000000000001,
         "endSec": 96.94307692307693,
@@ -6383,8 +6575,80 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-466",
+        "id": "demo-472",
         "fixtureId": "par-0",
+        "startSec": 96.02000000000001,
+        "endSec": 97.86615384615385,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-473",
+        "fixtureId": "par-1",
+        "startSec": 96.02000000000001,
+        "endSec": 97.86615384615385,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-474",
+        "fixtureId": "par-2",
+        "startSec": 96.02000000000001,
+        "endSec": 97.86615384615385,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-475",
+        "fixtureId": "par-3",
+        "startSec": 96.02000000000001,
+        "endSec": 97.86615384615385,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-476",
+        "fixtureId": "strobe-0",
+        "startSec": 96.02000000000001,
+        "endSec": 96.25076923076924,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-480",
+        "fixtureId": "strobe-1",
+        "startSec": 96.02000000000001,
+        "endSec": 96.25076923076924,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-484",
+        "fixtureId": "strobe-2",
+        "startSec": 96.02000000000001,
+        "endSec": 96.25076923076924,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-488",
+        "fixtureId": "strobe-3",
+        "startSec": 96.02000000000001,
+        "endSec": 96.25076923076924,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-466",
+        "fixtureId": "wash-0",
         "startSec": 96.02000000000001,
         "endSec": 97.86615384615385,
         "action": "hold",
@@ -6393,16 +6657,16 @@
       },
       {
         "id": "demo-467",
-        "fixtureId": "par-1",
+        "fixtureId": "wash-1",
         "startSec": 96.02000000000001,
         "endSec": 97.86615384615385,
         "action": "hold",
-        "colorIndex": 4,
+        "colorIndex": 2,
         "fadeInSec": 0
       },
       {
         "id": "demo-468",
-        "fixtureId": "par-2",
+        "fixtureId": "wash-2",
         "startSec": 96.02000000000001,
         "endSec": 97.86615384615385,
         "action": "hold",
@@ -6411,78 +6675,6 @@
       },
       {
         "id": "demo-469",
-        "fixtureId": "par-3",
-        "startSec": 96.02000000000001,
-        "endSec": 97.86615384615385,
-        "action": "hold",
-        "colorIndex": 4,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-470",
-        "fixtureId": "strobe-0",
-        "startSec": 96.02000000000001,
-        "endSec": 96.25076923076924,
-        "action": "strobe",
-        "colorIndex": 6,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-474",
-        "fixtureId": "strobe-1",
-        "startSec": 96.02000000000001,
-        "endSec": 96.25076923076924,
-        "action": "strobe",
-        "colorIndex": 6,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-478",
-        "fixtureId": "strobe-2",
-        "startSec": 96.02000000000001,
-        "endSec": 96.25076923076924,
-        "action": "strobe",
-        "colorIndex": 6,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-482",
-        "fixtureId": "strobe-3",
-        "startSec": 96.02000000000001,
-        "endSec": 96.25076923076924,
-        "action": "strobe",
-        "colorIndex": 6,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-460",
-        "fixtureId": "wash-0",
-        "startSec": 96.02000000000001,
-        "endSec": 97.86615384615385,
-        "action": "hold",
-        "colorIndex": 4,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-461",
-        "fixtureId": "wash-1",
-        "startSec": 96.02000000000001,
-        "endSec": 97.86615384615385,
-        "action": "hold",
-        "colorIndex": 2,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-462",
-        "fixtureId": "wash-2",
-        "startSec": 96.02000000000001,
-        "endSec": 97.86615384615385,
-        "action": "hold",
-        "colorIndex": 4,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-463",
         "fixtureId": "wash-3",
         "startSec": 96.02000000000001,
         "endSec": 97.86615384615385,
@@ -6491,7 +6683,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-464",
+        "id": "demo-470",
         "fixtureId": "wash-4",
         "startSec": 96.02000000000001,
         "endSec": 97.86615384615385,
@@ -6500,7 +6692,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-465",
+        "id": "demo-471",
         "fixtureId": "wash-5",
         "startSec": 96.02000000000001,
         "endSec": 97.86615384615385,
@@ -6509,7 +6701,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-471",
+        "id": "demo-477",
         "fixtureId": "strobe-0",
         "startSec": 96.48153846153848,
         "endSec": 96.7123076923077,
@@ -6518,7 +6710,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-475",
+        "id": "demo-481",
         "fixtureId": "strobe-1",
         "startSec": 96.48153846153848,
         "endSec": 96.7123076923077,
@@ -6527,7 +6719,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-479",
+        "id": "demo-485",
         "fixtureId": "strobe-2",
         "startSec": 96.48153846153848,
         "endSec": 96.7123076923077,
@@ -6536,7 +6728,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-483",
+        "id": "demo-489",
         "fixtureId": "strobe-3",
         "startSec": 96.48153846153848,
         "endSec": 96.7123076923077,
@@ -6545,7 +6737,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-487",
+        "id": "demo-493",
         "fixtureId": "laser-0",
         "startSec": 96.94307692307693,
         "endSec": 97.86615384615385,
@@ -6554,35 +6746,8 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-489",
+        "id": "demo-495",
         "fixtureId": "laser-1",
-        "startSec": 96.94307692307693,
-        "endSec": 97.86615384615385,
-        "action": "sweep",
-        "colorIndex": 3,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-429",
-        "fixtureId": "mh-front-0",
-        "startSec": 96.94307692307693,
-        "endSec": 97.86615384615385,
-        "action": "sweep",
-        "colorIndex": 3,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-431",
-        "fixtureId": "mh-front-1",
-        "startSec": 96.94307692307693,
-        "endSec": 97.86615384615385,
-        "action": "sweep",
-        "colorIndex": 2,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-433",
-        "fixtureId": "mh-front-2",
         "startSec": 96.94307692307693,
         "endSec": 97.86615384615385,
         "action": "sweep",
@@ -6591,6 +6756,33 @@
       },
       {
         "id": "demo-435",
+        "fixtureId": "mh-front-0",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-437",
+        "fixtureId": "mh-front-1",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-439",
+        "fixtureId": "mh-front-2",
+        "startSec": 96.94307692307693,
+        "endSec": 97.86615384615385,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-441",
         "fixtureId": "mh-front-3",
         "startSec": 96.94307692307693,
         "endSec": 97.86615384615385,
@@ -6599,7 +6791,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-437",
+        "id": "demo-443",
         "fixtureId": "mh-front-4",
         "startSec": 96.94307692307693,
         "endSec": 97.86615384615385,
@@ -6608,7 +6800,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-439",
+        "id": "demo-445",
         "fixtureId": "mh-front-5",
         "startSec": 96.94307692307693,
         "endSec": 97.86615384615385,
@@ -6617,7 +6809,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-441",
+        "id": "demo-447",
         "fixtureId": "mh-front-6",
         "startSec": 96.94307692307693,
         "endSec": 97.86615384615385,
@@ -6626,7 +6818,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-443",
+        "id": "demo-449",
         "fixtureId": "mh-front-7",
         "startSec": 96.94307692307693,
         "endSec": 97.86615384615385,
@@ -6635,7 +6827,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-445",
+        "id": "demo-451",
         "fixtureId": "mh-front-8",
         "startSec": 96.94307692307693,
         "endSec": 97.86615384615385,
@@ -6644,7 +6836,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-447",
+        "id": "demo-453",
         "fixtureId": "mh-front-9",
         "startSec": 96.94307692307693,
         "endSec": 97.86615384615385,
@@ -6653,7 +6845,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-449",
+        "id": "demo-455",
         "fixtureId": "mh-rear-0",
         "startSec": 96.94307692307693,
         "endSec": 97.86615384615385,
@@ -6662,7 +6854,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-451",
+        "id": "demo-457",
         "fixtureId": "mh-rear-1",
         "startSec": 96.94307692307693,
         "endSec": 97.86615384615385,
@@ -6671,7 +6863,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-453",
+        "id": "demo-459",
         "fixtureId": "mh-rear-2",
         "startSec": 96.94307692307693,
         "endSec": 97.86615384615385,
@@ -6680,7 +6872,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-455",
+        "id": "demo-461",
         "fixtureId": "mh-rear-3",
         "startSec": 96.94307692307693,
         "endSec": 97.86615384615385,
@@ -6689,7 +6881,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-457",
+        "id": "demo-463",
         "fixtureId": "mh-rear-4",
         "startSec": 96.94307692307693,
         "endSec": 97.86615384615385,
@@ -6698,7 +6890,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-459",
+        "id": "demo-465",
         "fixtureId": "mh-rear-5",
         "startSec": 96.94307692307693,
         "endSec": 97.86615384615385,
@@ -6707,7 +6899,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-472",
+        "id": "demo-478",
         "fixtureId": "strobe-0",
         "startSec": 96.94307692307693,
         "endSec": 97.17384615384617,
@@ -6716,7 +6908,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-476",
+        "id": "demo-482",
         "fixtureId": "strobe-1",
         "startSec": 96.94307692307693,
         "endSec": 97.17384615384617,
@@ -6725,7 +6917,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-480",
+        "id": "demo-486",
         "fixtureId": "strobe-2",
         "startSec": 96.94307692307693,
         "endSec": 97.17384615384617,
@@ -6734,7 +6926,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-484",
+        "id": "demo-490",
         "fixtureId": "strobe-3",
         "startSec": 96.94307692307693,
         "endSec": 97.17384615384617,
@@ -6743,7 +6935,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-473",
+        "id": "demo-479",
         "fixtureId": "strobe-0",
         "startSec": 97.4046153846154,
         "endSec": 97.63538461538462,
@@ -6752,7 +6944,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-477",
+        "id": "demo-483",
         "fixtureId": "strobe-1",
         "startSec": 97.4046153846154,
         "endSec": 97.63538461538462,
@@ -6761,7 +6953,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-481",
+        "id": "demo-487",
         "fixtureId": "strobe-2",
         "startSec": 97.4046153846154,
         "endSec": 97.63538461538462,
@@ -6770,7 +6962,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-485",
+        "id": "demo-491",
         "fixtureId": "strobe-3",
         "startSec": 97.4046153846154,
         "endSec": 97.63538461538462,
@@ -6779,7 +6971,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-548",
+        "id": "demo-554",
         "fixtureId": "laser-0",
         "startSec": 97.86615384615385,
         "endSec": 98.78923076923077,
@@ -6788,7 +6980,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-550",
+        "id": "demo-556",
         "fixtureId": "laser-1",
         "startSec": 97.86615384615385,
         "endSec": 98.78923076923077,
@@ -6797,7 +6989,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-490",
+        "id": "demo-496",
         "fixtureId": "mh-front-0",
         "startSec": 97.86615384615385,
         "endSec": 98.78923076923077,
@@ -6806,7 +6998,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-492",
+        "id": "demo-498",
         "fixtureId": "mh-front-1",
         "startSec": 97.86615384615385,
         "endSec": 98.78923076923077,
@@ -6815,7 +7007,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-494",
+        "id": "demo-500",
         "fixtureId": "mh-front-2",
         "startSec": 97.86615384615385,
         "endSec": 98.78923076923077,
@@ -6824,7 +7016,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-496",
+        "id": "demo-502",
         "fixtureId": "mh-front-3",
         "startSec": 97.86615384615385,
         "endSec": 98.78923076923077,
@@ -6833,7 +7025,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-498",
+        "id": "demo-504",
         "fixtureId": "mh-front-4",
         "startSec": 97.86615384615385,
         "endSec": 98.78923076923077,
@@ -6842,7 +7034,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-500",
+        "id": "demo-506",
         "fixtureId": "mh-front-5",
         "startSec": 97.86615384615385,
         "endSec": 98.78923076923077,
@@ -6851,7 +7043,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-502",
+        "id": "demo-508",
         "fixtureId": "mh-front-6",
         "startSec": 97.86615384615385,
         "endSec": 98.78923076923077,
@@ -6860,7 +7052,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-504",
+        "id": "demo-510",
         "fixtureId": "mh-front-7",
         "startSec": 97.86615384615385,
         "endSec": 98.78923076923077,
@@ -6869,7 +7061,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-506",
+        "id": "demo-512",
         "fixtureId": "mh-front-8",
         "startSec": 97.86615384615385,
         "endSec": 98.78923076923077,
@@ -6878,7 +7070,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-508",
+        "id": "demo-514",
         "fixtureId": "mh-front-9",
         "startSec": 97.86615384615385,
         "endSec": 98.78923076923077,
@@ -6887,7 +7079,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-510",
+        "id": "demo-516",
         "fixtureId": "mh-rear-0",
         "startSec": 97.86615384615385,
         "endSec": 98.78923076923077,
@@ -6896,7 +7088,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-512",
+        "id": "demo-518",
         "fixtureId": "mh-rear-1",
         "startSec": 97.86615384615385,
         "endSec": 98.78923076923077,
@@ -6905,7 +7097,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-514",
+        "id": "demo-520",
         "fixtureId": "mh-rear-2",
         "startSec": 97.86615384615385,
         "endSec": 98.78923076923077,
@@ -6914,7 +7106,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-516",
+        "id": "demo-522",
         "fixtureId": "mh-rear-3",
         "startSec": 97.86615384615385,
         "endSec": 98.78923076923077,
@@ -6923,7 +7115,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-518",
+        "id": "demo-524",
         "fixtureId": "mh-rear-4",
         "startSec": 97.86615384615385,
         "endSec": 98.78923076923077,
@@ -6932,7 +7124,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-520",
+        "id": "demo-526",
         "fixtureId": "mh-rear-5",
         "startSec": 97.86615384615385,
         "endSec": 98.78923076923077,
@@ -6941,8 +7133,80 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-528",
+        "id": "demo-534",
         "fixtureId": "par-0",
+        "startSec": 97.86615384615385,
+        "endSec": 99.71230769230769,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-535",
+        "fixtureId": "par-1",
+        "startSec": 97.86615384615385,
+        "endSec": 99.71230769230769,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-536",
+        "fixtureId": "par-2",
+        "startSec": 97.86615384615385,
+        "endSec": 99.71230769230769,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-537",
+        "fixtureId": "par-3",
+        "startSec": 97.86615384615385,
+        "endSec": 99.71230769230769,
+        "action": "hold",
+        "colorIndex": 4,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-538",
+        "fixtureId": "strobe-0",
+        "startSec": 97.86615384615385,
+        "endSec": 98.09692307692308,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-542",
+        "fixtureId": "strobe-1",
+        "startSec": 97.86615384615385,
+        "endSec": 98.09692307692308,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-546",
+        "fixtureId": "strobe-2",
+        "startSec": 97.86615384615385,
+        "endSec": 98.09692307692308,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-550",
+        "fixtureId": "strobe-3",
+        "startSec": 97.86615384615385,
+        "endSec": 98.09692307692308,
+        "action": "strobe",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-528",
+        "fixtureId": "wash-0",
         "startSec": 97.86615384615385,
         "endSec": 99.71230769230769,
         "action": "hold",
@@ -6951,16 +7215,16 @@
       },
       {
         "id": "demo-529",
-        "fixtureId": "par-1",
+        "fixtureId": "wash-1",
         "startSec": 97.86615384615385,
         "endSec": 99.71230769230769,
         "action": "hold",
-        "colorIndex": 4,
+        "colorIndex": 2,
         "fadeInSec": 0
       },
       {
         "id": "demo-530",
-        "fixtureId": "par-2",
+        "fixtureId": "wash-2",
         "startSec": 97.86615384615385,
         "endSec": 99.71230769230769,
         "action": "hold",
@@ -6969,78 +7233,6 @@
       },
       {
         "id": "demo-531",
-        "fixtureId": "par-3",
-        "startSec": 97.86615384615385,
-        "endSec": 99.71230769230769,
-        "action": "hold",
-        "colorIndex": 4,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-532",
-        "fixtureId": "strobe-0",
-        "startSec": 97.86615384615385,
-        "endSec": 98.09692307692308,
-        "action": "strobe",
-        "colorIndex": 6,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-536",
-        "fixtureId": "strobe-1",
-        "startSec": 97.86615384615385,
-        "endSec": 98.09692307692308,
-        "action": "strobe",
-        "colorIndex": 6,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-540",
-        "fixtureId": "strobe-2",
-        "startSec": 97.86615384615385,
-        "endSec": 98.09692307692308,
-        "action": "strobe",
-        "colorIndex": 6,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-544",
-        "fixtureId": "strobe-3",
-        "startSec": 97.86615384615385,
-        "endSec": 98.09692307692308,
-        "action": "strobe",
-        "colorIndex": 6,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-522",
-        "fixtureId": "wash-0",
-        "startSec": 97.86615384615385,
-        "endSec": 99.71230769230769,
-        "action": "hold",
-        "colorIndex": 4,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-523",
-        "fixtureId": "wash-1",
-        "startSec": 97.86615384615385,
-        "endSec": 99.71230769230769,
-        "action": "hold",
-        "colorIndex": 2,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-524",
-        "fixtureId": "wash-2",
-        "startSec": 97.86615384615385,
-        "endSec": 99.71230769230769,
-        "action": "hold",
-        "colorIndex": 4,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-525",
         "fixtureId": "wash-3",
         "startSec": 97.86615384615385,
         "endSec": 99.71230769230769,
@@ -7049,7 +7241,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-526",
+        "id": "demo-532",
         "fixtureId": "wash-4",
         "startSec": 97.86615384615385,
         "endSec": 99.71230769230769,
@@ -7058,7 +7250,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-527",
+        "id": "demo-533",
         "fixtureId": "wash-5",
         "startSec": 97.86615384615385,
         "endSec": 99.71230769230769,
@@ -7067,7 +7259,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-533",
+        "id": "demo-539",
         "fixtureId": "strobe-0",
         "startSec": 98.32769230769232,
         "endSec": 98.55846153846154,
@@ -7076,7 +7268,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-537",
+        "id": "demo-543",
         "fixtureId": "strobe-1",
         "startSec": 98.32769230769232,
         "endSec": 98.55846153846154,
@@ -7085,7 +7277,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-541",
+        "id": "demo-547",
         "fixtureId": "strobe-2",
         "startSec": 98.32769230769232,
         "endSec": 98.55846153846154,
@@ -7094,7 +7286,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-545",
+        "id": "demo-551",
         "fixtureId": "strobe-3",
         "startSec": 98.32769230769232,
         "endSec": 98.55846153846154,
@@ -7103,7 +7295,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-549",
+        "id": "demo-555",
         "fixtureId": "laser-0",
         "startSec": 98.78923076923077,
         "endSec": 99.71230769230769,
@@ -7112,35 +7304,8 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-551",
+        "id": "demo-557",
         "fixtureId": "laser-1",
-        "startSec": 98.78923076923077,
-        "endSec": 99.71230769230769,
-        "action": "sweep",
-        "colorIndex": 3,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-491",
-        "fixtureId": "mh-front-0",
-        "startSec": 98.78923076923077,
-        "endSec": 99.71230769230769,
-        "action": "sweep",
-        "colorIndex": 3,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-493",
-        "fixtureId": "mh-front-1",
-        "startSec": 98.78923076923077,
-        "endSec": 99.71230769230769,
-        "action": "sweep",
-        "colorIndex": 2,
-        "fadeInSec": 0
-      },
-      {
-        "id": "demo-495",
-        "fixtureId": "mh-front-2",
         "startSec": 98.78923076923077,
         "endSec": 99.71230769230769,
         "action": "sweep",
@@ -7149,6 +7314,33 @@
       },
       {
         "id": "demo-497",
+        "fixtureId": "mh-front-0",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-499",
+        "fixtureId": "mh-front-1",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 2,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-501",
+        "fixtureId": "mh-front-2",
+        "startSec": 98.78923076923077,
+        "endSec": 99.71230769230769,
+        "action": "sweep",
+        "colorIndex": 3,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-503",
         "fixtureId": "mh-front-3",
         "startSec": 98.78923076923077,
         "endSec": 99.71230769230769,
@@ -7157,7 +7349,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-499",
+        "id": "demo-505",
         "fixtureId": "mh-front-4",
         "startSec": 98.78923076923077,
         "endSec": 99.71230769230769,
@@ -7166,7 +7358,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-501",
+        "id": "demo-507",
         "fixtureId": "mh-front-5",
         "startSec": 98.78923076923077,
         "endSec": 99.71230769230769,
@@ -7175,7 +7367,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-503",
+        "id": "demo-509",
         "fixtureId": "mh-front-6",
         "startSec": 98.78923076923077,
         "endSec": 99.71230769230769,
@@ -7184,7 +7376,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-505",
+        "id": "demo-511",
         "fixtureId": "mh-front-7",
         "startSec": 98.78923076923077,
         "endSec": 99.71230769230769,
@@ -7193,7 +7385,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-507",
+        "id": "demo-513",
         "fixtureId": "mh-front-8",
         "startSec": 98.78923076923077,
         "endSec": 99.71230769230769,
@@ -7202,7 +7394,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-509",
+        "id": "demo-515",
         "fixtureId": "mh-front-9",
         "startSec": 98.78923076923077,
         "endSec": 99.71230769230769,
@@ -7211,7 +7403,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-511",
+        "id": "demo-517",
         "fixtureId": "mh-rear-0",
         "startSec": 98.78923076923077,
         "endSec": 99.71230769230769,
@@ -7220,7 +7412,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-513",
+        "id": "demo-519",
         "fixtureId": "mh-rear-1",
         "startSec": 98.78923076923077,
         "endSec": 99.71230769230769,
@@ -7229,7 +7421,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-515",
+        "id": "demo-521",
         "fixtureId": "mh-rear-2",
         "startSec": 98.78923076923077,
         "endSec": 99.71230769230769,
@@ -7238,7 +7430,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-517",
+        "id": "demo-523",
         "fixtureId": "mh-rear-3",
         "startSec": 98.78923076923077,
         "endSec": 99.71230769230769,
@@ -7247,7 +7439,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-519",
+        "id": "demo-525",
         "fixtureId": "mh-rear-4",
         "startSec": 98.78923076923077,
         "endSec": 99.71230769230769,
@@ -7256,7 +7448,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-521",
+        "id": "demo-527",
         "fixtureId": "mh-rear-5",
         "startSec": 98.78923076923077,
         "endSec": 99.71230769230769,
@@ -7265,7 +7457,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-534",
+        "id": "demo-540",
         "fixtureId": "strobe-0",
         "startSec": 98.78923076923077,
         "endSec": 99.02000000000001,
@@ -7274,7 +7466,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-538",
+        "id": "demo-544",
         "fixtureId": "strobe-1",
         "startSec": 98.78923076923077,
         "endSec": 99.02000000000001,
@@ -7283,7 +7475,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-542",
+        "id": "demo-548",
         "fixtureId": "strobe-2",
         "startSec": 98.78923076923077,
         "endSec": 99.02000000000001,
@@ -7292,7 +7484,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-546",
+        "id": "demo-552",
         "fixtureId": "strobe-3",
         "startSec": 98.78923076923077,
         "endSec": 99.02000000000001,
@@ -7301,7 +7493,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-535",
+        "id": "demo-541",
         "fixtureId": "strobe-0",
         "startSec": 99.25076923076924,
         "endSec": 99.48153846153846,
@@ -7310,7 +7502,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-539",
+        "id": "demo-545",
         "fixtureId": "strobe-1",
         "startSec": 99.25076923076924,
         "endSec": 99.48153846153846,
@@ -7319,7 +7511,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-543",
+        "id": "demo-549",
         "fixtureId": "strobe-2",
         "startSec": 99.25076923076924,
         "endSec": 99.48153846153846,
@@ -7328,7 +7520,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-547",
+        "id": "demo-553",
         "fixtureId": "strobe-3",
         "startSec": 99.25076923076924,
         "endSec": 99.48153846153846,
@@ -7337,7 +7529,25 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-578",
+        "id": "demo-432",
+        "fixtureId": "cryo-0",
+        "startSec": 99.71230769230769,
+        "endSec": 100.63538461538461,
+        "action": "fire",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-433",
+        "fixtureId": "cryo-1",
+        "startSec": 99.71230769230769,
+        "endSec": 100.63538461538461,
+        "action": "fire",
+        "colorIndex": 6,
+        "fadeInSec": 0
+      },
+      {
+        "id": "demo-584",
         "fixtureId": "laser-0",
         "startSec": 99.71230769230769,
         "endSec": 103.4046153846154,
@@ -7346,7 +7556,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-579",
+        "id": "demo-585",
         "fixtureId": "laser-1",
         "startSec": 99.71230769230769,
         "endSec": 103.4046153846154,
@@ -7355,7 +7565,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-558",
+        "id": "demo-564",
         "fixtureId": "mh-front-0",
         "startSec": 99.71230769230769,
         "endSec": 103.4046153846154,
@@ -7364,7 +7574,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-563",
+        "id": "demo-569",
         "fixtureId": "mh-front-5",
         "startSec": 99.71230769230769,
         "endSec": 103.4046153846154,
@@ -7373,7 +7583,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-568",
+        "id": "demo-574",
         "fixtureId": "mh-rear-0",
         "startSec": 99.71230769230769,
         "endSec": 103.4046153846154,
@@ -7382,7 +7592,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-571",
+        "id": "demo-577",
         "fixtureId": "mh-rear-3",
         "startSec": 99.71230769230769,
         "endSec": 103.4046153846154,
@@ -7391,7 +7601,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-574",
+        "id": "demo-580",
         "fixtureId": "par-0",
         "startSec": 99.71230769230769,
         "endSec": 103.4046153846154,
@@ -7400,7 +7610,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-575",
+        "id": "demo-581",
         "fixtureId": "par-1",
         "startSec": 99.71230769230769,
         "endSec": 103.4046153846154,
@@ -7409,7 +7619,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-576",
+        "id": "demo-582",
         "fixtureId": "par-2",
         "startSec": 99.71230769230769,
         "endSec": 103.4046153846154,
@@ -7418,7 +7628,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-577",
+        "id": "demo-583",
         "fixtureId": "par-3",
         "startSec": 99.71230769230769,
         "endSec": 103.4046153846154,
@@ -7427,7 +7637,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-552",
+        "id": "demo-558",
         "fixtureId": "wash-0",
         "startSec": 99.71230769230769,
         "endSec": 103.4046153846154,
@@ -7436,7 +7646,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-553",
+        "id": "demo-559",
         "fixtureId": "wash-1",
         "startSec": 99.71230769230769,
         "endSec": 103.4046153846154,
@@ -7445,7 +7655,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-554",
+        "id": "demo-560",
         "fixtureId": "wash-2",
         "startSec": 99.71230769230769,
         "endSec": 103.4046153846154,
@@ -7454,7 +7664,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-555",
+        "id": "demo-561",
         "fixtureId": "wash-3",
         "startSec": 99.71230769230769,
         "endSec": 103.4046153846154,
@@ -7463,7 +7673,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-556",
+        "id": "demo-562",
         "fixtureId": "wash-4",
         "startSec": 99.71230769230769,
         "endSec": 103.4046153846154,
@@ -7472,7 +7682,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-557",
+        "id": "demo-563",
         "fixtureId": "wash-5",
         "startSec": 99.71230769230769,
         "endSec": 103.4046153846154,
@@ -7481,7 +7691,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-559",
+        "id": "demo-565",
         "fixtureId": "mh-front-1",
         "startSec": 99.86000000000001,
         "endSec": 103.4046153846154,
@@ -7490,7 +7700,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-564",
+        "id": "demo-570",
         "fixtureId": "mh-front-6",
         "startSec": 99.86000000000001,
         "endSec": 103.4046153846154,
@@ -7499,7 +7709,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-569",
+        "id": "demo-575",
         "fixtureId": "mh-rear-1",
         "startSec": 99.93384615384616,
         "endSec": 103.4046153846154,
@@ -7508,7 +7718,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-572",
+        "id": "demo-578",
         "fixtureId": "mh-rear-4",
         "startSec": 99.93384615384616,
         "endSec": 103.4046153846154,
@@ -7517,7 +7727,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-560",
+        "id": "demo-566",
         "fixtureId": "mh-front-2",
         "startSec": 100.00769230769231,
         "endSec": 103.4046153846154,
@@ -7526,7 +7736,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-565",
+        "id": "demo-571",
         "fixtureId": "mh-front-7",
         "startSec": 100.00769230769231,
         "endSec": 103.4046153846154,
@@ -7535,7 +7745,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-561",
+        "id": "demo-567",
         "fixtureId": "mh-front-3",
         "startSec": 100.15538461538462,
         "endSec": 103.4046153846154,
@@ -7544,7 +7754,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-566",
+        "id": "demo-572",
         "fixtureId": "mh-front-8",
         "startSec": 100.15538461538462,
         "endSec": 103.4046153846154,
@@ -7553,7 +7763,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-570",
+        "id": "demo-576",
         "fixtureId": "mh-rear-2",
         "startSec": 100.15538461538462,
         "endSec": 103.4046153846154,
@@ -7562,7 +7772,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-573",
+        "id": "demo-579",
         "fixtureId": "mh-rear-5",
         "startSec": 100.15538461538462,
         "endSec": 103.4046153846154,
@@ -7571,7 +7781,7 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-562",
+        "id": "demo-568",
         "fixtureId": "mh-front-4",
         "startSec": 100.30307692307693,
         "endSec": 103.4046153846154,
@@ -7580,21 +7790,13 @@
         "fadeInSec": 0
       },
       {
-        "id": "demo-567",
+        "id": "demo-573",
         "fixtureId": "mh-front-9",
         "startSec": 100.30307692307693,
         "endSec": 103.4046153846154,
         "action": "sweep",
         "colorIndex": 0,
         "fadeInSec": 0
-      },
-      {
-        "id": "cue-1",
-        "fixtureId": "mh-front-0",
-        "startSec": 61.17384615384616,
-        "endSec": 62.09692307692308,
-        "action": "sweep",
-        "colorIndex": 6
       }
     ]
   },
@@ -7604,7 +7806,7 @@
       "bloom": true,
       "shadows": true,
       "strobes": true,
-      "activeFixtureCount": 32,
+      "activeFixtureCount": 34,
       "cameraView": 0
     },
     "playback": {

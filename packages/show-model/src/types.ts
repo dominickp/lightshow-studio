@@ -11,7 +11,8 @@ export type FixtureKind =
   | 'laser'
   | 'par'
   | 'blinder'
-  | 'led-strip';
+  | 'led-strip'
+  | 'cryo-jet';
 
 /** DMX-addressable slots. Fine slots make 16-bit channel pairs explicit. */
 export type FixtureAttribute =

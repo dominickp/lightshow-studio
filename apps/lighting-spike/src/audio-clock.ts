@@ -14,11 +14,38 @@ interface LoopRegion {
   endSec: number;
 }
 
+export interface EffectPlaybackPlan {
+  /** True when the clip outlasts the sample, so the sample must repeat. */
+  loop: boolean;
+  /** Wall-clock seconds to play, or `null` for one full sample. */
+  stopAfterSec: number | null;
+}
+
+/**
+ * How a one-shot sample should fit inside a clip.
+ *
+ * The effect exists only while its clip does: a long clip repeats the sample,
+ * a short clip cuts it at the clip boundary. Kept pure so the timing rule is
+ * testable without a Web Audio context.
+ */
+export function effectPlaybackPlan(
+  sampleDurationSec: number,
+  clipDurationSec: number | undefined,
+): EffectPlaybackPlan {
+  if (clipDurationSec === undefined) return { loop: false, stopAfterSec: null };
+  const clip = Math.max(0, clipDurationSec);
+  return {
+    loop: clip > sampleDurationSec + 1e-3,
+    stopAfterSec: clip,
+  };
+}
+
 export class AudioClock {
   private readonly context: AudioContext;
   private readonly gain: GainNode;
   private buffer: AudioBuffer | null = null;
   private source: AudioBufferSourceNode | null = null;
+  private readonly effectSources = new Set<AudioBufferSourceNode>();
   private isPlaying = false;
   private anchorContextSec = 0;
   private anchorSongSec = 0;
@@ -72,6 +99,7 @@ export class AudioClock {
   load(buffer: AudioBuffer): void {
     this.pause();
     this.stopSource();
+    this.stopEffects();
     this.buffer = buffer;
     this.anchorSongSec = this.loopIsEnabled && this.loopRegion !== null ? this.loopRegion.startSec : 0;
   }
@@ -82,6 +110,51 @@ export class AudioClock {
     const now = this.context.currentTime;
     this.gain.gain.cancelScheduledValues(now);
     this.gain.gain.setTargetAtTime(target, now, 0.015);
+  }
+
+  /**
+   * Fire a one-shot sample through the master playback gain, so the effect
+   * follows the transport volume and mute. Used for performance cues such as
+   * cryo jets that have their own sound but no song-time buffer.
+   *
+   * Passing `clipDurationSec` fits the sample to the cue: it repeats when the
+   * clip is longer than the sample and is cut off when the clip is shorter.
+   */
+  playOneShot(buffer: AudioBuffer, gain = 1, rate = 1, clipDurationSec?: number): void {
+    const plan = effectPlaybackPlan(buffer.duration / Math.max(0.25, rate), clipDurationSec);
+    if (plan.stopAfterSec !== null && plan.stopAfterSec <= 0.01) return;
+
+    if (this.context.state !== 'running') void this.context.resume();
+    const source = this.context.createBufferSource();
+    source.buffer = buffer;
+    source.playbackRate.value = Math.max(0.25, Math.min(4, rate));
+    source.loop = plan.loop;
+    const level = this.context.createGain();
+    level.gain.value = clamp(gain, 0, 2);
+    source.connect(level).connect(this.gain);
+    this.effectSources.add(source);
+    source.onended = () => {
+      this.effectSources.delete(source);
+      source.disconnect();
+      level.disconnect();
+    };
+    source.start();
+    if (plan.stopAfterSec !== null) {
+      source.stop(this.context.currentTime + plan.stopAfterSec);
+    }
+  }
+
+  /** Cue sounds are part of playback, so pause/seek/load must silence them. */
+  private stopEffects(): void {
+    for (const source of this.effectSources) {
+      try {
+        source.stop();
+      } catch {
+        // Already stopped.
+      }
+      source.disconnect();
+    }
+    this.effectSources.clear();
   }
 
   setLoop(region: LoopRegion, enabled = this.loopIsEnabled): void {
@@ -110,6 +183,7 @@ export class AudioClock {
     this.isPlaying = false;
     this.anchorSongSec = now;
     this.stopSource();
+    this.stopEffects();
   }
 
   async toggle(): Promise<void> {
@@ -119,6 +193,7 @@ export class AudioClock {
 
   seek(songSec: number): void {
     if (this.buffer === null) return;
+    this.stopEffects();
     const target = this.normalizePosition(songSec);
     if (this.isPlaying) this.isPlaying = this.startSource(target);
     else this.anchorSongSec = target;

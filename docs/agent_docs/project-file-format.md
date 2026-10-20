@@ -198,7 +198,7 @@ preset action plus a palette colour.
 | `fixtureId` | Must match a `show.fixtures[].id`. Readers may drop unknown lanes. |
 | `startSec` | Non-negative. |
 | `endSec` | Positive, strictly greater than `startSec`. |
-| `action` | `hold`, `fade`, `pulse`, `sweep`, or `strobe`. |
+| `action` | `hold`, `fade`, `pulse`, `sweep`, `strobe`, or `fire`. |
 | `colorIndex` | Non-negative integer index into the app palette. Default `0`. |
 | `fadeInSec` | Optional non-negative override for the clip's fade-in. |
 

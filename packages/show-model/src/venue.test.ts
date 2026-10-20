@@ -39,6 +39,7 @@ const clubProfiles: Record<string, FixtureProfile> = {
   'generic-strobe': profile,
   'generic-laser': profile,
   'generic-par': profile,
+  'generic-cryo-jet': profile,
 };
 
 describe('anchors', () => {
@@ -135,6 +136,7 @@ describe('club stage template', () => {
     const rear = rig.find((fixture) => fixture.id === 'mh-rear-0');
     const par = rig.find((fixture) => fixture.id === 'par-0');
     const laser = rig.find((fixture) => fixture.id === 'laser-0');
+    const cryo = rig.find((fixture) => fixture.id === 'cryo-0');
 
     expect(front?.position.x).toBeCloseTo(-8.1, 9);
     expect(front?.position.y).toBeCloseTo(7.4, 9);
@@ -146,6 +148,8 @@ describe('club stage template', () => {
     expect(laser?.position.x).toBeCloseTo(-1.4, 9);
     expect(laser?.position.y).toBeCloseTo(7.5, 9);
     expect(laser?.position.z).toBeCloseTo(-5.6, 9);
+    expect(cryo?.position.x).toBeCloseTo(-10.56, 9);
+    expect(cryo?.pitchOffsetDeg).toBeCloseTo(180);
   });
 
   it('rejects an unknown profile or anchor', () => {

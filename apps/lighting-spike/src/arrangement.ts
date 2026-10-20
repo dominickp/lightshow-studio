@@ -1343,6 +1343,7 @@ export class Arrangement {
     if (this.pendingAction !== null && actionsFor(fixture).includes(this.pendingAction)) {
       return this.pendingAction;
     }
+    if (fixture.profile.kind === 'cryo-jet') return 'fire';
     return fixture.profile.capabilities.panTilt ? 'sweep' : fixture.profile.capabilities.strobe ? 'strobe' : 'hold';
   }
 
@@ -1396,21 +1397,29 @@ export function reserveCueIds(cues: readonly Cue[]): { cues: Cue[]; nextId: numb
 export function cueToClip(fixture: FixturePlacement | undefined, cue: Cue): Clip {  const caps = fixture?.profile.capabilities;
   const color = resolveCueColor(cue);
   const attrs: Clip['attributes'] = {
-    dimmer: cue.action === 'fade'
-      ? [{ at: 0, value: 0 }, { at: 1, value: 0.9 }]
-      : cue.action === 'pulse'
-        ? [
-            { at: 0, value: 0.9 },
-            { at: 0.12, value: 0.08 },
-            { at: 0.24, value: 0.9 },
-            { at: 0.36, value: 0.08 },
-            { at: 0.48, value: 0.9 },
-            { at: 0.6, value: 0.08 },
-            { at: 0.72, value: 0.9 },
-            { at: 0.84, value: 0.08 },
-            { at: 1, value: 0.9 },
-          ]
-        : [{ at: 0, value: 0.9 }],
+    dimmer: cue.action === 'fire'
+      // Brief, hard-hitting burst with a tail, the shape of a CO2 jet.
+      ? [
+          { at: 0, value: 0.15 },
+          { at: 0.04, value: 1 },
+          { at: 0.78, value: 0.85 },
+          { at: 1, value: 0 },
+        ]
+      : cue.action === 'fade'
+        ? [{ at: 0, value: 0 }, { at: 1, value: 0.9 }]
+        : cue.action === 'pulse'
+          ? [
+              { at: 0, value: 0.9 },
+              { at: 0.12, value: 0.08 },
+              { at: 0.24, value: 0.9 },
+              { at: 0.36, value: 0.08 },
+              { at: 0.48, value: 0.9 },
+              { at: 0.6, value: 0.08 },
+              { at: 0.72, value: 0.9 },
+              { at: 0.84, value: 0.08 },
+              { at: 1, value: 0.9 },
+            ]
+          : [{ at: 0, value: 0.9 }],
   };
 
   if (caps?.color) {

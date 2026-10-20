@@ -17,7 +17,7 @@ import { DEFAULT_VENUE_ID } from './venue';
 export const PROJECT_FORMAT = 'dmxsim-project';
 export const PROJECT_VERSION = 2;
 
-export const CUE_ACTIONS = ['hold', 'fade', 'pulse', 'sweep', 'strobe'] as const;
+export const CUE_ACTIONS = ['hold', 'fade', 'pulse', 'sweep', 'strobe', 'fire'] as const;
 export type ProjectCueAction = (typeof CUE_ACTIONS)[number];
 
 const FIXTURE_KINDS = [
@@ -28,6 +28,7 @@ const FIXTURE_KINDS = [
   'par',
   'blinder',
   'led-strip',
+  'cryo-jet',
 ] as const;
 
 const FIXTURE_ATTRIBUTES = [

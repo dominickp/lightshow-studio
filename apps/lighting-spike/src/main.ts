@@ -19,6 +19,8 @@ import { PROFILE_LIBRARY } from '@dmxsim/fixtures';
 import { createDemoRig } from './demo-rig';
 import { createDemoCues } from './demo-arrangement';
 import { AudioClock } from './audio-clock';
+import { CryoJetAudio } from './cryo-jet-audio';
+import cryoJetSfxUrl from './assets/cryo-jet.ogg?url';
 import { loopEndSec, loopStartSec, TRACK, TRACK_URL } from './track';
 import { computePeaks, WaveformStrip } from './waveform';
 import demoProjectUrl from '../../../resources/sample_projects/koto-chill/koto-chill.dmxsim?url';
@@ -136,6 +138,8 @@ stage.camera.aspect = viewport.clientWidth / Math.max(1, viewport.clientHeight);
 stage.camera.updateProjectionMatrix();
 const post = new Post(renderer, stage.scene, stage.camera);
 const clock = new AudioClock();
+const cryoAudio = new CryoJetAudio(clock);
+void cryoAudio.load(cryoJetSfxUrl);
 clock.setLoop({ startSec: loopStartSec, endSec: loopEndSec }, true);
 
 let volumetrics = true;
@@ -219,6 +223,7 @@ const ui = {
   arrangementScroll: element('arrangement-scroll'),
   ruler: element<HTMLCanvasElement>('timeline-ruler'),
   cueAction: element<HTMLSelectElement>('cue-action'),
+  cueColorField: element('cue-color-field'),
   cueColor: element('cue-color'),
   cueDelete: element<HTMLButtonElement>('btn-cue-delete'),
   colorPicker: element<HTMLElement>('color-picker'),
@@ -314,6 +319,7 @@ const kindLabel = (kind: string): string =>
 
 /** Capability badges shown in the fixture panel; only what the profile supports. */
 const fixtureCapabilityLabels = (fixture: (typeof show.fixtures)[number]): string[] => {
+  if (fixture.profile.kind === 'cryo-jet') return ['CO2 jet', 'Spray level'];
   const caps = fixture.profile.capabilities;
   return [
     caps.dimmer ? 'Dimmer' : null,
@@ -475,6 +481,9 @@ const syncCueInspector = (
   ui.cueAction.disabled = fixture === null;
   ui.cueAction.value = mixed ? '' : cue?.action ?? arrangement.suggestedAction;
   const colorEnabled = fixture !== null && Boolean(fixture.profile.capabilities.color);
+  // Do not show a disabled colour picker for fixtures that cannot mix colour.
+  ui.cueColorField.hidden = !colorEnabled;
+  if (!colorEnabled) closeColorPicker();
   const override = cue?.colorOverride ?? (cue === null ? arrangement.suggestedColorOverride ?? undefined : undefined);
   syncColorSwatches(cue?.colorIndex ?? arrangement.suggestedColorIndex, override, colorEnabled);
   ui.cueDelete.disabled = count === 0;
@@ -2248,7 +2257,16 @@ const frame = (now: number): void => {
       : state;
   });
 
-  stage.update(states, showAt, { volumetrics });
+  cryoAudio.update(states, songTime, clock.playing, (fixtureId) => {
+    let endSec: number | null = null;
+    for (const cue of cuesByFixture.get(fixtureId) ?? []) {
+      if (songTime < cue.startSec || songTime > cue.endSec) continue;
+      if (endSec === null || cue.endSec > endSec) endSec = cue.endSec;
+    }
+    return endSec;
+  });
+
+  stage.update(states, showAt, { volumetrics, playing: clock.playing });
   post.setTime(showAt);
   renderer.info.reset();
   post.render();

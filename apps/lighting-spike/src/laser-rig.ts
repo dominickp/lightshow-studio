@@ -19,6 +19,7 @@ import type {
 } from '@dmxsim/show-model';
 import { FixtureRig, intersectSurfaces, type SurfaceHit } from './rig';
 import type { FixtureUpdateOptions } from './rig';
+import { CryoJetRig } from './cryo-jet-rig';
 
 const DEG = Math.PI / 180;
 
@@ -429,9 +430,13 @@ export class LaserRig {
 }
 
 /**
- * Rig factory: lasers get the dedicated beam renderer (ADR-012), everything
- * else the cone-based moving-head path.
+ * Rig factory: lasers get the dedicated beam renderer (ADR-012), cryo jets the
+ * vapour plume, everything else the cone-based moving-head path.
  */
-export function createFixtureRig(placement: FixturePlacement): FixtureRig | LaserRig {
-  return placement.profile.kind === 'laser' ? new LaserRig(placement) : new FixtureRig(placement);
+export function createFixtureRig(
+  placement: FixturePlacement,
+): FixtureRig | LaserRig | CryoJetRig {
+  if (placement.profile.kind === 'laser') return new LaserRig(placement);
+  if (placement.profile.kind === 'cryo-jet') return new CryoJetRig(placement);
+  return new FixtureRig(placement);
 }

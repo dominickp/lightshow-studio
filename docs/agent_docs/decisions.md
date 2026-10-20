@@ -189,3 +189,23 @@ Short form: context → decision → consequence. Update or supersede rather tha
 - Laser safety is limited to a show-level master enable and a scene-wide beam budget. No photosensitivity warning is planned (user decision, 2026-10-18); do not re-add one without being asked.
 - Beam visibility is a function of atmospheric haze, not a per-fixture brightness multiplier. The laser and spot shaders read a shared haze value from the start, so adding fog/haze machines changes one input instead of rewriting materials. At zero haze, a laser shows its emitter and surface dot only.
 
+---
+
+## ADR-013 — Cryo jets are fixtures with a clip-driven plume and cue SFX
+
+**Context.** Cold-spray jets are a stage effect rather than a light, but they need to be placed, hidden, and choreographed with everything else. The user also supplied a one-shot sound effect that has to fire when a jet fires.
+
+**Decision.**
+- Add a `cryo-jet` fixture kind with a `dimmer` channel only. The dimmer is the spray level, so the existing clip evaluator drives it with no parallel effect timeline.
+- A `fire` cue action is the jet's authored vocabulary. It maps to a short attack/hold/decay dimmer envelope; other fixture kinds do not offer it.
+- `CryoJetRig` renders a widening, noise-driven vapour cone plus a nozzle and ground mist. The plume launches from the nozzle over ~0.16 s when a fire clip starts, then shakes vertically and wanders sideways with rapid multi-frequency flutter while firing; two scrolling noise octaves and a swirling sample rotation keep the surface churning. It is driven from clip intensity and song time, so scrubbing to a firing frame shows the settled plume rather than a frozen first frame. The effect meshes render an invisible warm-up pass at load, so their shader pipelines compile before the first cue instead of stalling playback.
+- The plume follows the fixture's local `-Y`, exactly like a beam. A floor jet authored with a 180° mount pitch fires straight up; adding one on the riser does this by default.
+- `CryoJetAudio` decodes the bundled one-shot sample at startup and triggers it on the rising edge of a jet's spray level during playback. The sample is fitted to the clip: it repeats when the clip outlasts the sample, and is cut off when the clip ends first. Simultaneous jets with the same remaining duration share one sample at a slightly louder level. Frames that jump more than 0.3 s forward or any distance backward update tracking without firing, so scrubbing is silent. Pause and seek stop any cue sound already in flight.
+- The sound routes through the transport master gain, so mute and playback volume apply. Cryo jets are excluded from the room-light/ambient aggregation.
+
+**Consequences.**
+- The project schema grows additively: `cryo-jet` in the kind enum and `fire` in the cue-action enum. Older files remain valid.
+- Seeking into the middle of a fire clip does not replay its sound; resuming mid-clip is treated as already firing. A later loop pass triggers again when the clip start is crossed.
+- A future particle/stateful plume can replace the shader internals behind the same fixture, `fire` action, and `FixtureState` without changing the document format.
+- The sound file is bundled with the app. User-replaceable per-jet samples would need a project-audio field and are deferred.
+

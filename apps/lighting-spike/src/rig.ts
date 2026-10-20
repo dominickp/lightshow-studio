@@ -18,6 +18,8 @@ const DEG = Math.PI / 180;
 /** Per-frame inputs a fixture rig needs beyond its own state. */
 export interface FixtureUpdateOptions {
   volumetrics: boolean;
+  /** True while the transport is playing; cue effects freeze when paused. */
+  playing?: boolean;
   /** Scene haze, 0..1. Beams are only visible when light scatters off it. */
   haze: number;
   camera: THREE.Camera;

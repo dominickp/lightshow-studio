@@ -7,6 +7,7 @@ export const kindLabel = (kind: string): string =>
   kind.split('-').map((word) => word[0]!.toUpperCase() + word.slice(1)).join(' ');
 
 export const capabilitySummary = (fixture: FixturePlacement): string => {
+  if (fixture.profile.kind === 'cryo-jet') return 'Cold spray';
   const caps = fixture.profile.capabilities;
   return [
     caps.dimmer ? 'Dim' : null,
@@ -17,6 +18,7 @@ export const capabilitySummary = (fixture: FixturePlacement): string => {
 };
 
 export const trackColor = (fixture: FixturePlacement): string => {
+  if (fixture.profile.kind === 'cryo-jet') return '#b6f2ff';
   if (fixture.profile.capabilities.panTilt) return '#41a8ff';
   if (fixture.profile.capabilities.strobe) return '#ff7e53';
   return '#56d3aa';

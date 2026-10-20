@@ -224,6 +224,8 @@ const ui = {
   hazeValue: element('haze-value'),
   view: element<HTMLButtonElement>('btn-view'),
   orbit: element<HTMLButtonElement>('btn-orbit'),
+  orbitPill: element<HTMLElement>('orbit-pill'),
+  orbitPillLabel: element('orbit-pill-label'),
   count: element<HTMLButtonElement>('btn-count'),
     stats: element<HTMLButtonElement>('btn-stats'),
     dock: element('timeline-dock'),
@@ -1309,6 +1311,19 @@ const persistRender = (): void => {
   writePreference(RENDER_KEY, next);
 };
 
+/**
+ * The camera-mode pill always sits on the viewport: "Orbit" while the auto-orbit
+ * follows playback, "Static" when it is off. The `o` hotkey hint stays visible.
+ */
+let orbitPillState = '';
+const updateOrbitPill = (): void => {
+  const state = stage.orbitEnabled ? 'orbit' : 'static';
+  if (state === orbitPillState) return;
+  orbitPillState = state;
+  ui.orbitPill.dataset.state = state;
+  ui.orbitPillLabel.textContent = state === 'orbit' ? 'Orbit' : 'Static';
+};
+
 const syncButtons = (): void => {
   ui.play.classList.toggle('on', clock.playing);
   ui.play.textContent = clock.playing ? '❚❚ Pause' : '▶ Play';
@@ -1323,6 +1338,7 @@ const syncButtons = (): void => {
   ui.count.querySelector('em')!.textContent = String(activeCount);
   ui.orbit.classList.toggle('on', stage.orbitEnabled);
   ui.orbit.setAttribute('aria-pressed', String(stage.orbitEnabled));
+  updateOrbitPill();
   persistRender();
 };
 
@@ -2805,7 +2821,7 @@ const applyProjectSettings = (settings: ProjectSettings, source: 'project' | 'de
   const presetIndex = presets.indexOf(requested);
   countIndex = presetIndex >= 0 ? presetIndex : presets.length - 1;
   stage.setView(local.cameraView ?? settings.render.cameraView, true);
-  stage.setOrbit(local.orbit ?? false);
+  stage.setOrbit(local.orbit ?? true);
 
   volume = settings.playback.volume;
   muted = settings.playback.muted;

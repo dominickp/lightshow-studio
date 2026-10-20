@@ -114,7 +114,8 @@ export class Stage {
   private haze = 0.65;
   private readonly beatSec: number;
   private viewIndex = 0;
-  private orbit = false;
+  /** Auto-orbit is on by default; the camera follows playback unless turned off. */
+  private orbit = true;
   /** Sweep direction: +1 towards +X, -1 back towards -X. */
   private orbitDirection = 1;
   private orbitLastMs = 0;
@@ -559,7 +560,15 @@ export class Stage {
     }
 
     this.controls.update();
-    if (this.orbit) this.stepOrbit();
+    if (this.orbit) {
+      if (options.playing ?? true) {
+        this.stepOrbit();
+      } else {
+        // Freeze the sweep while the transport is paused, and clear the clock
+        // so resuming does not jump forward by the paused duration.
+        this.orbitLastMs = 0;
+      }
+    }
 
     const beatPhase = (timeSec / this.beatSec) % 1;
     const energy = Math.exp(-beatPhase * 3.2) * 0.75 + 0.25;

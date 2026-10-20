@@ -49,6 +49,45 @@
         user-select: none;
       }
 
+      /* Always-visible camera-mode badge: reads "Orbit" while the auto-orbit
+         follows playback and "Static" when it is off. It keeps the same grey
+         styling in both states — only the label changes. */
+      #orbit-pill {
+        position: absolute;
+        right: 12px;
+        bottom: 12px;
+        z-index: 5;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 999px;
+        background: rgba(10, 14, 20, 0.66);
+        backdrop-filter: blur(8px);
+        color: var(--dim);
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        user-select: none;
+        pointer-events: none;
+      }
+      #orbit-pill::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+      #orbit-pill kbd {
+        padding: 0 4px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 3px;
+        color: var(--dim);
+        font: inherit;
+        text-transform: none;
+      }
+
       #stats { top: 12px; left: 12px; min-width: 172px; }
       #stats[hidden] { display: none; }
       #stats .row { display: flex; justify-content: space-between; gap: 18px; }

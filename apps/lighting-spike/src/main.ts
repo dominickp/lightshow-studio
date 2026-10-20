@@ -45,6 +45,7 @@ import {
   type Cue,
   type CueColorOverride,
   type CueTimeline,
+  type TimelineMode,
   createRuler,
 } from './arrangement';
 import { kelvinToCss, kelvinToRgb } from './kelvin';
@@ -235,6 +236,10 @@ const ui = {
   follow: element<HTMLButtonElement>('btn-follow'),
   rulerPlayhead: element('ruler-playhead'),
   selectedFixture: element('selected-fixture'),
+  modeDrop: element<HTMLButtonElement>('btn-mode-drop'),
+  modeSelect: element<HTMLButtonElement>('btn-mode-select'),
+  cueCopy: element<HTMLButtonElement>('btn-cue-copy'),
+  cuePaste: element<HTMLButtonElement>('btn-cue-paste'),
   loading: element('loading'),
   setupDimmer: element<HTMLInputElement>('setup-dimmer'),
   setupDimmerValue: element('setup-dimmer-value'),
@@ -369,10 +374,17 @@ const syncPanelHeader = (fixture: Fixture | null): void => {
     : `${mountLabel(fixture)} · ${fixture.profile.channels.length} DMX channels`;
 };
 
-const syncCueInspector = (fixture: (typeof show.fixtures)[number] | null, cue: Cue | null): void => {
+const syncCueInspector = (
+  fixture: (typeof show.fixtures)[number] | null,
+  cues: readonly Cue[],
+): void => {
+  const cue = cues[0] ?? null;
+  const count = cues.length;
   const label = fixture === null ? null : arrangement.labelFor(fixture);
-  ui.selectedFixture.textContent = label ?? 'None selected';
-  ui.selectedFixture.classList.toggle('empty', label === null);
+  ui.selectedFixture.textContent = count > 1
+    ? `${count} clips selected`
+    : label ?? 'None selected';
+  ui.selectedFixture.classList.toggle('empty', count === 0);
   syncPanelHeader(fixture);
   renderPanelCapabilities(fixture);
   if (sidePanelOpen) sidePanelFixtureId = fixture?.id ?? null;
@@ -446,13 +458,27 @@ const syncCueInspector = (fixture: (typeof show.fixtures)[number] | null, cue: C
     option.textContent = action[0]!.toUpperCase() + action.slice(1);
     return option;
   }));
+  // A multi-selection with different actions shows "Mixed"; picking an action
+  // then applies it to every selected clip the fixture supports.
+  const actions = new Set(cues.map((item) => item.action));
+  const mixed = actions.size > 1;
+  if (mixed) {
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'Mixed';
+    placeholder.disabled = true;
+    ui.cueAction.prepend(placeholder);
+  }
   ui.cueAction.disabled = fixture === null;
-  ui.cueAction.value = cue?.action ?? arrangement.suggestedAction;
+  ui.cueAction.value = mixed ? '' : cue?.action ?? arrangement.suggestedAction;
   const colorEnabled = fixture !== null && Boolean(fixture.profile.capabilities.color);
   const override = cue?.colorOverride ?? (cue === null ? arrangement.suggestedColorOverride ?? undefined : undefined);
   syncColorSwatches(cue?.colorIndex ?? arrangement.suggestedColorIndex, override, colorEnabled);
-  ui.cueDelete.disabled = cue === null;
-  ui.cueDelete.hidden = cue === null;
+  ui.cueDelete.disabled = count === 0;
+  ui.cueDelete.hidden = count === 0;
+  ui.cueDelete.textContent = count > 1 ? `Delete ${count} clips` : 'Delete clip';
+  ui.cueCopy.disabled = count === 0;
+  ui.cuePaste.disabled = !arrangement.canPaste;
   syncActiveFixture();
 };
 
@@ -649,14 +675,33 @@ const indexCues = (): void => {
 arrangement = new Arrangement(ui.arrangement, ui.arrangementScroll, show.fixtures, (nextCues) => {
   cues = nextCues;
   indexCues();
-  syncCueInspector(arrangement.selectedFixture, arrangement.selectedCue);
-}, (fixture, cue) => {
-  syncCueInspector(fixture, cue);
+  syncCueInspector(arrangement.selectedFixture, arrangement.selectedCues);
+}, (fixture, selectedCues) => {
+  syncCueInspector(fixture, selectedCues);
 }, (fixtureId, hidden) => {
   stage.setFixtureHidden(fixtureId, hidden);
 }, (fixture) => {
   toggleSidePanel(fixture.id);
 });
+
+// --- Timeline modes (drop / select) ---------------------------------------
+
+const TIMELINE_MODE_KEY = 'dmxsim.spike.timelineMode';
+
+const applyTimelineMode = (mode: TimelineMode, persist = true): void => {
+  arrangement.setMode(mode);
+  const dropMode = mode === 'drop';
+  ui.modeDrop.setAttribute('aria-pressed', String(dropMode));
+  ui.modeSelect.setAttribute('aria-pressed', String(!dropMode));
+  ui.modeDrop.classList.toggle('on', dropMode);
+  ui.modeSelect.classList.toggle('on', !dropMode);
+  if (!dropMode) ui.arrangementScroll.classList.remove('loop-mode');
+  if (persist) localStorage.setItem(TIMELINE_MODE_KEY, mode);
+};
+
+ui.modeDrop.addEventListener('click', () => applyTimelineMode('drop'));
+ui.modeSelect.addEventListener('click', () => applyTimelineMode('select'));
+applyTimelineMode(localStorage.getItem(TIMELINE_MODE_KEY) === 'select' ? 'select' : 'drop', false);
 
 // --- Rig editing (M3) ------------------------------------------------------
 
@@ -1418,6 +1463,52 @@ ui.sidePanelResizer.addEventListener('pointerdown', (event) => {
 applyPanelWidth();
 applySidePanel();
 
+// --- Middle-button panning ------------------------------------------------
+// The scroller wraps the ruler, waveform and lanes, so one gesture pans the
+// whole timeline regardless of which of those the user grabbed. Capture phase
+// plus stopImmediatePropagation keeps scrub/draw/seek handlers out of it.
+let timelinePan: { pointerId: number; startX: number; startScrollLeft: number } | null = null;
+
+const endTimelinePan = (event?: PointerEvent): void => {
+  if (timelinePan === null) return;
+  if (event !== undefined && event.pointerId !== timelinePan.pointerId) return;
+  const pointerId = timelinePan.pointerId;
+  timelinePan = null;
+  ui.arrangementScroll.classList.remove('panning');
+  if (ui.arrangementScroll.hasPointerCapture(pointerId)) {
+    ui.arrangementScroll.releasePointerCapture(pointerId);
+  }
+};
+
+ui.arrangementScroll.addEventListener('pointerdown', (event) => {
+  if (event.button !== 1) return;
+  // Claim the middle button so the browser does not start autoscroll or
+  // middle-click paste, and so the lane/waveform/ruler handlers never see it.
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  endTimelinePan();
+  timelinePan = {
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startScrollLeft: ui.arrangementScroll.scrollLeft,
+  };
+  ui.arrangementScroll.classList.add('panning');
+  ui.arrangementScroll.setPointerCapture(event.pointerId);
+}, { capture: true });
+
+ui.arrangementScroll.addEventListener('pointermove', (event) => {
+  if (timelinePan === null || event.pointerId !== timelinePan.pointerId) return;
+  event.preventDefault();
+  ui.arrangementScroll.scrollLeft = timelinePan.startScrollLeft - (event.clientX - timelinePan.startX);
+}, { capture: true });
+
+ui.arrangementScroll.addEventListener('pointerup', endTimelinePan);
+ui.arrangementScroll.addEventListener('pointercancel', endTimelinePan);
+ui.arrangementScroll.addEventListener('auxclick', (event) => {
+  if (event.button === 1) event.preventDefault();
+});
+window.addEventListener('blur', () => endTimelinePan());
+
 const ZOOM_SLIDER_STEPS = 1000;
 const ZOOM_RANGE = MAX_PIXELS_PER_SECOND / MIN_PIXELS_PER_SECOND;
 const zoomToSlider = (zoom: number): number =>
@@ -1699,6 +1790,9 @@ const isPointing = (target: Element, event: PointerEvent): boolean =>
   target.hasPointerCapture(event.pointerId);
 
 ui.arrangementScroll.addEventListener('pointerdown', (event) => {
+  // Select mode reserves Shift for additive card selection, so the
+  // Shift-drag loop gesture belongs to drop mode only.
+  if (arrangement.timelineMode === 'select') return;
   if (!event.shiftKey || currentTimeline === null) return;
   event.preventDefault();
   event.stopPropagation();
@@ -1730,7 +1824,7 @@ ui.arrangementScroll.addEventListener('pointerup', endScrollLoopGesture);
 ui.arrangementScroll.addEventListener('pointercancel', endScrollLoopGesture);
 
 const setLoopMode = (on: boolean): void => {
-  ui.arrangementScroll.classList.toggle('loop-mode', on);
+  ui.arrangementScroll.classList.toggle('loop-mode', on && arrangement.timelineMode === 'drop');
 };
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Shift') setLoopMode(true);
@@ -1763,6 +1857,22 @@ window.addEventListener('keydown', (event) => {
   } else if (event.key === 'y' || event.key === 'Y') {
     event.preventDefault();
     arrangement.redo();
+  } else if (event.key === 'c' || event.key === 'C') {
+    if (arrangement.selectionCount === 0) return;
+    event.preventDefault();
+    arrangement.copySelected();
+    syncCueInspector(arrangement.selectedFixture, arrangement.selectedCues);
+  } else if (event.key === 'v' || event.key === 'V') {
+    event.preventDefault();
+    // Shift pastes at the pointer instead of the playhead, so a copied block
+    // can be dropped exactly where the user is looking.
+    if (event.shiftKey) arrangement.pasteAtPointer();
+    else arrangement.paste();
+  } else if (event.key === 'a' || event.key === 'A') {
+    // Only hijack Select All in select mode; drop mode keeps browser behaviour.
+    if (arrangement.timelineMode !== 'select') return;
+    event.preventDefault();
+    arrangement.selectAll();
   }
 });
 const selectedAction = () => arrangement.selectedActions.find((action) => action === ui.cueAction.value)
@@ -1887,6 +1997,11 @@ ui.hueGrid.addEventListener('click', (event) => {
   applyHex(hex);
 });
 ui.cueDelete.addEventListener('click', () => arrangement.deleteSelected());
+ui.cueCopy.addEventListener('click', () => {
+  arrangement.copySelected();
+  syncCueInspector(arrangement.selectedFixture, arrangement.selectedCues);
+});
+ui.cuePaste.addEventListener('click', () => arrangement.paste());
 ui.trackFilter.addEventListener('change', () => {
   applyTrackFilter();
 });
@@ -1989,6 +2104,9 @@ ui.count.addEventListener('click', () => {
 
 window.addEventListener('keydown', (event) => {
   if (isTextEntry(event.target)) return;
+  // Bare-letter shortcuts must not fire as Ctrl/Cmd combos: Ctrl+C copies
+  // clips, but it also used to toggle the camera via the `c` shortcut.
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
   // A focused button already handles Space (and Enter) itself.
   if (event.code === 'Space' && event.target instanceof HTMLButtonElement) return;
   if (event.code === 'Space') {
@@ -2000,9 +2118,15 @@ window.addEventListener('keydown', (event) => {
   } else if (event.key === 'Backspace' || event.key === 'Delete') {
     // Backspace is also the browser's "back" shortcut; only intercept it when
     // there is actually a clip to delete.
-    if (arrangement.selectedCue === null) return;
+    if (!arrangement.hasSelection) return;
     event.preventDefault();
     arrangement.deleteSelected();
+  } else if (event.key === 'd' || event.key === 'D') {
+    applyTimelineMode('drop');
+  } else if (event.key === 'v' || event.key === 'V') {
+    applyTimelineMode('select');
+  } else if (event.key === 'Escape') {
+    arrangement.clearSelection();
   } else if (event.key === 'm' || event.key === 'M') {
     muted = !muted;
     applyVolume(false);

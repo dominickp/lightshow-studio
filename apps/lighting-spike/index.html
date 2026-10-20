@@ -495,6 +495,22 @@
         letter-spacing: 0.08em;
         text-transform: uppercase;
       }
+      /* Drop / Select mode switch. It leads the Tools bar because it changes
+         what every pointer gesture on the timeline does. */
+      #clip-inspector .tool-modes { display: flex; flex: 0 0 auto; align-items: center; }
+      #clip-inspector .tool-modes button {
+        min-width: 54px;
+        padding: 4px 9px;
+        border-radius: 0;
+        color: #9aa6b8;
+      }
+      #clip-inspector .tool-modes button:first-child { border-radius: 5px 0 0 5px; }
+      #clip-inspector .tool-modes button:last-child { border-radius: 0 5px 5px 0; margin-left: -1px; }
+      #clip-inspector .tool-modes button[aria-pressed='true'] {
+        background: rgba(122, 209, 255, 0.16);
+        border-color: rgba(122, 209, 255, 0.55);
+        color: var(--accent);
+      }
       #clip-inspector .clip-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
       #clip-inspector button {
         appearance: none;
@@ -696,6 +712,13 @@
       #arrangement-scroll.loop-mode,
       #arrangement-scroll.loop-mode * { cursor: crosshair !important; }
       #arrangement-scroll.loop-mode { box-shadow: inset 0 0 0 1px rgba(122, 209, 255, 0.45); }
+
+      /* Middle-drag pans the ruler, waveform and lanes as one surface. */
+      #arrangement-scroll.panning,
+      #arrangement-scroll.panning * {
+        cursor: grabbing !important;
+        user-select: none;
+      }
       #timeline-ruler-row, #waveform-row, .fixture-row { display: grid; grid-template-columns: var(--track-width) auto; width: max-content; }
 
       .track-name {
@@ -977,6 +1000,69 @@
         touch-action: none;
       }
 
+      /* Select mode turns the timeline into a clipboard surface: cards can be
+         clicked, marqueed, dragged, and resized from their edges. */
+      #arrangement-rows[data-mode='select'] .fixture-lane { cursor: default; }
+      #arrangement-rows[data-mode='select'] .arrangement-clip { cursor: grab; }
+      #arrangement-rows[data-mode='select'] .arrangement-clip:active { cursor: grabbing; }
+      #arrangement-rows[data-mode='select'] .clip-resize { cursor: ew-resize; }
+
+      .arrangement-marquee {
+        position: absolute;
+        z-index: 5;
+        border: 1px solid rgba(122, 209, 255, 0.9);
+        border-radius: 2px;
+        background: rgba(122, 209, 255, 0.12);
+        pointer-events: none;
+      }
+
+      .arrangement-context-menu {
+        position: fixed;
+        z-index: 30;
+        display: grid;
+        min-width: 190px;
+        padding: 4px;
+        border: 1px solid rgba(122, 209, 255, 0.28);
+        border-radius: 7px;
+        background: #111720;
+        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
+      }
+      .arrangement-context-menu button {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 6px 9px;
+        border: 0;
+        border-radius: 5px;
+        background: none;
+        color: var(--ink);
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+      }
+      .arrangement-context-menu button:hover,
+      .arrangement-context-menu button:focus-visible {
+        background: rgba(122, 209, 255, 0.14);
+        outline: none;
+      }
+      .arrangement-context-menu button:disabled,
+      .arrangement-context-menu button:disabled:hover {
+        background: none;
+        color: var(--dim);
+        cursor: not-allowed;
+      }
+      .arrangement-context-menu .menu-separator {
+        height: 1px;
+        margin: 4px 5px;
+        background: rgba(255, 255, 255, 0.09);
+      }
+      .arrangement-context-menu .menu-time {
+        color: var(--dim);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 10px;
+      }
+
       .arrangement-clips {
         position: absolute;
         top: 0;
@@ -1093,7 +1179,9 @@
         #transport { gap: 5px; padding: 5px; }
         #transport button { min-width: 0; padding: 5px; }
         #transport-meta { display: none; }
-        #clip-inspector #btn-cue-delete { display: none; }
+        #clip-inspector #btn-cue-delete,
+        #clip-inspector #btn-cue-copy,
+        #clip-inspector #btn-cue-paste { display: none; }
         #clip-inspector .clip-field-label, #selected-fixture { display: none; }
         #clip-inspector .clip-field { gap: 0; }
         .color-swatch { width: 14px; height: 14px; }
@@ -1149,8 +1237,16 @@
           <b>1</b> beams <b>2</b> bloom <b>3</b> shadows <b>4</b> grade <b>5</b> strobes ·
           <b>C</b> camera · <b>[ ]</b> fixture count · <b>S</b> stats · <b>`</b> controls panel · <b>H</b> haze<br />
           <b>Ctrl/⌘ + wheel</b> zoom at pointer · <b>Ctrl/⌘ +/-</b> zoom · <b>Ctrl/⌘ 0</b> fit ·
-          drag a lane to draw a clip, drag a clip to move, drag its edge to resize ·
-          <b>Backspace</b> deletes the selected clip<br />
+          <b>Middle-drag</b> the timeline or waveform to pan ·
+          <b>D</b> drop mode · <b>V</b> select mode · <b>Backspace</b> deletes the selection<br />
+          Drop mode: drag a lane to draw a clip, drag a clip to move, drag its edge to resize ·
+          Select mode: click or marquee cards, drag a selected card to move the selection,
+          drag a card edge to resize it, <b>Shift/Ctrl + click</b> adds, <b>Ctrl/⌘ A</b> selects all,
+          <b>Ctrl/⌘ C</b> copies, <b>Ctrl/⌘ V</b> pastes at the playhead,
+          <b>Ctrl/⌘ Shift V</b> pastes at the pointer and hovered track;
+          right-click a lane and choose <b>Paste here</b> for the same spot;
+          right-click a clip for Copy/Delete. A dashed line and row tint show
+          where <b>here</b> is whenever the clipboard has clips<br />
           <b>Shift + drag anywhere in the timeline</b> to draw a loop · drag the cyan loop edges to adjust it ·
           <b>L</b> or the Loop button toggles looping · Fit loop zooms to it<br />
           <b>Click a fixture name</b> to open its side panel (click again to close) ·
@@ -1180,10 +1276,16 @@
         <button id="btn-dock" type="button" title="Collapse or expand the timeline dock">Collapse timeline</button>
       </div>
 
-      <div id="clip-inspector" aria-label="Clip inspector">
-        <span class="inspector-title" title="Clip inspector">Clip inspector</span>
+      <div id="clip-inspector" aria-label="Timeline tools">
+        <span class="inspector-title" title="Timeline tools">Tools</span>
+        <div class="tool-modes" role="group" aria-label="Timeline mode">
+          <button id="btn-mode-drop" type="button" aria-pressed="true"
+            title="Drop mode: drag a lane to draw clips (D)">Drop</button>
+          <button id="btn-mode-select" type="button" aria-pressed="false"
+            title="Select mode: click or marquee to select clips (V)">Select</button>
+        </div>
         <span class="inspector-target">
-          <span class="clip-field-label">Track</span>
+          <span class="clip-field-label">Selection</span>
           <span id="selected-fixture" class="empty">None selected</span>
         </span>
         <label class="clip-field">
@@ -1197,7 +1299,9 @@
         <!-- The bar shows only the current color + the picker button; the
              palette and recent colors live inside the popover. -->
         <span class="clip-actions">
-          <button id="btn-cue-delete" type="button" title="Delete the selected clip (Backspace)" hidden>Delete clip</button>
+          <button id="btn-cue-copy" type="button" title="Copy the selected clips (Ctrl/⌘ C)" disabled>Copy</button>
+          <button id="btn-cue-paste" type="button" title="Paste at the playhead (Ctrl/⌘ V) · Ctrl/⌘ Shift V pastes at the pointer and hovered track · right-click a lane to paste here" disabled>Paste</button>
+          <button id="btn-cue-delete" type="button" title="Delete the selected clips (Backspace)" hidden>Delete clip</button>
         </span>
         <div id="color-picker" role="dialog" aria-label="Custom clip color" hidden>
           <div class="cp-head">

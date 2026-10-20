@@ -68,6 +68,24 @@ export interface CueTimeline {
   loopEndSec?: number;
 }
 
+/**
+ * `drop` is the authoring mode: dragging a lane draws a new clip. `select`
+ * turns the lanes into a clipboard surface: click cards, marquee-drag, then
+ * copy/paste or bulk delete without accidentally creating clips.
+ */
+export type TimelineMode = 'drop' | 'select';
+
+/** One copied clip, positioned relative to the earliest clip in the copy. */
+interface ClipClipboardItem {
+  fixtureId: string;
+  startSec: number;
+  endSec: number;
+  colorIndex: number;
+  action: CueAction;
+  fadeInSec?: number;
+  colorOverride?: CueColorOverride;
+}
+
 export const PIXELS_PER_SECOND = 48;
 export const MIN_PIXELS_PER_SECOND = 0.25;
 export const MAX_PIXELS_PER_SECOND = 480;
@@ -109,6 +127,13 @@ const toneClipColor = (rgb: readonly [number, number, number] | readonly number[
  * Truncate a label with an ellipsis to roughly fit `maxWidthPx` at the clip
  * label font size. Small clips keep a shortened label instead of none.
  */
+/** Short `m:ss` label for the paste-at-pointer menu. */
+const formatClockLabel = (seconds: number): string => {
+  const safe = Math.max(0, seconds);
+  const minutes = Math.floor(safe / 60);
+  return `${minutes}:${Math.floor(safe % 60).toString().padStart(2, '0')}`;
+};
+
 const truncateLabel = (text: string, maxWidthPx: number): string => {
   if (maxWidthPx <= 0) return '';
   // ~5.4px per glyph at 9px monospace; one ellipsis glyph costs the same.
@@ -131,13 +156,21 @@ const escapeHtml = (value: string): string =>
 
 interface CueSnapshot {
   cues: Cue[];
-  selectedCueId: string | null;
+  selectedCueIds: string[];
 }
 
 type Gesture =
   | { type: 'create'; fixtureId: string; startSec: number; currentSec: number }
   | { type: 'move'; cueId: string; startSec: number; initialStartSec: number; durationSec: number }
-  | { type: 'resize'; cueId: string; edge: 'start' | 'end' };
+  | {
+      type: 'move-many';
+      anchorSec: number;
+      items: { cueId: string; startSec: number; durationSec: number }[];
+    }
+  | { type: 'resize'; cueId: string; edge: 'start' | 'end' }
+  /** Rubber-band selection. Coordinates are client-space so scrolling during
+   * the drag does not shift the rectangle. */
+  | { type: 'marquee'; startX: number; startY: number; base: ReadonlySet<string> };
 
 export class Arrangement {
   private timeline: CueTimeline | null = null;
@@ -150,7 +183,19 @@ export class Arrangement {
    * and off with the panel.
    */
   private activeFixtureId: string | null = null;
-  private selectedCueId: string | null = null;
+  /** Every selected cue. Most of the time this holds zero or one id; select
+   * mode allows many so copy/paste and delete can act on a batch. */
+  private readonly selectedCueIds = new Set<string>();
+  private mode: TimelineMode = 'drop';
+  private clipboard: ClipClipboardItem[] = [];
+  private marquee: HTMLElement | null = null;
+  private contextMenu: HTMLElement | null = null;
+  /** Dashed paste preview while the context menu is open. */
+  private pastePreview: { anchorSec: number; targetFixtureId: string | null } | null = null;
+  /** Last time and track under the pointer, used by paste-at-pointer and the
+   * select-mode hover marker. */
+  private pointerTimeSec: number | null = null;
+  private pointerFixtureId: string | null = null;
   private readonly hiddenFixtureIds = new Set<string>();
   private gesture: Gesture | null = null;
   private gestureSnapshot: CueSnapshot | null = null;
@@ -182,7 +227,7 @@ export class Arrangement {
     private readonly scroller: HTMLElement,
     fixtures: FixturePlacement[],
     private readonly onChange: (cues: readonly Cue[]) => void,
-    private readonly onSelection: (fixture: FixturePlacement | null, cue: Cue | null) => void,
+    private readonly onSelection: (fixture: FixturePlacement | null, cues: readonly Cue[]) => void,
     private readonly onVisibilityChange?: (fixtureId: string, hidden: boolean) => void,
     /**
      * Fired when a track's name is clicked (after selection has been applied).
@@ -192,6 +237,7 @@ export class Arrangement {
     private readonly onTrackName?: (fixture: FixturePlacement) => void,
   ) {
     this.fixtures = fixtures;
+    this.root.dataset.mode = this.mode;
     const overlay = document.createElement('canvas');
     overlay.className = 'arrangement-clips';
     overlay.setAttribute('aria-hidden', 'true');
@@ -212,6 +258,7 @@ export class Arrangement {
       if (fixtureId !== undefined) this.toggleFixtureVisibility(fixtureId);
     });
     scroller.addEventListener('scroll', () => {
+      this.hideContextMenu();
       this.scheduleClipVisibility();
       this.scheduleDraw();
     }, { passive: true });
@@ -226,6 +273,20 @@ export class Arrangement {
     this.root.addEventListener('pointerleave', () => {
       this.hideHover();
       this.setHoveredCue(null);
+      if (this.pointerTimeSec !== null || this.pointerFixtureId !== null) {
+        this.pointerTimeSec = null;
+        this.pointerFixtureId = null;
+        this.scheduleDraw();
+      }
+    });
+    this.root.addEventListener('contextmenu', (event) => this.openContextMenu(event));
+    document.addEventListener('pointerdown', (event) => {
+      if (this.contextMenu === null) return;
+      if (event.target instanceof Node && this.contextMenu.contains(event.target)) return;
+      this.hideContextMenu();
+    });
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') this.hideContextMenu();
     });
   }
 
@@ -260,7 +321,7 @@ export class Arrangement {
 
     if (this.selectedFixtureId !== null && !ids.has(this.selectedFixtureId)) {
       this.selectedFixtureId = fixtures[0]?.id ?? null;
-      this.selectedCueId = null;
+      this.selectedCueIds.clear();
     }
     if (this.activeFixtureId !== null && !ids.has(this.activeFixtureId)) {
       this.activeFixtureId = null;
@@ -312,7 +373,76 @@ export class Arrangement {
   }
 
   get selectedCue(): Cue | null {
-    return this.cues.find((cue) => cue.id === this.selectedCueId) ?? null;
+    return this.selectedCues[0] ?? null;
+  }
+
+  get selectedCues(): Cue[] {
+    return this.cues.filter((cue) => this.selectedCueIds.has(cue.id));
+  }
+
+  get selectionCount(): number {
+    return this.selectedCueIds.size;
+  }
+
+  get hasSelection(): boolean {
+    return this.selectedCueIds.size > 0;
+  }
+
+  get canPaste(): boolean {
+    return this.clipboard.length > 0;
+  }
+
+  /** Time under the pointer, or `null` when it is not over a lane. */
+  get pointerTime(): number | null {
+    return this.pointerTimeSec;
+  }
+
+  get timelineMode(): TimelineMode {
+    return this.mode;
+  }
+
+  /**
+   * Switch between drawing clips and selecting them. The authored clips and
+   * the current selection are kept; only the pointer behaviour changes.
+   */
+  setMode(mode: TimelineMode): void {
+    if (this.mode === mode) return;
+    this.cancelGesture();
+    this.hideHover();
+    this.setHoveredCue(null);
+    this.mode = mode;
+    this.root.dataset.mode = mode;
+    this.pointerTimeSec = null;
+    this.pointerFixtureId = null;
+    this.renderRows();
+  }
+
+  /** Select every cue on the currently visible tracks. */
+  selectAll(): void {
+    const fixtures = new Set(this.visibleFixtures().map((fixture) => fixture.id));
+    this.selectedCueIds.clear();
+    for (const cue of this.cues) {
+      if (fixtures.has(cue.fixtureId)) this.selectedCueIds.add(cue.id);
+    }
+    this.renderRows();
+    this.notifySelection();
+  }
+
+  clearSelection(): void {
+    if (this.selectedCueIds.size === 0) return;
+    this.selectedCueIds.clear();
+    this.renderRows();
+    this.notifySelection();
+  }
+
+  /**
+   * Add one cue to the selection. `toggle` (Ctrl/Cmd) removes an already
+   * selected cue; plain Shift only adds, matching most editors.
+   */
+  private selectCue(cueId: string, additive: boolean, toggle: boolean): void {
+    if (!additive) this.selectedCueIds.clear();
+    if (additive && toggle && this.selectedCueIds.has(cueId)) this.selectedCueIds.delete(cueId);
+    else this.selectedCueIds.add(cueId);
   }
 
   get selectedActions(): CueAction[] {
@@ -350,7 +480,7 @@ export class Arrangement {
   setTimeline(timeline: CueTimeline): void {
     this.timeline = timeline;
     this.cues = [];
-    this.selectedCueId = null;
+    this.selectedCueIds.clear();
     this.preview = null;
     this.clearHistory();
     this.renderRows();
@@ -369,7 +499,7 @@ export class Arrangement {
     // Never move the counter backwards: a later save can then not reissue an
     // id that this session already handed out.
     this.nextId = Math.max(this.nextId, reserved.nextId);
-    this.selectedCueId = null;
+    this.selectedCueIds.clear();
     this.preview = null;
     this.clearHistory();
     this.renderRows();
@@ -418,7 +548,7 @@ export class Arrangement {
   selectFixture(fixtureId: string): void {
     if (!this.fixtures.some((fixture) => fixture.id === fixtureId)) return;
     this.selectedFixtureId = fixtureId;
-    this.selectedCueId = null;
+    this.selectedCueIds.clear();
     this.renderRows();
     this.notifySelection();
   }
@@ -430,22 +560,34 @@ export class Arrangement {
     this.createCue(fixture.id, startSec, action);
   }
 
+  /** Apply an action to every selected clip whose fixture supports it. */
   setSelectedAction(action: CueAction): void {
-    const cue = this.selectedCue;
-    const fixture = this.selectedFixture;
-    if (cue === null || fixture === null || !this.actionsFor(fixture).includes(action)) return;
+    const targets = new Set(
+      this.selectedCues
+        .filter((cue) => {
+          const fixture = this.fixtures.find((item) => item.id === cue.fixtureId);
+          return fixture !== undefined && this.actionsFor(fixture).includes(action);
+        })
+        .map((cue) => cue.id),
+    );
+    if (targets.size === 0) return;
     this.pushHistory();
-    this.cues = this.cues.map((item) => item.id === cue.id ? { ...item, action } : item);
+    this.cues = this.cues.map((item) => targets.has(item.id) ? { ...item, action } : item);
     this.renderRows();
     this.notifyChange();
     this.notifySelection();
   }
 
+  /** Apply a color to every selected clip whose fixture supports color. */
   setSelectedColor(colorIndex: number, colorOverride?: CueColorOverride): void {
-    const cue = this.selectedCue;
-    if (cue === null || !this.selectedFixture?.profile.capabilities.color) return;
+    const targets = new Set(
+      this.selectedCues
+        .filter((cue) => this.fixtures.find((item) => item.id === cue.fixtureId)?.profile.capabilities.color)
+        .map((cue) => cue.id),
+    );
+    if (targets.size === 0) return;
     this.pushHistory();
-    this.cues = this.cues.map((item) => item.id === cue.id
+    this.cues = this.cues.map((item) => targets.has(item.id)
       ? { ...item, colorIndex, ...(colorOverride === undefined ? {} : { colorOverride }) }
       : item);
     this.renderRows();
@@ -471,13 +613,132 @@ export class Arrangement {
   }
 
   deleteSelected(): void {
-    if (this.selectedCueId === null) return;
+    if (this.selectedCueIds.size === 0) return;
     this.pushHistory();
-    this.cues = this.cues.filter((cue) => cue.id !== this.selectedCueId);
-    this.selectedCueId = null;
+    this.cues = this.cues.filter((cue) => !this.selectedCueIds.has(cue.id));
+    this.selectedCueIds.clear();
     this.renderRows();
     this.notifyChange();
     this.notifySelection();
+  }
+
+  /**
+   * Copy the selection, normalised so the earliest clip starts at 0. Pasting
+   * keeps each clip on its own track and their relative timing.
+   */
+  copySelected(): number {
+    const selected = this.selectedCues;
+    if (selected.length === 0) return 0;
+    const origin = Math.min(...selected.map((cue) => cue.startSec));
+    this.clipboard = selected.map((cue) => ({
+      fixtureId: cue.fixtureId,
+      startSec: cue.startSec - origin,
+      endSec: cue.endSec - origin,
+      colorIndex: cue.colorIndex,
+      action: cue.action,
+      ...(cue.fadeInSec === undefined ? {} : { fadeInSec: cue.fadeInSec }),
+      ...(cue.colorOverride === undefined ? {} : { colorOverride: cue.colorOverride }),
+    }));
+    // The new clipboard enables the select-mode paste hover marker.
+    this.scheduleDraw();
+    return this.clipboard.length;
+  }
+
+  /**
+   * The topmost, earliest copied clip: it anchors the block when pasting onto
+   * another track, so the clicked row becomes this clip's new row and the rest
+   * keep their relative track offsets.
+   */
+  private clipboardAnchor(): { item: ClipClipboardItem; fixtureIndex: number } | null {
+    let anchor: { item: ClipClipboardItem; fixtureIndex: number } | null = null;
+    for (const item of this.clipboard) {
+      const fixtureIndex = this.fixtures.findIndex((fixture) => fixture.id === item.fixtureId);
+      if (fixtureIndex < 0) continue;
+      if (anchor === null
+        || item.startSec < anchor.item.startSec
+        || (item.startSec === anchor.item.startSec && fixtureIndex < anchor.fixtureIndex)) {
+        anchor = { item, fixtureIndex };
+      }
+    }
+    return anchor;
+  }
+
+  /**
+   * Resolve where the clipboard lands. With no target, clips keep their
+   * original tracks. With a target fixture, the animated anchor clip moves to
+   * that row and every other clip keeps its relative track offset; targets
+   * that cannot perform a clip's controls are skipped.
+   */
+  private pastePlacements(
+    atSec: number,
+    targetFixtureId: string | null,
+  ): { item: ClipClipboardItem; fixtureId: string; startSec: number; endSec: number }[] {
+    const timeline = this.timeline;
+    if (timeline === null) return [];
+    const anchorSec = this.snap(atSec);
+    const duration = timeline.durationSec;
+    const anchor = targetFixtureId === null ? null : this.clipboardAnchor();
+    const targetIndex = targetFixtureId === null
+      ? -1
+      : this.fixtures.findIndex((fixture) => fixture.id === targetFixtureId);
+    const placements = [];
+    for (const item of this.clipboard) {
+      let fixtureId = item.fixtureId;
+      if (targetFixtureId !== null) {
+        const sourceIndex = this.fixtures.findIndex((fixture) => fixture.id === item.fixtureId);
+        const target = this.fixtures[targetIndex + (sourceIndex - (anchor?.fixtureIndex ?? sourceIndex))];
+        if (target === undefined || !this.isCompatible(item, target)) continue;
+        fixtureId = target.id;
+      } else if (!this.fixtures.some((fixture) => fixture.id === fixtureId)) {
+        continue;
+      }
+      const startSec = clamp(anchorSec + item.startSec, 0, Math.max(0, duration - MIN_CLIP_SEC));
+      if (startSec >= duration) continue;
+      const endSec = Math.min(duration, Math.max(startSec + MIN_CLIP_SEC, anchorSec + item.endSec));
+      placements.push({ item, fixtureId, startSec, endSec });
+    }
+    return placements;
+  }
+
+  /** Whether "Paste here" is valid on a track: the anchor clip must fit it. */
+  private canPasteOn(fixtureId: string): boolean {
+    const fixture = this.fixtures.find((entry) => entry.id === fixtureId);
+    const anchor = this.clipboardAnchor();
+    return fixture !== undefined && anchor !== null && this.isCompatible(anchor.item, fixture);
+  }
+
+  /**
+   * Paste the copied clips so the block starts at `atSec` (the playhead by
+   * default). Pass `targetFixtureId` to land the block on another row; clips
+   * whose action/color the mapped track cannot perform are skipped.
+   */
+  paste(atSec: number = this.songTime, targetFixtureId: string | null = null): number {
+    if (this.clipboard.length === 0 || this.timeline === null) return 0;
+    const placements = this.pastePlacements(atSec, targetFixtureId);
+    const pasted: Cue[] = placements.map((placement) => ({
+      ...placement.item,
+      fixtureId: placement.fixtureId,
+      id: this.nextCueId(),
+      startSec: placement.startSec,
+      endSec: placement.endSec,
+    }));
+    if (pasted.length === 0) return 0;
+    this.pushHistory();
+    this.cues = [...this.cues, ...pasted];
+    this.selectedFixtureId = pasted[0]!.fixtureId;
+    this.selectedCueIds.clear();
+    for (const cue of pasted) this.selectedCueIds.add(cue.id);
+    this.renderRows();
+    this.notifyChange();
+    this.notifySelection();
+    return pasted.length;
+  }
+
+  /** Paste at the hovered time on the hovered track, falling back to the
+   * playhead on the original tracks when the pointer is outside the lanes. */
+  pasteAtPointer(): number {
+    const atSec = this.pointerTimeSec ?? this.songTime;
+    return this.paste(atSec, this.pointerFixtureId);
   }
 
   private toggleFixtureVisibility(fixtureId: string): void {    if (!this.fixtures.some((fixture) => fixture.id === fixtureId)) return;
@@ -492,6 +753,17 @@ export class Arrangement {
     return cueToClip(this.fixtures.find((item) => item.id === cue.fixtureId), cue);
   }
 
+  /**
+   * Whether a copied clip's controls make sense on another fixture. Actions
+   * map directly to capabilities (sweep needs pan/tilt, strobe needs strobe),
+   * and a custom color needs a color-capable fixture.
+   */
+  private isCompatible(item: ClipClipboardItem, fixture: FixturePlacement): boolean {
+    if (!this.actionsFor(fixture).includes(item.action)) return false;
+    if (item.colorOverride !== undefined && !fixture.profile.capabilities.color) return false;
+    return true;
+  }
+
   private actionsFor(fixture: FixturePlacement): CueAction[] {
     const caps = fixture.profile.capabilities;
     return [
@@ -504,6 +776,9 @@ export class Arrangement {
   }
 
   private pointerDown(event: PointerEvent): void {
+    // Right-click opens the paste menu; it must not start a create/marquee
+    // gesture or clear the current selection along the way.
+    if (event.button !== 0) return;
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
     const row = target.closest<HTMLElement>('.fixture-row');
@@ -517,7 +792,7 @@ export class Arrangement {
     }
     this.selectedFixtureId = fixtureId;
     if (target.closest('.track-name') !== null) {
-      this.selectedCueId = null;
+      this.selectedCueIds.clear();
       this.renderRows();
       // Announce the name click before the selection sync: the shell uses this
       // to decide whether to open, switch or close the fixture panel, and the
@@ -530,12 +805,64 @@ export class Arrangement {
     const lane = target.closest<HTMLElement>('.fixture-lane');
     if (lane === null || this.timeline === null) return;
 
+    const additive = event.shiftKey || event.ctrlKey || event.metaKey;
+    const toggle = event.ctrlKey || event.metaKey;
     const clipElement = target.closest<HTMLElement>('.arrangement-clip');
     if (clipElement !== null) {
       const cueId = clipElement.dataset.cueId;
       const cue = this.cues.find((item) => item.id === cueId);
       if (cue === undefined) return;
-      this.selectedCueId = cue.id;
+      if (this.mode === 'select') {
+        if (additive) {
+          this.selectCue(cue.id, true, toggle);
+          this.renderRows();
+          this.notifySelection();
+          event.preventDefault();
+          return;
+        }
+        // Grabbing a clip edge resizes it; the rest of the card moves the
+        // selection. Edge proximity matches drop mode's grab zone.
+        const x = event.clientX - lane.getBoundingClientRect().left;
+        const startHandle = target.closest('.clip-resize.start') !== null;
+        const endHandle = target.closest('.clip-resize.end') !== null;
+        const nearStart = Math.abs(x - cue.startSec * this.pixelsPerSecond) <= EDGE_GRAB_PX;
+        const nearEnd = Math.abs(x - cue.endSec * this.pixelsPerSecond) <= EDGE_GRAB_PX;
+        let edge: 'start' | 'end' | null = null;
+        if (startHandle || (!endHandle && nearStart)) edge = 'start';
+        else if (endHandle || nearEnd) edge = 'end';
+        if (edge !== null) {
+          this.selectedCueIds.clear();
+          this.selectedCueIds.add(cue.id);
+          this.gesture = { type: 'resize', cueId: cue.id, edge };
+          this.gestureSnapshot = this.snapshot();
+          this.renderRows();
+          this.notifySelection();
+          event.preventDefault();
+          return;
+        }
+        // Clicking an unselected card selects it alone; clicking one that is
+        // already part of the selection keeps the batch so it can be dragged.
+        if (!this.selectedCueIds.has(cue.id)) {
+          this.selectedCueIds.clear();
+          this.selectedCueIds.add(cue.id);
+        }
+        this.gesture = {
+          type: 'move-many',
+          anchorSec: this.xToTime(event.clientX, lane),
+          items: this.selectedCues.map((selected) => ({
+            cueId: selected.id,
+            startSec: selected.startSec,
+            durationSec: selected.endSec - selected.startSec,
+          })),
+        };
+        this.gestureSnapshot = this.snapshot();
+        this.renderRows();
+        this.notifySelection();
+        event.preventDefault();
+        return;
+      }
+      this.selectedCueIds.clear();
+      this.selectedCueIds.add(cue.id);
       const x = event.clientX - lane.getBoundingClientRect().left;
       const clipStartX = cue.startSec * this.pixelsPerSecond;
       const clipEndX = cue.endSec * this.pixelsPerSecond;
@@ -555,9 +882,28 @@ export class Arrangement {
         };
       }
       this.gestureSnapshot = this.snapshot();
+    } else if (this.mode === 'select') {
+      // Empty lane: start a rubber-band selection. Non-additive drags replace
+      // the current selection; Shift/Ctrl adds to it.
+      const base = additive ? new Set(this.selectedCueIds) : new Set<string>();
+      if (!additive) this.selectedCueIds.clear();
+      this.gesture = {
+        type: 'marquee',
+        startX: event.clientX,
+        startY: event.clientY,
+        base,
+      };
+      this.gestureSnapshot = null;
+      // renderRows rebuilds the root's children, so the marquee is attached
+      // afterwards to survive the DOM refresh.
+      this.renderRows();
+      this.showMarquee(event.clientX, event.clientY);
+      this.notifySelection();
+      event.preventDefault();
+      return;
     } else {
       const time = this.snap(this.xToTime(event.clientX, lane));
-      this.selectedCueId = null;
+      this.selectedCueIds.clear();
       this.gesture = { type: 'create', fixtureId, startSec: time, currentSec: time };
       this.gestureSnapshot = null;
       this.preview = { fixtureId, startSec: time, endSec: time + this.defaultLength() };
@@ -566,6 +912,199 @@ export class Arrangement {
     this.renderRows();
     this.notifySelection();
     event.preventDefault();
+  }
+
+  /** Draw (or move) the rubber-band rectangle in content coordinates. */
+  private showMarquee(clientX: number, clientY: number): void {
+    const gesture = this.gesture;
+    if (gesture?.type !== 'marquee') return;
+    const rootRect = this.root.getBoundingClientRect();
+    const left = Math.min(gesture.startX, clientX) - rootRect.left;
+    const top = Math.min(gesture.startY, clientY) - rootRect.top;
+    const width = Math.abs(clientX - gesture.startX);
+    const height = Math.abs(clientY - gesture.startY);
+    let marquee = this.marquee;
+    if (marquee === null || !marquee.isConnected) {
+      marquee = document.createElement('div');
+      marquee.className = 'arrangement-marquee';
+      marquee.setAttribute('aria-hidden', 'true');
+      this.marquee = marquee;
+    }
+    if (marquee.parentElement !== this.root) this.root.appendChild(marquee);
+    Object.assign(marquee.style, {
+      left: `${left}px`,
+      top: `${top}px`,
+      width: `${width}px`,
+      height: `${height}px`,
+    });
+  }
+
+  private hideMarquee(): void {
+    this.marquee?.remove();
+    this.marquee = null;
+  }
+
+  /**
+   * Right-click a lane to choose where pasted clips land: at the pointer or
+   * at the playhead. Only offered when something has been copied.
+   */
+  private openContextMenu(event: MouseEvent): void {
+    if (this.timeline === null) return;
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const lane = target.closest<HTMLElement>('.fixture-lane');
+    if (lane === null) return;
+    const clipElement = target.closest<HTMLElement>('.arrangement-clip');
+    const clipId = clipElement?.dataset.cueId;
+    const cue = clipId === undefined ? undefined : this.cues.find((item) => item.id === clipId);
+    // Empty lane with nothing copied: leave the browser's native menu alone.
+    if (cue === undefined && this.clipboard.length === 0) return;
+
+    event.preventDefault();
+    this.hideContextMenu();
+    const here = this.snap(this.xToTime(event.clientX, lane));
+    const fixtureId = lane.closest<HTMLElement>('.fixture-row')?.dataset.fixtureId;
+    const targetFixture = this.fixtures.find((fixture) => fixture.id === fixtureId) ?? null;
+
+    if (cue !== undefined) {
+      // Right-clicking an unselected card selects it; right-clicking inside a
+      // batch keeps the batch so Copy/Delete act on the whole selection.
+      if (!this.selectedCueIds.has(cue.id)) {
+        this.selectedCueIds.clear();
+        this.selectedCueIds.add(cue.id);
+        this.selectedFixtureId = cue.fixtureId;
+        this.renderRows();
+      }
+      this.notifySelection();
+    }
+
+    const menu = document.createElement('div');
+    menu.className = 'arrangement-context-menu';
+    menu.setAttribute('role', 'menu');
+
+    const item = (
+      label: string,
+      /** Paste target time, or `null` for a plain command. */
+      time: number | null,
+      run: () => void,
+      options: {
+        disabled?: boolean;
+        title?: string;
+        targetFixtureId?: string | null;
+        /** Right-hand shortcut label for commands without a time. */
+        hint?: string;
+      } = {},
+    ): void => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.setAttribute('role', 'menuitem');
+      if (options.disabled === true) {
+        button.disabled = true;
+        button.title = options.title ?? '';
+      }
+      const text = document.createElement('span');
+      text.textContent = label;
+      const meta = document.createElement('span');
+      meta.className = 'menu-time';
+      meta.textContent = options.hint ?? (time === null ? '' : formatClockLabel(time));
+      button.append(text, meta);
+      button.addEventListener('click', () => {
+        this.hideContextMenu();
+        run();
+      });
+      // Hovering a paste item moves the dashed preview to that target so the
+      // user sees exactly where the block will land before committing.
+      if (time !== null) {
+        button.addEventListener('mouseenter', () => {
+          this.pastePreview = {
+            anchorSec: time,
+            targetFixtureId: options.targetFixtureId ?? null,
+          };
+          this.scheduleDraw();
+        });
+      }
+      menu.appendChild(button);
+    };
+
+    const count = this.selectedCueIds.size;
+    if (cue !== undefined && count > 0) {
+      item(count > 1 ? `Copy ${count} clips` : 'Copy clip', null, () => {
+        this.copySelected();
+        this.notifySelection();
+      }, { hint: 'Ctrl/⌘ C' });
+      item(count > 1 ? `Delete ${count} clips` : 'Delete clip', null, () => this.deleteSelected(), {
+        hint: 'Del',
+      });
+    }
+
+    if (this.clipboard.length > 0 && targetFixture !== null) {
+      if (cue !== undefined) {
+        const separator = document.createElement('div');
+        separator.className = 'menu-separator';
+        menu.appendChild(separator);
+      }
+      // "Here" is the clicked row and pointer time; there is no separate
+      // playhead or other-track target.
+      const compatible = this.canPasteOn(targetFixture.id);
+      item('Paste here', here, () => this.paste(here, targetFixture.id), {
+        disabled: !compatible,
+        title: compatible
+          ? `Paste on ${this.labelFor(targetFixture)}`
+          : 'This track cannot play the copied clip',
+        targetFixtureId: targetFixture.id,
+      });
+      this.pastePreview = { anchorSec: here, targetFixtureId: targetFixture.id };
+      this.scheduleDraw();
+    }
+
+    menu.style.left = '0px';
+    menu.style.top = '0px';
+    document.body.appendChild(menu);
+    this.contextMenu = menu;
+    const rect = menu.getBoundingClientRect();
+    menu.style.left = `${clamp(event.clientX, 4, window.innerWidth - rect.width - 4)}px`;
+    menu.style.top = `${clamp(event.clientY, 4, window.innerHeight - rect.height - 4)}px`;
+  }
+
+  private hideContextMenu(): void {
+    this.contextMenu?.remove();
+    this.contextMenu = null;
+    if (this.pastePreview !== null) {
+      this.pastePreview = null;
+      this.scheduleDraw();
+    }
+  }
+
+  /** Cues whose cards intersect the client-space rubber band. */
+  private marqueeSelection(
+    startX: number,
+    startY: number,
+    endX: number,
+    endY: number,
+    base: ReadonlySet<string>,
+  ): Set<string> {
+    const selected = new Set(base);
+    const pps = this.pixelsPerSecond;
+    const left = Math.min(startX, endX);
+    const right = Math.max(startX, endX);
+    const top = Math.min(startY, endY);
+    const bottom = Math.max(startY, endY);
+    for (const row of this.root.querySelectorAll<HTMLElement>('.fixture-row')) {
+      const lane = row.querySelector<HTMLElement>('.fixture-lane');
+      const fixtureId = row.dataset.fixtureId;
+      if (lane === null || fixtureId === undefined) continue;
+      const laneRect = lane.getBoundingClientRect();
+      const rowRect = row.getBoundingClientRect();
+      if (rowRect.bottom < top || rowRect.top > bottom) continue;
+      if (laneRect.right < left || laneRect.left > right) continue;
+      const from = Math.max(0, (left - laneRect.left) / pps);
+      const to = (right - laneRect.left) / pps;
+      for (const cue of this.cues) {
+        if (cue.fixtureId !== fixtureId) continue;
+        if (cue.endSec > from && cue.startSec < to) selected.add(cue.id);
+      }
+    }
+    return selected;
   }
 
   private pointerMove(event: PointerEvent): void {
@@ -582,6 +1121,48 @@ export class Arrangement {
         startSec: start,
         endSec: dragged - start >= MIN_CLIP_SEC ? dragged : start + this.defaultLength(),
       };
+      this.scheduleDraw();
+      return;
+    }
+
+    if (gesture.type === 'move-many') {
+      // Every lane shares the same horizontal scale, so any lane maps the
+      // pointer to song time even when a moved track is filtered out.
+      const target = event.target;
+      const lane = (target instanceof HTMLElement ? target.closest<HTMLElement>('.fixture-lane') : null)
+        ?? this.root.querySelector<HTMLElement>('.fixture-lane');
+      if (lane === null) return;
+      const rawDelta = this.xToTime(event.clientX, lane) - gesture.anchorSec;
+      const minStart = Math.min(...gesture.items.map((item) => item.startSec));
+      const maxEnd = Math.max(...gesture.items.map((item) => item.startSec + item.durationSec));
+      // Snap the movement itself, then clamp so the whole block stays in song.
+      const delta = clamp(
+        this.snapDelta(rawDelta),
+        -minStart,
+        Math.max(-minStart, this.timeline.durationSec - maxEnd),
+      );
+      const moving = new Map(gesture.items.map((item) => [item.cueId, item]));
+      this.cues = this.cues.map((cue) => {
+        const item = moving.get(cue.id);
+        if (item === undefined) return cue;
+        const startSec = item.startSec + delta;
+        return { ...cue, startSec, endSec: startSec + item.durationSec };
+      });
+      this.scheduleDraw();
+      return;
+    }
+
+    if (gesture.type === 'marquee') {
+      this.showMarquee(event.clientX, event.clientY);
+      const ids = this.marqueeSelection(
+        gesture.startX,
+        gesture.startY,
+        event.clientX,
+        event.clientY,
+        gesture.base,
+      );
+      this.selectedCueIds.clear();
+      for (const id of ids) this.selectedCueIds.add(id);
       this.scheduleDraw();
       return;
     }
@@ -618,6 +1199,12 @@ export class Arrangement {
     const gestureSnapshot = this.gestureSnapshot;
     this.gestureSnapshot = null;
     this.preview = null;
+    this.hideMarquee();
+    if (gesture.type === 'marquee') {
+      this.renderRows();
+      this.notifySelection();
+      return;
+    }
     const timeline = this.timeline;
     if (timeline === null) return;
     if (gesture.type === 'create') {
@@ -653,6 +1240,7 @@ export class Arrangement {
     this.gesture = null;
     this.gestureSnapshot = null;
     this.preview = null;
+    this.hideMarquee();
     this.renderRows();
   }
 
@@ -684,13 +1272,44 @@ export class Arrangement {
     this.pushHistory();
     this.cues = [...this.cues, cue];
     this.selectedFixtureId = fixtureId;
-    this.selectedCueId = cue.id;
+    this.selectedCueIds.clear();
+    this.selectedCueIds.add(cue.id);
     this.renderRows();
     this.notifyChange();
     this.notifySelection();
   }
 
   private pointerHover(event: PointerEvent): void {
+    const hoverTarget = event.target;
+    const hoverLane = hoverTarget instanceof HTMLElement
+      ? hoverTarget.closest<HTMLElement>('.fixture-lane')
+      : null;
+    const hoverFixtureId = hoverLane?.closest<HTMLElement>('.fixture-row')?.dataset.fixtureId ?? null;
+    const previousTime = this.pointerTimeSec;
+    const previousFixtureId = this.pointerFixtureId;
+    this.pointerTimeSec = hoverLane === null || this.timeline === null
+      ? null
+      : this.xToTime(event.clientX, hoverLane);
+    this.pointerFixtureId = this.pointerTimeSec === null ? null : hoverFixtureId;
+
+    // The select-mode paste marker follows the grid, not the raw pointer, so
+    // only repaint when the snapped cell or hovered track changes.
+    const nextTime = this.pointerTimeSec;
+    const movedCell = (previousTime === null) !== (nextTime === null)
+      || (previousTime !== null && nextTime !== null && this.snap(previousTime) !== this.snap(nextTime));
+    if (this.mode === 'select' && (movedCell || previousFixtureId !== this.pointerFixtureId)) {
+      this.scheduleDraw();
+    }
+
+    if (this.mode === 'select') {
+      // No draw-a-clip ghost while selecting: it would advertise a gesture
+      // that select mode deliberately does not perform.
+      this.hideHover();
+      this.setHoveredCue(hoverTarget instanceof HTMLElement
+        ? hoverTarget.closest<HTMLElement>('.arrangement-clip')?.dataset.cueId ?? null
+        : null);
+      return;
+    }
     if (this.gesture !== null || this.timeline === null || event.shiftKey) {
       this.hideHover();
       return;
@@ -864,7 +1483,7 @@ export class Arrangement {
         const w = (cue.endSec - cue.startSec) * pps;
         if (x + w < 0 || x > width) continue;
         const color = resolveCueColor(cue);
-        const selected = cue.id === this.selectedCueId;
+        const selected = this.selectedCueIds.has(cue.id);
         const hovered = cue.id === this.hoveredCueId;
         ctx.beginPath();
         ctx.roundRect(x, y, Math.max(2, w), h, 4);
@@ -908,6 +1527,65 @@ export class Arrangement {
         ctx.setLineDash([4, 3]);
         ctx.lineWidth = 1;
         ctx.strokeStyle = 'rgba(122, 209, 255, 0.9)';
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
+    // Select-mode paste target: a subtle grid-aligned line plus a band on the
+    // hovered track, so "here" is visible before right-clicking.
+    if (this.pastePreview === null
+      && this.mode === 'select'
+      && this.gesture === null
+      && this.canPaste
+      && this.pointerTimeSec !== null
+      && this.pointerFixtureId !== null) {
+      const hoverIndex = visibleFixtures.findIndex((fixture) => fixture.id === this.pointerFixtureId);
+      const hoverX = this.snap(this.pointerTimeSec) * pps - scrollLeft;
+      if (hoverIndex >= 0) {
+        ctx.fillStyle = 'rgba(122, 209, 255, 0.06)';
+        ctx.fillRect(0, hoverIndex * rowHeight, width, rowHeight);
+      }
+      ctx.beginPath();
+      ctx.setLineDash([2, 5]);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(122, 209, 255, 0.38)';
+      ctx.moveTo(hoverX, 0);
+      ctx.lineTo(hoverX, height);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    const pastePreview = this.pastePreview;
+    if (pastePreview !== null && this.clipboard.length > 0) {
+      const anchor = this.snap(pastePreview.anchorSec);
+      const anchorX = anchor * pps - scrollLeft;
+      // A dashed vertical guide makes the paste time unambiguous even when
+      // the copied block is thin or its tracks are scrolled out of view.
+      ctx.beginPath();
+      ctx.setLineDash([3, 4]);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(122, 209, 255, 0.55)';
+      ctx.moveTo(anchorX, 0);
+      ctx.lineTo(anchorX, height);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      for (const placement of this.pastePlacements(pastePreview.anchorSec, pastePreview.targetFixtureId)) {
+        const index = visibleFixtures.findIndex((fixture) => fixture.id === placement.fixtureId);
+        if (index < 0) continue;
+        const x = placement.startSec * pps - scrollLeft;
+        const w = Math.max(2, (placement.endSec - placement.startSec) * pps);
+        if (x + w < 0 || x > width) continue;
+        const y = index * rowHeight + 4;
+        const h = Math.max(2, rowHeight - 8);
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, 4);
+        ctx.fillStyle = 'rgba(122, 209, 255, 0.12)';
+        ctx.fill();
+        ctx.setLineDash([5, 4]);
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = 'rgba(122, 209, 255, 0.95)';
         ctx.stroke();
         ctx.setLineDash([]);
       }
@@ -960,7 +1638,7 @@ export class Arrangement {
   private snapshot(): CueSnapshot {
     return {
       cues: this.cues.map((cue) => ({ ...cue })),
-      selectedCueId: this.selectedCueId,
+      selectedCueIds: [...this.selectedCueIds],
     };
   }
 
@@ -982,10 +1660,11 @@ export class Arrangement {
 
   private restore(snapshot: CueSnapshot): void {
     this.cues = snapshot.cues.map((cue) => ({ ...cue }));
-    this.selectedCueId = snapshot.selectedCueId !== null
-      && this.cues.some((cue) => cue.id === snapshot.selectedCueId)
-      ? snapshot.selectedCueId
-      : null;
+    const existing = new Set(this.cues.map((cue) => cue.id));
+    this.selectedCueIds.clear();
+    for (const id of snapshot.selectedCueIds) {
+      if (existing.has(id)) this.selectedCueIds.add(id);
+    }
     this.preview = null;
     this.renderRows();
     this.notifyChange();
@@ -993,7 +1672,7 @@ export class Arrangement {
   }
 
   private notifySelection(): void {
-    this.onSelection(this.selectedFixture, this.selectedCue);
+    this.onSelection(this.selectedFixture, this.selectedCues);
   }
 
   private defaultLength(): number {
@@ -1006,6 +1685,14 @@ export class Arrangement {
       return this.pendingAction;
     }
     return fixture.profile.capabilities.panTilt ? 'sweep' : fixture.profile.capabilities.strobe ? 'strobe' : 'hold';
+  }
+
+  /** Snap a movement delta (rather than an absolute time) to the grid. */
+  private snapDelta(deltaSec: number): number {
+    const timeline = this.timeline;
+    if (timeline === null || timeline.bpm === null || timeline.bpm <= 0) return deltaSec;
+    const divisionSec = 60 / timeline.bpm / 4;
+    return Math.round(deltaSec / divisionSec) * divisionSec;
   }
 
   private snap(timeSec: number): number {

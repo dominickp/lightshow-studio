@@ -29,6 +29,17 @@ import {
   lookDefinition,
 } from './led/look-definitions';
 import { PROFILE_LIBRARY } from '@dmxsim/fixtures';
+import {
+  BENCH_SCENARIO,
+  BenchmarkRecorder,
+  buildBenchCues,
+  buildBenchSurfaceCues,
+  machineInfo,
+  rigSignature,
+  type BenchmarkOptions,
+  type BenchmarkResult,
+  type MachineInfo,
+} from './app/benchmark';
 import { createDemoRig } from './demo-rig';
 import { createDemoCues, createDemoSurfaceCues } from './demo-arrangement';
 import { AudioClock } from './audio-clock';
@@ -2644,6 +2655,192 @@ perf = new PerfMonitor({
   isHidden: () => document.hidden,
 });
 
+// --- Render benchmark -----------------------------------------------------
+
+interface BenchRun {
+  recorder: BenchmarkRecorder;
+  startedAt: string;
+  options: BenchmarkResult['options'];
+  restore: () => void;
+  resolve: (result: BenchmarkResult) => void;
+}
+
+let benchRun: BenchRun | null = null;
+
+/**
+ * Identify the GPU without depending on the active backend, so a WebGL2 run on
+ * a WebGPU laptop still reports the real hardware. The string is cached: it
+ * never changes for the life of the page.
+ */
+const gpuLabel = (): string => {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl');
+    if (gl === null) return 'unknown';
+    const info = gl.getExtension('WEBGL_debug_renderer_info');
+    const rendererName = info === null
+      ? gl.getParameter(gl.RENDERER)
+      : gl.getParameter(info.UNMASKED_RENDERER_WEBGL);
+    return String(rendererName);
+  } catch {
+    return 'unknown';
+  }
+};
+
+let cachedMachine: MachineInfo | null = null;
+const currentMachine = (): MachineInfo => {
+  if (cachedMachine !== null) return cachedMachine;
+  const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+  cachedMachine = machineInfo({
+    gpu: gpuLabel(),
+    cores: navigator.hardwareConcurrency || 0,
+    ...(memory === undefined ? {} : { memoryGb: memory }),
+    devicePixelRatio: window.devicePixelRatio || 1,
+    viewport: `${viewport.clientWidth}x${viewport.clientHeight}`,
+    userAgent: navigator.userAgent,
+  });
+  return cachedMachine;
+};
+
+/**
+ * Measure render cost on a pinned scenario, then put the app back.
+ *
+ * The scenario is built from the loaded rig, not from the sample project, so
+ * editing `koto-chill.dmxsim` cannot invalidate a comparison. Everything that
+ * changes the number is pinned for the run: all fixtures visible, orbit on,
+ * 100% resolution scale, a fixed zoom, and a fixed song time.
+ *
+ * Roughly 3.5 s of wall clock at the defaults (0.9 s warmup, 2.4 s sampling),
+ * which is enough for ~150 frames at 60 fps.
+ */
+const runBenchmark = async (options: BenchmarkOptions = {}): Promise<BenchmarkResult> => {
+  if (benchRun !== null) throw new Error('a benchmark is already running');
+  // A background tab throttles requestAnimationFrame to ~1 Hz, which would
+  // report a fake 0.1 fps. Better to fail loudly than to poison the history.
+  if (document.hidden) throw new Error('benchmark needs a visible page: background tabs throttle rAF');
+  if (currentTimeline === null) throw new Error('benchmark needs a loaded track');
+  if (show.fixtures.length === 0) throw new Error('benchmark needs a rig');
+
+  const startSec = options.startSec ?? BENCH_SCENARIO.startSec;
+  const warmupMs = options.warmupMs ?? BENCH_SCENARIO.warmupMs;
+  const measureMs = options.measureMs ?? BENCH_SCENARIO.measureMs;
+  const orbitOn = options.orbit ?? BENCH_SCENARIO.orbit;
+  const orbitSpeed = options.orbitSpeed ?? BENCH_SCENARIO.orbitSpeed;
+
+  const previous = {
+    cues,
+    activeCount,
+    zoom: arrangement.zoomLevel,
+    orbit: stage.orbitEnabled,
+    playing: clock.playing,
+    songTime: clock.time,
+    loop: { ...loopRegion },
+    loopEnabled: clock.loopEnabled,
+  };
+
+  const restore = (): void => {
+    clock.pause();
+    arrangement.setCues(previous.cues);
+    setActiveCount(previous.activeCount);
+    stage.setOrbitTimeScale(1);
+    stage.setOrbit(previous.orbit);
+    if (previous.zoom !== arrangement.zoomLevel) setZoom(previous.zoom);
+    loopRegion = previous.loop;
+    applyLoop(false);
+    clock.setLoopEnabled(previous.loopEnabled);
+    clock.seek(previous.songTime);
+    perf.setAutoResolution(true);
+    if (previous.playing) void clock.play();
+  };
+
+  // Pin the scenario.
+  setActiveCount(show.fixtures.length);
+  stage.setView(0, true);
+  stage.setOrbit(orbitOn);
+  stage.setOrbitTimeScale(orbitSpeed);
+  setZoom(PIXELS_PER_SECOND);
+  arrangement.setCues([
+    ...buildBenchCues(show.fixtures, startSec, BENCH_SCENARIO.windowSec),
+    ...buildBenchSurfaceCues(surfaces, startSec, BENCH_SCENARIO.windowSec),
+  ]);
+  loopRegion = { startSec, endSec: startSec + BENCH_SCENARIO.windowSec };
+  applyLoop(false);
+  clock.setLoopEnabled(false);
+  clock.seek(startSec);
+  perf.setAutoResolution(false);
+  perf.resetScale();
+  applyResolutionScale();
+  await clock.play();
+
+  const recorder = new BenchmarkRecorder(warmupMs, measureMs);
+  const result = new Promise<BenchmarkResult>((resolve) => {
+    benchRun = {
+      recorder,
+      startedAt: new Date().toISOString(),
+      options: { startSec, warmupMs, measureMs, orbit: orbitOn, orbitSpeed },
+      restore,
+      resolve,
+    };
+    recorder.start(performance.now());
+  });
+  return result;
+};
+
+/**
+ * Persist a run so the next one can be compared against it. The dev server
+ * appends it to `docs/agent_docs/perf-runs.jsonl`; static builds have no
+ * endpoint, where the returned result is still the source of truth.
+ */
+const postBenchmarkResult = async (result: BenchmarkResult): Promise<void> => {
+  try {
+    await fetch('/__bench', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(result),
+    });
+  } catch {
+    // Not running under the dev server; nothing to persist to.
+  }
+};
+
+/** Read the persisted run history (already-appended runs, oldest first). */
+const fetchBenchmarkHistory = async (): Promise<BenchmarkResult[]> => {
+  try {
+    const response = await fetch('/__bench');
+    if (!response.ok) return [];
+    return (await response.json()) as BenchmarkResult[];
+  } catch {
+    return [];
+  }
+};
+
+/** Called from the frame loop once the recorder's sample window closes. */
+const finishBenchmark = (): void => {
+  const run = benchRun;
+  if (run === null) return;
+  benchRun = null;
+  const playing = clock.playing;
+  run.restore();
+  const result = run.recorder.summarize({
+    scenario: BENCH_SCENARIO.name,
+    startedAt: run.startedAt,
+    backend,
+    resolutionScale: 1,
+    fixtureCount: show.fixtures.length,
+    machine: currentMachine(),
+    rigSignature: rigSignature(show.fixtures),
+    options: run.options,
+  });
+  if (!playing) result.warnings = ['audio did not start; animation phase is static'];
+  // Fewer than ~20 frames over the sample window means the tab lost focus or
+  // the machine stalled; the percentiles are not meaningful.
+  if (result.frames < 20) {
+    result.warnings = [...(result.warnings ?? []), `only ${result.frames} frames sampled; page may have been throttled`];
+  }
+  void postBenchmarkResult(result);
+  run.resolve(result);
+};
+
 const updateStats = (now: number, states: readonly FixtureState[], songTime: number): void => {
   if (!perf.shouldRefreshStats(now)) return;
   syncButtons();
@@ -2673,7 +2870,7 @@ const updateStats = (now: number, states: readonly FixtureState[], songTime: num
 
 const frame = (now: number): void => {
   const workStart = performance.now();
-  perf.sampleFrame(now);
+  const deltaMs = perf.sampleFrame(now);
 
   const songTime = clock.time;
   if (clock.playing && followPlayhead) {
@@ -2760,6 +2957,15 @@ const frame = (now: number): void => {
 
   const cpuMs = performance.now() - workStart;
   perf.sampleCpu(cpuMs);
+  if (benchRun !== null) {
+    const done = benchRun.recorder.sample({
+      frameMs: deltaMs,
+      cpuMs,
+      drawCalls: renderer.info.render.drawCalls,
+      triangles: renderer.info.render.triangles,
+    }, now);
+    if (done) finishBenchmark();
+  }
   perf.adjustResolution(now);
   updateStats(now, states, songTime);
 
@@ -3043,4 +3249,12 @@ requestAnimationFrame(frame);
       target: stage.controls.target.toArray(),
     };
   },
+  /**
+   * Measure render cost on a pinned scenario (all fixtures, orbit on).
+   * Resolves with percentile frame times after restoring the previous state,
+   * and appends the run to the dev-server history file.
+   */
+  benchmark: (options?: BenchmarkOptions) => runBenchmark(options),
+  /** Persisted benchmark runs, oldest first. Empty outside the dev server. */
+  benchmarkHistory: () => fetchBenchmarkHistory(),
 };

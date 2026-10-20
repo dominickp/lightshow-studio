@@ -122,6 +122,8 @@ export class Stage {
   private orbitInteracting = false;
   /** Seconds elapsed since the framing was anchored; drives the bob/dolly. */
   private orbitPhase = 0;
+  /** Multiplies orbit motion; >1 lets the benchmark cover the arc in a short run. */
+  private orbitTimeScale = 1;
   /** Framing the orbit oscillates around. Re-anchored on drag end / view change. */
   private orbitAzimuth = 0;
   private orbitPolar = Math.PI / 2;
@@ -484,6 +486,15 @@ export class Stage {
     this.setOrbit(!this.orbit);
   }
 
+  /**
+   * Speed up or slow down the auto-orbit without changing how it looks.
+   * Only the camera path changes, not the render cost, so the benchmark can
+   * sample many angles without running a full ~20 s orbit pass.
+   */
+  setOrbitTimeScale(scale: number): void {
+    this.orbitTimeScale = Math.max(0.01, scale);
+  }
+
   get orbitEnabled(): boolean {
     return this.orbit;
   }
@@ -505,7 +516,9 @@ export class Stage {
   /** Advance the orbit by one frame's worth of time. */
   private stepOrbit(): void {
     const now = performance.now();
-    const deltaSec = this.orbitLastMs === 0 ? 0 : Math.min(0.1, (now - this.orbitLastMs) / 1000);
+    const deltaSec = this.orbitLastMs === 0
+      ? 0
+      : Math.min(0.1, ((now - this.orbitLastMs) / 1000) * this.orbitTimeScale);
     this.orbitLastMs = now;
     if (this.orbitInteracting) return;
     this.orbitPhase += deltaSec;

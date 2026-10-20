@@ -27,6 +27,7 @@ export class PerfMonitor {
   private lastDeltaMs = 16.7;
   private lastStats = 0;
   private lastResolutionChange = 0;
+  private autoResolution = true;
 
   constructor(private readonly options: PerfMonitorOptions) {
     this.lastFrame = (options.now ?? (() => performance.now()))();
@@ -38,6 +39,28 @@ export class PerfMonitor {
 
   get resolutionScale(): number {
     return this.scale;
+  }
+
+  get autoResolutionEnabled(): boolean {
+    return this.autoResolution;
+  }
+
+  /**
+   * Turn adaptive resolution off while benchmarking: a silent downscale would
+   * hide exactly the cost a benchmark is meant to expose. Turning it back on
+   * also clears the cooldown so normal play can adapt immediately.
+   */
+  setAutoResolution(enabled: boolean): void {
+    this.autoResolution = enabled;
+    this.lastResolutionChange = 0;
+  }
+
+  /** Pin the scale to 100% and forget stale frame times. */
+  resetScale(): void {
+    this.scale = 1;
+    this.smoothedFrameMs = 16.7;
+    this.smoothedCpuMs = 1;
+    this.lastResolutionChange = 0;
   }
 
   /** Feed a new animation frame; returns the frame delta in ms. */
@@ -54,6 +77,7 @@ export class PerfMonitor {
   }
 
   adjustResolution(now: number): void {
+    if (!this.autoResolution) return;
     if (this.options.isHidden() || !this.options.isPlaying()) return;
     if (now - this.lastResolutionChange < RESOLUTION_COOLDOWN_MS) return;
 

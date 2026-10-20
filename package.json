@@ -11,6 +11,7 @@
       "build": "npm run build -w @dmxsim/lighting-spike",
     "test": "vitest run",
     "typecheck": "tsc -b --pretty",
+    "bench:report": "vite-node --config apps/lighting-spike/vite.config.ts apps/lighting-spike/scripts/perf-report.ts",
     "project:generate": "vite-node --config apps/lighting-spike/vite.config.ts apps/lighting-spike/scripts/generate-demo-project.ts"
   },
   "devDependencies": {

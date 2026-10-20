@@ -913,6 +913,7 @@
                       "noise",
                       "grid",
                       "scan",
+                      "media",
                       "dots",
                       "blackout"
                     ]
@@ -958,6 +959,40 @@
                       "beat",
                       "bar"
                     ]
+                  },
+                  "media": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "video",
+                          "image"
+                        ]
+                      },
+                      "fit": {
+                        "default": "cover",
+                        "type": "string",
+                        "enum": [
+                          "cover",
+                          "contain"
+                        ]
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "source",
+                      "kind",
+                      "fit"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [

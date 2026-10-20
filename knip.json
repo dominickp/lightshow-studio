@@ -1,0 +1,15 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    "apps/lighting-spike": {
+      "entry": ["index.html", "scripts/*.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "packages/show-model": {
+      "project": ["src/**/*.ts"]
+    },
+    "packages/fixtures": {
+      "project": ["src/**/*.ts"]
+    }
+  }
+}

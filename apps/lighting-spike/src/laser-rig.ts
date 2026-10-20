@@ -131,7 +131,7 @@ function patternDirections(
   const count = beams;
   for (let i = 0; i < count; i += 1) {
     let dx = 0;
-    let dy = -1;
+    let dy: number;
     let dz = 0;
 
     if (pattern === 'tunnel') {

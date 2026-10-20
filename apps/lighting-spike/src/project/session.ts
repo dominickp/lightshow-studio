@@ -4,7 +4,6 @@ import {
   fixtureIds,
   projectFileName,
   readProjectFile,
-  rigMatches,
 } from '../project-file';
 
 export interface SaveProjectContext {

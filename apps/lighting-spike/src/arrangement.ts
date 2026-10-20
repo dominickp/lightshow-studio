@@ -14,7 +14,6 @@ import {
   capabilitySummary,
   gridModeFor,
   kindLabel,
-  trackColor,
 } from './arrangement/markup';
 import { paintClipOverlay } from './arrangement/paint';
 import { defaultClipLength, snapDelta as snapDeltaToGrid, snapTime } from './arrangement/time';

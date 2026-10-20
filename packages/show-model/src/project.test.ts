@@ -321,6 +321,38 @@ describe('project migration and rig placement', () => {
     })).toThrow(/unknown surface/);
   });
 
+  it('round-trips media looks and defaults their fit', () => {
+    const project = parseProject({
+      ...minimalProject(),
+      arrangement: {
+        clips: [],
+        surfaces: [],
+        surfaceClips: [{
+          id: 'sclip-media',
+          surfaceId: 'led-main',
+          startSec: 0,
+          endSec: 8,
+          look: {
+            kind: 'media',
+            colors: ['#000000'],
+            speed: 1,
+            scale: 1,
+            angleDeg: 0,
+            softness: 0,
+            intensity: 1,
+            seed: 0,
+            media: { source: 'bundled:003', kind: 'video' },
+          },
+        }],
+      },
+    });
+    expect(project.arrangement.surfaceClips[0]?.look.media).toEqual({
+      source: 'bundled:003',
+      kind: 'video',
+      fit: 'cover',
+    });
+  });
+
   it('round-trips mounts, names, and laser setup', () => {
     const base = minimalProject();
     const withRig = parseProject({

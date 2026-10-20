@@ -1,5 +1,6 @@
 import {
   defaultLedLook,
+  ledMediaLabel,
   type LedLookKind,
   type LedLookState,
   type LedSync,
@@ -88,8 +89,20 @@ const LEGACY_LOOKS: readonly LookDefinition[] = [
   definition('dots', 'Dots (legacy)', '⁙', 'Older point-field look; rendered as scan bars', [PALETTE, ...MOTION, SEED, SYNC]),
 ];
 
+/**
+ * Media is not a generator: its picker lives in the media section, because a
+ * bare `media` look with no source would render black.
+ */
+export const MEDIA_LOOK: LookDefinition = definition(
+  'media',
+  'Media',
+  '▶',
+  'Video or still image mapped onto the panel',
+  [MOTION[4]!, SYNC],
+);
+
 export const LOOK_BY_KIND: ReadonlyMap<LedLookKind, LookDefinition> = new Map(
-  [...LOOK_DEFINITIONS, ...LEGACY_LOOKS].map((look) => [look.kind, look]),
+  [...LOOK_DEFINITIONS, ...LEGACY_LOOKS, MEDIA_LOOK].map((look) => [look.kind, look]),
 );
 
 export function lookDefinition(kind: LedLookKind): LookDefinition {
@@ -100,6 +113,9 @@ export function lookDefinition(kind: LedLookKind): LookDefinition {
 export function lookSummary(look: LedLookState): string {
   const def = lookDefinition(look.kind);
   if (look.kind === 'blackout') return def.label;
+  if (look.kind === 'media') {
+    return ledMediaLabel(look.media) ?? def.label;
+  }
   const unit = look.sync === 'beat' ? 'cycles/beat' : look.sync === 'bar' ? 'cycles/bar' : 'Hz';
   const speed = look.speed > 0 ? ` · ${look.speed.toFixed(2)} ${unit}` : '';
   return `${def.label}${speed}`;

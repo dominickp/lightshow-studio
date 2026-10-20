@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { LED_LOOK_KINDS, LED_SYNCS } from './led';
+import { LED_LOOK_KINDS, LED_MEDIA_FITS, LED_MEDIA_KINDS, LED_SYNCS } from './led';
 import { DEFAULT_VENUE_ID } from './venue';
 
 /**
@@ -221,7 +221,19 @@ export const projectClipSchema = z
 
 const hexColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'expected #rrggbb');
 
-/** One procedural look instance on a wall. */
+/**
+ * A wall media reference. The bytes are not stored in the project file:
+ * `bundled:` sources ship with the app and `local:` sources live in the
+ * user's IndexedDB library on this machine.
+ */
+export const ledMediaSchema = z.object({
+  source: z.string().min(1),
+  kind: z.enum(LED_MEDIA_KINDS),
+  fit: z.enum(LED_MEDIA_FITS).default('cover'),
+  label: z.string().min(1).optional(),
+});
+
+/** One procedural or media look instance on a wall. */
 export const ledLookSchema = z.object({
   kind: z.enum(LED_LOOK_KINDS),
   colors: z.array(hexColorSchema).min(1).max(4),
@@ -232,6 +244,7 @@ export const ledLookSchema = z.object({
   intensity: z.number().min(0).max(1),
   seed: z.number(),
   sync: z.enum(LED_SYNCS).default('none'),
+  media: ledMediaSchema.optional(),
 });
 
 /** Physical and calibration properties of a wall (not per-clip). */

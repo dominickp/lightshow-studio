@@ -5,26 +5,34 @@ import {
   cos,
   float,
   fract,
+  greaterThan,
   length,
   mix,
   mx_noise_float,
   pow,
+  select,
   sin,
   smoothstep,
   step,
+  texture as textureNode,
   uniform,
   uv,
   vec2,
   vec3,
 } from 'three/tsl';
-import type { LedLookKind, LedLookState, LedSurface, LedSync } from '@dmxsim/show-model';
+import type {
+  LedLookKind,
+  LedLookState,
+  LedMediaFit,
+  LedSurface,
+  LedSync,
+} from '@dmxsim/show-model';
 
 const TAU = Math.PI * 2;
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- TSL node generics are unreadable here. */
+// TSL node generics are unreadable here, so these stay loose on purpose.
 type Node = any;
 type Uniform = any;
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 export interface LookUniforms {
   time: Uniform;
@@ -255,7 +263,60 @@ function buildBlackout(u: LookUniforms): Node {
   return vec3(0, 0, 0).mul(u.intensity);
 }
 
-const BUILDERS: Record<LedLookKind, (u: LookUniforms) => Node> = {
+/** Pixel aspect of a loaded video or image; 16:9 until metadata arrives. */
+function mediaAspect(texture: THREE.Texture): number {
+  const image = texture.image as
+    | { videoWidth?: number; videoHeight?: number; width?: number; height?: number }
+    | null
+    | undefined;
+  const width = image?.videoWidth ?? image?.width ?? 16;
+  const height = image?.videoHeight ?? image?.height ?? 9;
+  return width / Math.max(1, height);
+}
+
+/**
+ * Map a source onto the panel without distorting it.
+ *
+ * `cover` fills the wall and crops the overflow; `contain` shows the whole
+ * frame and leaves the unused panel area dark, like letterboxing.
+ */
+function mediaUv(u: LookUniforms, aspect: number, fit: LedMediaFit): Node {
+  const source = float(aspect);
+  const wall = u.aspect;
+  const sourceWider = greaterThan(source, wall);
+  const ratio = source.div(wall);
+  const inverse = float(1).div(ratio);
+  // `cover` crops the overflowing axis; `contain` shrinks the source instead.
+  const scaleX = fit === 'cover'
+    ? select(sourceWider, inverse, float(1))
+    : select(sourceWider, float(1), ratio);
+  const scaleY = fit === 'cover'
+    ? select(sourceWider, float(1), ratio)
+    : select(sourceWider, inverse, float(1));
+  return vec2(scaleX, scaleY);
+}
+
+/**
+ * Full-frame media sampled per screen pixel. The LED mask in `finalize` still
+ * quantises the result to the diode matrix, so footage reads as a real wall.
+ */
+function buildMedia(
+  u: LookUniforms,
+  mediaTexture: THREE.Texture | null,
+  fit: LedMediaFit,
+): Node {
+  if (mediaTexture === null) return vec3(0, 0, 0);
+  const scales = mediaUv(u, mediaAspect(mediaTexture), fit);
+  const centered = uv().sub(0.5);
+  const sampled = textureNode(mediaTexture, centered.mul(scales).add(0.5));
+  // `contain` maps outside the source; clamp-to-edge would smear those pixels
+  // across the padding bars, so mask them to black (the wall's off level).
+  const outside = step(0.5, abs(centered.x).mul(scales.x))
+    .max(step(0.5, abs(centered.y).mul(scales.y)));
+  return sampled.rgb.mul(float(1).sub(outside));
+}
+
+const BUILDERS: Record<Exclude<LedLookKind, 'media'>, (u: LookUniforms) => Node> = {
   solid: buildSolid,
   gradient: buildGradient,
   wave: buildWave,
@@ -269,8 +330,20 @@ const BUILDERS: Record<LedLookKind, (u: LookUniforms) => Node> = {
   blackout: buildBlackout,
 };
 
-export function buildLookNode(kind: LedLookKind, u: LookUniforms): Node {
-  return finalize(u, (BUILDERS[kind] ?? buildGradient)(u));
+export interface MediaNodeOptions {
+  texture: THREE.Texture | null;
+  fit: LedMediaFit;
+}
+
+export function buildLookNode(
+  kind: LedLookKind,
+  u: LookUniforms,
+  media?: MediaNodeOptions,
+): Node {
+  const color = kind === 'media'
+    ? buildMedia(u, media?.texture ?? null, media?.fit ?? 'cover')
+    : (BUILDERS[kind] ?? buildGradient)(u);
+  return finalize(u, color);
 }
 
 /** Write a look's values into a uniform set. Mutates `u` in place. */
@@ -324,6 +397,11 @@ export function lookTime(
 
 /** Rough average colour, used to tint the room light the wall throws. */
 export function averageLookColor(look: LedLookState): THREE.Color {
+  // Media is not sampled on the CPU; a neutral spill avoids a wrong hue and
+  // keeps the room fill moving with the wall's intensity.
+  if (look.kind === 'media') {
+    return new THREE.Color(0.5, 0.5, 0.5).multiplyScalar(look.intensity);
+  }
   const color = new THREE.Color(0, 0, 0);
   if (look.colors.length === 0) return color;
   for (const css of look.colors) {

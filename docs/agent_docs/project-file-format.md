@@ -240,9 +240,22 @@ participate in DMX fixture evaluation.
 - `surfaces` stores physical placement and display calibration. An empty list
   means use the wall declared by the venue template.
 - `surfaceClips[].look.kind` is one of `solid`, `gradient`, `wave`, `radial`,
-  `noise`, `grid`, `scan`, or `blackout`. Older v3 `dots` values load as scan bars.
+  `noise`, `grid`, `scan`, `media`, or `blackout`. Older v3 `dots` values load as
+  scan bars.
 - `colors` contains 1–4 `#rrggbb` stops; `speed`, `scale`, `angleDeg`,
   `softness`, `intensity`, `seed`, and `sync` parameterize the generator.
+- A `media` look carries a `media` reference instead of a generator:
+
+  ```json
+  "media": { "source": "bundled:003", "kind": "video", "fit": "cover", "label": "Mantissa 003" }
+  ```
+
+  `source` is namespaced. `bundled:<id>` resolves to a clip shipped with the
+  app; `local:<uuid>` resolves to a file the user imported, which the app keeps
+  in IndexedDB on that machine. Media bytes are never written into the project
+  file, so a project that uses uploads is not portable to another machine unless
+  those files are imported there too. `fit` is `cover` (crop) or `contain`
+  (letterbox).
 - `pitchMm` is the physical pixel pitch. The renderer uses a capped, uniformly
   scaled LED matrix so individual diodes remain legible at viewport resolution.
 - A surface clip must reference a declared surface when the project declares

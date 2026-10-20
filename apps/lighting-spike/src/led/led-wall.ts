@@ -1,6 +1,6 @@
 import * as THREE from 'three/webgpu';
 import { vec3 } from 'three/tsl';
-import type { LedLookKind, LedLookState, LedSurface } from '@dmxsim/show-model';
+import type { LedLookState, LedSurface } from '@dmxsim/show-model';
 import {
   applyLook,
   applySurface,
@@ -10,6 +10,17 @@ import {
   lookTime,
   type LookUniforms,
 } from './looks';
+
+/**
+ * Supplies media textures and keeps video playback aligned with song time.
+ * Implemented by the app's media library so the renderer stays DOM-free.
+ */
+export interface LedMediaRuntime {
+  /** Null while a local upload is still being restored from storage. */
+  texture(source: string): THREE.Texture | null;
+  /** Seek/play a source so its frame matches the clip time. */
+  sync(source: string, timeSec: number, playing: boolean): void;
+}
 
 /** One look contributing to the wall this frame. */
 export interface LedPlaybackLayer {
@@ -21,9 +32,19 @@ export interface LedPlaybackLayer {
 interface Layer {
   mesh: THREE.Mesh;
   uniforms: LookUniforms;
-  materials: Map<LedLookKind, THREE.Material>;
-  kind: LedLookKind | null;
+  /** Keyed by kind plus media source; two clips may share a generator. */
+  materials: Map<string, THREE.Material>;
+  materialKey: string | null;
 }
+
+/** Black fill used while a media material is being rebuilt. */
+const EMPTY_MATERIAL = new THREE.MeshBasicNodeMaterial({
+  transparent: true,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+});
+EMPTY_MATERIAL.colorNode = vec3(0, 0, 0);
+EMPTY_MATERIAL.fog = false;
 
 /**
  * The physical wall is always present, even with no clip: an unlit LED panel
@@ -44,9 +65,11 @@ export class LedWall {
   private readonly layers: Layer[] = [];
   private readonly panel: THREE.Mesh;
   private maskStrength = 0;
+  private media: LedMediaRuntime | null;
 
-  constructor(surface: LedSurface) {
+  constructor(surface: LedSurface, media: LedMediaRuntime | null = null) {
     this.surface = surface;
+    this.media = media;
     this.group.name = 'venue:led-wall';
 
     const panelMaterial = new THREE.MeshBasicNodeMaterial();
@@ -71,7 +94,7 @@ export class LedWall {
       );
       mesh.position.set(0, surface.y, surface.z + index * 0.01);
       mesh.renderOrder = 1 + index;
-      const layer: Layer = { mesh, uniforms, materials: new Map(), kind: null };
+      const layer: Layer = { mesh, uniforms, materials: new Map(), materialKey: null };
       this.layers.push(layer);
       this.group.add(mesh);
     }
@@ -104,6 +127,22 @@ export class LedWall {
     return this.surface;
   }
 
+  /** Replace the media provider, e.g. when Stage swaps in its library. */
+  setMediaRuntime(media: LedMediaRuntime | null): void {
+    this.media = media;
+    this.refreshMedia();
+  }
+
+  /** Rebuild media materials after a texture finishes loading. */
+  refreshMedia(): void {
+    for (const layer of this.layers) {
+      for (const material of layer.materials.values()) material.dispose();
+      layer.materials.clear();
+      layer.materialKey = null;
+      layer.mesh.material = EMPTY_MATERIAL;
+    }
+  }
+
   /**
    * `timeSec` is song time; each look converts it through its own sync mode.
    * `grid` supplies tempo for beat/bar locked looks.
@@ -113,6 +152,7 @@ export class LedWall {
     timeSec: number,
     grid: { bpm: number | null; beatsPerBar: number } | null,
     maskStrength: number,
+    playing = true,
   ): void {
     this.maskStrength = maskStrength;
     for (let index = 0; index < this.layers.length; index += 1) {
@@ -124,11 +164,15 @@ export class LedWall {
       }
       const look = playback.look;
       layer.mesh.visible = true;
-      this.setKind(layer, look.kind);
+      this.setMaterial(layer, look);
       applyLook(layer.uniforms, look);
-      layer.uniforms.time.value = lookTime(look, timeSec, grid);
+      const time = lookTime(look, timeSec, grid);
+      layer.uniforms.time.value = time;
       layer.uniforms.opacity.value = playback.opacity;
       layer.uniforms.maskStrength.value = maskStrength;
+      if (look.media !== undefined) {
+        this.media?.sync(look.media.source, time, playing);
+      }
     }
   }
 
@@ -153,20 +197,29 @@ export class LedWall {
     for (const layer of this.layers) applySurface(layer.uniforms, surface);
   }
 
-  private setKind(layer: Layer, kind: LedLookKind): void {
-    if (layer.kind === kind) return;
-    layer.kind = kind;
-    let material = layer.materials.get(kind);
+  private setMaterial(layer: Layer, look: LedLookState): void {
+    const key = look.kind === 'media'
+      ? `media:${look.media?.source ?? ''}:${look.media?.fit ?? 'cover'}`
+      : look.kind;
+    if (layer.materialKey === key) return;
+    layer.materialKey = key;
+    let material = layer.materials.get(key);
     if (material === undefined) {
       const created = new THREE.MeshBasicNodeMaterial({
         transparent: true,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
       });
-      created.colorNode = buildLookNode(kind, layer.uniforms);
+      const mediaTexture = look.kind === 'media' && look.media !== undefined
+        ? this.media?.texture(look.media.source) ?? null
+        : null;
+      created.colorNode = buildLookNode(look.kind, layer.uniforms, {
+        texture: mediaTexture,
+        fit: look.media?.fit ?? 'cover',
+      });
       created.fog = false;
       material = created;
-      layer.materials.set(kind, material);
+      layer.materials.set(key, material);
     }
     layer.mesh.material = material;
   }

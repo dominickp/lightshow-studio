@@ -9,7 +9,7 @@ import {
   type Show,
   type VenueTemplate,
 } from '@dmxsim/show-model';
-import { LedWall, type LedPlaybackLayer } from './led/led-wall';
+import { LedWall, type LedMediaRuntime, type LedPlaybackLayer } from './led/led-wall';
 import { ledMaskStrength } from './led/looks';
 import { createFixtureRig, type LaserRig } from './laser-rig';
 import type { FixtureRig } from './rig';
@@ -106,6 +106,7 @@ export class Stage {
   private readonly ledWalls = new Map<string, LedWall>();
   private ledSurfaces: LedSurface[] = [];
   private ledPlayback: ReadonlyMap<string, readonly LedPlaybackLayer[]> = new Map();
+  private ledMedia: LedMediaRuntime | null = null;
   /** Approximate room fill thrown by the walls. */
   private readonly ledGlow: THREE.PointLight;
   private beatGrid: { bpm: number | null; beatsPerBar: number };
@@ -289,11 +290,22 @@ export class Stage {
     }
     this.ledWalls.clear();
     for (const surface of surfaces) {
-      const wall = new LedWall(surface);
+      const wall = new LedWall(surface, this.ledMedia);
       this.ledWalls.set(surface.id, wall);
       this.scene.add(wall.group);
       this.syncVenueLedSurface(surface);
     }
+  }
+
+  /** Attach the media library so video/image looks can resolve textures. */
+  setLedMediaRuntime(runtime: LedMediaRuntime | null): void {
+    this.ledMedia = runtime;
+    for (const wall of this.ledWalls.values()) wall.setMediaRuntime(runtime);
+  }
+
+  /** A media texture finished loading: rebuild the affected materials. */
+  refreshLedMedia(): void {
+    for (const wall of this.ledWalls.values()) wall.refreshMedia();
   }
 
   /** Active look layers per wall. Crossfades are resolved by the caller. */
@@ -586,7 +598,7 @@ export class Stage {
     const beatPhase = (timeSec / this.beatSec) % 1;
     const energy = Math.exp(-beatPhase * 3.2) * 0.75 + 0.25;
 
-    this.updateLedWalls(timeSec);
+    this.updateLedWalls(timeSec, options.playing ?? true);
 
     const color = new THREE.Color();
     let r = 0;
@@ -624,7 +636,7 @@ export class Stage {
    * A single soft point light in front of the busiest wall approximates the
    * spill cheaply; it is deliberately not per-pixel GI.
    */
-  private updateLedWalls(timeSec: number): void {
+  private updateLedWalls(timeSec: number, playing: boolean): void {
     if (this.ledWalls.size === 0) return;
     const viewportHeight = Math.max(1, this.domElement.clientHeight);
     const glow = new THREE.Color(0, 0, 0);
@@ -637,6 +649,7 @@ export class Stage {
         timeSec,
         this.beatGrid,
         ledMaskStrength(surface, this.camera, viewportHeight),
+        playing,
       );
       if (layers.length > 0 && wall.group.visible) {
         glow.add(wall.glowColor(layers));

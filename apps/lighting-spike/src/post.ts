@@ -5,7 +5,7 @@ import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 
 /* TSL node graphs are not expressible with a stable public type, so the
  * grading helper is intentionally loosely typed. */
-type NodeLike = any; // eslint-disable-line @typescript-eslint/no-explicit-any
+type NodeLike = any;
 
 export class Post {
   private readonly processing: RenderPipeline;

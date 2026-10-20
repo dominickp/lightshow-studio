@@ -5,8 +5,8 @@ function setup(options: { playing?: boolean; hidden?: boolean } = {}) {
   const changes: number[] = [];
   let playing = options.playing ?? true;
   let hidden = options.hidden ?? false;
-  let monitor!: PerfMonitor;
-  monitor = new PerfMonitor({
+  // The closure only reads `monitor` when it is invoked later.
+  const monitor: PerfMonitor = new PerfMonitor({
     applyResolutionScale: () => changes.push(monitor.resolutionScale),
     isPlaying: () => playing,
     isHidden: () => hidden,

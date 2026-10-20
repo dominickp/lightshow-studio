@@ -16,6 +16,7 @@ import {
   type FixturePlacement,
   type FixtureState,
   type LaserPattern,
+  type LedMediaRef,
   type LaserSetup,
   type LedLookState,
   type LedSurface,
@@ -23,6 +24,12 @@ import {
   type ProjectSettings,
 } from '@dmxsim/show-model';
 import type { LedPlaybackLayer } from './led/led-wall';
+import {
+  BUNDLED_MEDIA,
+  LedMediaLibrary,
+  mediaRef,
+  type LedMediaAsset,
+} from './led/media';
 import {
   LOOK_DEFINITIONS,
   PALETTE_PRESETS,
@@ -164,6 +171,11 @@ container.appendChild(renderer.domElement);
 await renderer.init();
 
 const stage = new Stage(renderer.domElement, show, activeVenue);
+const media = new LedMediaLibrary();
+stage.setLedMediaRuntime(media);
+// A local upload restored from IndexedDB is only usable once its texture
+// exists, so rebuild the media materials when the library reports it.
+media.onChange(() => stage.refreshLedMedia());
 stage.setLedSurfaces(surfaces);
 // TEMP DEBUG
 (window as unknown as { __stage: Stage }).__stage = stage;
@@ -259,6 +271,9 @@ const ui = {
     lookTitle: element('le-title'),
     lookGrid: element('le-grid'),
     lookControls: element('le-controls'),
+    lookMedia: element<HTMLElement>('le-media'),
+    lookUpload: element<HTMLButtonElement>('le-upload'),
+    lookFile: element<HTMLInputElement>('le-file'),
     lookPresets: element('le-presets'),
     lookClose: element<HTMLButtonElement>('le-close'),
     surfacePane: element('surface-pane'),
@@ -382,6 +397,8 @@ ui.backend.textContent = backend;
 
 const waveform = new WaveformStrip(ui.waveform, (songSec) => clock.seek(songSec));
 let cues: readonly Cue[] = [];
+// Assigned after the closure below captures it.
+// eslint-disable-next-line prefer-const
 let arrangement: Arrangement;
 let currentTimeline: CueTimeline | null = null;
 let followPlayhead = bundledProject?.settings.playback.followPlayhead ?? true;
@@ -2357,7 +2374,123 @@ function renderLookEditor(): void {
     button.addEventListener('click', () => patchLook({ colors: [...preset.colors] }));
     return button;
   }));
+
+  renderMediaPicker(look);
 }
+
+/** Uploaded assets are read from IndexedDB once per session. */
+let localMediaAssets: LedMediaAsset[] = [];
+let localMediaRequested = false;
+
+const ensureLocalMedia = (): void => {
+  if (localMediaRequested) return;
+  localMediaRequested = true;
+  void media.listLocalAssets().then((assets) => {
+    localMediaAssets = assets;
+    if (!ui.lookEditor.hidden) {
+      const look = currentLook();
+      if (look !== null) renderMediaPicker(look);
+    }
+  }).catch((error: unknown) => {
+    console.warn('could not list uploaded wall media', error);
+  });
+};
+
+/** Replace the selected look with a media look using `asset`. */
+const applyMediaLook = (asset: LedMediaAsset): void => {
+  const look = currentLook();
+  const fit = look?.media?.fit ?? 'cover';
+  arrangement.setSelectedLook({ ...defaultLedLook('media'), media: mediaRef(asset, fit) });
+  renderLookEditor();
+};
+
+/**
+ * Media picker. The source list is shown for every look kind so switching to
+ * footage is one click; picking a clip converts the current look.
+ */
+function renderMediaPicker(look: LedLookState): void {
+  ensureLocalMedia();
+  const mediaSelected = look.kind === 'media' ? look.media : undefined;
+  const nodes: HTMLElement[] = [];
+
+  const hint = document.createElement('p');
+  hint.className = 'le-media-hint';
+  hint.textContent = mediaSelected === undefined
+    ? 'Pick a clip or upload a video/image to replace the generator.'
+    : `Playing ${mediaSelected.label ?? mediaSelected.source}`;
+  nodes.push(hint);
+
+  if (mediaSelected !== undefined) {
+    const fitField = document.createElement('label');
+    fitField.className = 'le-field';
+    fitField.innerHTML = '<span>Fit</span>';
+    const select = document.createElement('select');
+    select.className = 'le-select';
+    for (const [value, label] of [['cover', 'Cover (crop)'], ['contain', 'Contain (letterbox)']] as const) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = label;
+      select.appendChild(option);
+    }
+    select.value = mediaSelected.fit;
+    select.addEventListener('change', () => {
+      patchLook({ media: { ...mediaSelected, fit: select.value as LedMediaRef['fit'] } });
+    });
+    fitField.appendChild(select);
+    nodes.push(fitField);
+  }
+
+  const tile = (asset: LedMediaAsset): HTMLElement => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'le-media-tile';
+    button.title = `${asset.label} · ${asset.kind === 'video' ? 'Video' : 'Image'}`;
+    button.setAttribute('aria-pressed', String(mediaSelected?.source === asset.source));
+    if (asset.kind === 'video') {
+      const video = document.createElement('video');
+      video.src = `${asset.url}#t=0.5`;
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = 'metadata';
+      video.setAttribute('aria-hidden', 'true');
+      button.appendChild(video);
+    } else {
+      const image = document.createElement('img');
+      image.src = asset.url;
+      image.loading = 'lazy';
+      image.alt = '';
+      button.appendChild(image);
+    }
+    const name = document.createElement('span');
+    name.textContent = asset.label;
+    button.appendChild(name);
+    button.addEventListener('click', () => applyMediaLook(asset));
+    return button;
+  };
+
+  const grid = document.createElement('div');
+  grid.className = 'le-media-grid';
+  grid.replaceChildren(...[...BUNDLED_MEDIA, ...localMediaAssets].map(tile));
+  nodes.push(grid);
+  ui.lookMedia.replaceChildren(...nodes);
+}
+
+ui.lookUpload.addEventListener('click', () => ui.lookFile.click());
+ui.lookFile.addEventListener('change', () => {
+  const files = [...(ui.lookFile.files ?? [])];
+  ui.lookFile.value = '';
+  if (files.length === 0) return;
+  void media.importFiles(files).then((refs) => {
+    const first = refs[0];
+    if (first === undefined) return;
+    localMediaAssets = [];
+    localMediaRequested = false;
+    arrangement.setSelectedLook({ ...defaultLedLook('media'), media: first });
+    renderLookEditor();
+  }).catch((error: unknown) => {
+    console.warn('could not import wall media', error);
+  });
+});
 
 const formatParam = (key: string, value: number, unit?: string): string => {
   if (key === 'intensity' || key === 'softness') return `${Math.round(value * 100)}%`;
@@ -2644,6 +2777,8 @@ const resizeViewport = (): void => {
 };
 window.addEventListener('resize', resizeViewport);
 
+// Assigned after `applyResolutionScale` captures it.
+// eslint-disable-next-line prefer-const
 let perf: PerfMonitor;
 const applyResolutionScale = (): void => {
   renderer.setPixelRatio(baseRatio * perf.resolutionScale);

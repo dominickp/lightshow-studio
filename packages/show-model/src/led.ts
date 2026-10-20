@@ -16,12 +16,39 @@ export const LED_LOOK_KINDS = [
   'noise',
   'grid',
   'scan',
+  /** Video or still image mapped onto the panel. */
+  'media',
   /** Accepted for older v3 projects; not exposed in the editor. */
   'dots',
   'blackout',
 ] as const;
 
 export type LedLookKind = (typeof LED_LOOK_KINDS)[number];
+
+export const LED_MEDIA_KINDS = ['video', 'image'] as const;
+
+/** Whether the source is moving footage or a still frame. */
+export type LedMediaKind = (typeof LED_MEDIA_KINDS)[number];
+
+export const LED_MEDIA_FITS = ['cover', 'contain'] as const;
+
+/** How a source with a different aspect ratio maps onto the panel. */
+export type LedMediaFit = (typeof LED_MEDIA_FITS)[number];
+
+/**
+ * A reference to wall media.
+ *
+ * `source` is namespaced so the project file stays small:
+ * `bundled:<id>` points at a clip shipped with the app and `local:<uuid>` at
+ * a file the user imported, which the app keeps in IndexedDB.
+ */
+export interface LedMediaRef {
+  source: string;
+  kind: LedMediaKind;
+  fit: LedMediaFit;
+  /** Friendly name shown in the editor and on clip cards. */
+  label?: string;
+}
 
 export const LED_SYNCS = ['none', 'beat', 'bar'] as const;
 
@@ -50,6 +77,8 @@ export interface LedLookState {
   /** Deterministic variation, so noise/grid looks are reproducible. */
   seed: number;
   sync: LedSync;
+  /** Required for `kind: 'media'`; ignored by procedural looks. */
+  media?: LedMediaRef;
 }
 
 /** Physical + calibration properties of one wall. */
@@ -124,6 +153,7 @@ const LOOK_DEFAULTS: Record<LedLookKind, Omit<LedLookState, 'kind'>> = {
   noise: { colors: ['#0a1030', '#397cff', '#f2f6ff'], speed: 0.25, scale: 2.2, angleDeg: 0, softness: 0.6, intensity: 1, seed: 41, sync: 'none' },
   grid: { colors: ['#02040a', '#c2a4ff'], speed: 0.2, scale: 1.2, angleDeg: 0, softness: 0.15, intensity: 1, seed: 11, sync: 'bar' },
   scan: { colors: ['#05060c', '#ff8a18'], speed: 0.8, scale: 1, angleDeg: 90, softness: 0.25, intensity: 1, seed: 2, sync: 'beat' },
+  media: { colors: ['#000000', '#ffffff'], speed: 1, scale: 1, angleDeg: 0, softness: 0, intensity: 1, seed: 0, sync: 'none' },
   dots: { colors: ['#05060c', '#ffffff', '#397cff'], speed: 0.3, scale: 1.6, angleDeg: 0, softness: 0.1, intensity: 1, seed: 19, sync: 'beat' },
   blackout: { colors: ['#000000'], speed: 0, scale: 1, angleDeg: 0, softness: 0, intensity: 0, seed: 0, sync: 'none' },
 };
@@ -131,6 +161,13 @@ const LOOK_DEFAULTS: Record<LedLookKind, Omit<LedLookState, 'kind'>> = {
 /** A fresh look of `kind`, using the authored defaults. */
 export function defaultLedLook(kind: LedLookKind = 'gradient'): LedLookState {
   return { kind, ...LOOK_DEFAULTS[kind], colors: [...LOOK_DEFAULTS[kind].colors] };
+}
+
+/** `Bundled clip · Mantissa 003` — used for clip cards without a wall context. */
+export function ledMediaLabel(media: LedMediaRef | undefined): string | null {
+  if (media === undefined) return null;
+  if (media.label !== undefined && media.label !== '') return media.label;
+  return media.source.replace(/^[a-z]+:/i, '');
 }
 
 /** Build the persisted wall record for a venue feature. */

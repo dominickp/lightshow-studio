@@ -244,7 +244,7 @@ function createGlareMaterial() {
 }
 
 /** Everything the stage needs to light the room from one fixture. */
-export interface BeamInfo {
+interface BeamInfo {
   origin: THREE.Vector3;
   direction: THREE.Vector3;
   /** Metres to the surface hit, or the profile throw when nothing is hit. */

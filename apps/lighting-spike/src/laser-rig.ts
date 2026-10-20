@@ -223,7 +223,6 @@ export class LaserRig {
   private readonly dotPosition = new THREE.Vector3();
   private readonly dotQuaternion = new THREE.Quaternion();
   private readonly dotScale = new THREE.Vector3();
-  private enabled = true;
 
   constructor(readonly placement: FixturePlacement) {
     const { profile } = placement;
@@ -324,7 +323,6 @@ export class LaserRig {
   }
 
   setVisible(visible: boolean): void {
-    this.enabled = visible;
     this.root.visible = visible;
     this.effects.visible = visible;
   }

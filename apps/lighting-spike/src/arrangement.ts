@@ -37,7 +37,7 @@ export interface Cue {
 }
 
 /** The color a cue actually renders with: palette entry or override. */
-export function resolveCueColor(cue: Cue): { css: string; rgb: readonly [number, number, number]; name: string } {
+function resolveCueColor(cue: Cue): { css: string; rgb: readonly [number, number, number]; name: string } {
   const override = cue.colorOverride;
   if (override?.kind === 'rgb') {
     const toCss = (value: number): string => Math.round(value * 255).toString(16).padStart(2, '0');
@@ -368,10 +368,6 @@ export class Arrangement {
     return fixture.name ?? fixture.id;
   }
 
-  isFixtureHidden(fixtureId: string): boolean {
-    return this.hiddenFixtureIds.has(fixtureId);
-  }
-
   get selectedCue(): Cue | null {
     return this.selectedCues[0] ?? null;
   }
@@ -551,13 +547,6 @@ export class Arrangement {
     this.selectedCueIds.clear();
     this.renderRows();
     this.notifySelection();
-  }
-
-  addAt(songSec: number, action: CueAction): void {
-    const fixture = this.selectedFixture;
-    if (fixture === null || this.timeline === null) return;
-    const startSec = this.snap(clamp(songSec, 0, this.timeline.durationSec - MIN_CLIP_SEC));
-    this.createCue(fixture.id, startSec, action);
   }
 
   /** Apply an action to every selected clip whose fixture supports it. */
@@ -1381,7 +1370,6 @@ export class Arrangement {
       const clips = this.cues
         .filter((cue) => cue.fixtureId === fixture.id)
         .map((cue) => {
-          const color = resolveCueColor(cue);
           const left = cue.startSec * this.pixelsPerSecond;
           const width = (cue.endSec - cue.startSec) * this.pixelsPerSecond;
           return `<div class="arrangement-clip" data-cue-id="${cue.id}" data-start-px="${left}" data-end-px="${left + width}" style="left:${left}px;width:${width}px" title="${cue.action}">

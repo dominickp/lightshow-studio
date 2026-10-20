@@ -37,13 +37,3 @@ export function kelvinToCss(kelvin: number): string {
   const [r, g, b] = kelvinToRgb(kelvin);
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
-
-/** Build a CSS gradient covering the kelvin range for slider tracks. */
-export function kelvinGradient(stops = 12): string {
-  const points: string[] = [];
-  for (let i = 0; i < stops; i += 1) {
-    const kelvin = MIN_KELVIN + ((MAX_KELVIN - MIN_KELVIN) * i) / (stops - 1);
-    points.push(`${kelvinToCss(kelvin)} ${(i / (stops - 1)) * 100}%`);
-  }
-  return `linear-gradient(to right, ${points.join(', ')})`;
-}

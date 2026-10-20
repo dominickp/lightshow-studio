@@ -163,7 +163,7 @@ export function createDemoCues(
         add(par, 'pulse', bar, bar, (i + beat) % 2 === 0 ? 'cyan' : 'amber', beat, beat + 1);
       }
     }
-    for (const [i, strobe] of strobes.entries()) {
+    for (const strobe of strobes) {
       for (const beat of [0, 2]) {
         add(strobe, 'strobe', bar, bar, 'white', beat, beat + 0.5);
       }

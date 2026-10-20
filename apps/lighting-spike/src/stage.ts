@@ -49,7 +49,7 @@ function viewsFrom(template: VenueTemplate): CameraView[] {
   }));
 }
 
-export interface StageUpdateOptions {
+interface StageUpdateOptions {
   volumetrics: boolean;
 }
 
@@ -140,19 +140,6 @@ export class Stage {
   /** Active venue template, so the shell can persist it with the project. */
   get activeVenue(): VenueTemplate {
     return this.venue;
-  }
-
-  /**
-   * Swap the venue. Fixture rigs are owned by `setShow`, so they are untouched
-   * here: callers that change stage area should replace the rig too (ADR-011).
-   */
-  setVenue(template: VenueTemplate): void {
-    if (template.id === this.venue.id) return;
-    this.venue = template;
-    this.views = viewsFrom(template);
-    this.setHaze(template.features.haze === true ? 0.65 : 0.05);
-    this.rebuildVenue();
-    this.setView(Math.min(this.viewIndex, this.views.length - 1), true);
   }
 
   /** Scene haze. Drives beam visibility and matches the fog density. */
@@ -503,9 +490,5 @@ export class Stage {
     this.shadowsEnabled = enabled;
     const key = this.poolLights[0];
     if (key !== undefined) key.light.castShadow = enabled;
-  }
-
-  get shadowCasting(): boolean {
-    return this.shadowsEnabled;
   }
 }

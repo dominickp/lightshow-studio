@@ -7,7 +7,7 @@
  * Scrubbing and looping are just re-anchoring, never a second time source.
  */
 
-export interface LoopRegion {
+interface LoopRegion {
   startSec: number;
   endSec: number;
 }

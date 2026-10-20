@@ -1,10 +1,10 @@
 /** Waveform peaks, one min/max pair per horizontal bucket. */
-export interface Peaks {
+interface Peaks {
   min: Float32Array;
   max: Float32Array;
 }
 
-export interface Timeline {
+interface Timeline {
   durationSec: number;
   loopStartSec: number;
   loopEndSec: number;

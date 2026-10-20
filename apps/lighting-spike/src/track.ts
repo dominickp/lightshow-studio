@@ -22,8 +22,7 @@ export const TRACK = {
 
 export const TRACK_URL = trackUrl;
 
-export const beatSec = 60 / TRACK.bpm;
-export const barSec = beatSec * TRACK.beatsPerBar;
+const beatSec = 60 / TRACK.bpm;
+const barSec = beatSec * TRACK.beatsPerBar;
 export const loopStartSec = TRACK.firstBeatSec + (TRACK.loopStartBar - 1) * barSec;
 export const loopEndSec = loopStartSec + TRACK.loopBars * barSec;
-export const loopLengthSec = loopEndSec - loopStartSec;

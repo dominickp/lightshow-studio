@@ -49,6 +49,7 @@ import {
   createRuler,
 } from './arrangement';
 import { kelvinToCss, kelvinToRgb } from './kelvin';
+import { clamp } from './lib/math';
 import { Stage } from './stage';
 import { Post } from './post';
 
@@ -1263,7 +1264,6 @@ const DOCK_HEIGHT_KEY = 'dmxsim.spike.dockHeight';
 const DOCK_COLLAPSED_KEY = 'dmxsim.spike.dockCollapsed';
 const WAVE_HEIGHT_KEY = 'dmxsim.spike.waveHeight';
 const COLLAPSED_DOCK_PX = 54;
-const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 
 const storedDockHeight = Number.parseFloat(localStorage.getItem(DOCK_HEIGHT_KEY) ?? '');
 let dockHeightPx = Number.isFinite(storedDockHeight) ? storedDockHeight : 0;

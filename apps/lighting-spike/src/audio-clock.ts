@@ -7,12 +7,12 @@
  * Scrubbing and looping are just re-anchoring, never a second time source.
  */
 
+import { clamp } from './lib/math';
+
 interface LoopRegion {
   startSec: number;
   endSec: number;
 }
-
-const clamp = (v: number, lo: number, hi: number): number => (v < lo ? lo : v > hi ? hi : v);
 
 export class AudioClock {
   private readonly context: AudioContext;

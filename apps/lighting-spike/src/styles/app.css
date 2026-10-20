@@ -1,0 +1,1188 @@
+      :root {
+        color-scheme: dark;
+        --ink: #cfd6e6;
+        --dim: #7a8399;
+        --accent: #7ad1ff;
+        --panel: rgba(10, 13, 20, 0.76);
+        --edge: rgba(122, 209, 255, 0.22);
+        --track-width: 176px;
+        --row-height: 30px;
+        --dock-height: 42vh;
+        --wave-height: 62px;
+        --side-panel-width: 286px;
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #04060a;
+        color: var(--ink);
+        font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+
+      button, select { color: inherit; font: inherit; }
+
+      #stage-viewport {
+        position: fixed;
+        inset: 0 0 var(--dock-height);
+        background: #04060a;
+      }
+
+      #app, #app canvas {
+        position: absolute;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      .panel {
+        position: fixed;
+        background: var(--panel);
+        border: 1px solid var(--edge);
+        border-radius: 8px;
+        backdrop-filter: blur(8px);
+        padding: 10px 12px;
+        user-select: none;
+      }
+
+      #stats { top: 12px; left: 12px; min-width: 172px; }
+      #stats[hidden] { display: none; }
+      #stats .row { display: flex; justify-content: space-between; gap: 18px; }
+      #stats .row span { color: var(--dim); }
+      #stats .row b { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+      #controls {
+        top: 42px;
+        right: 12px;
+        display: grid;
+        gap: 6px;
+        min-width: 190px;
+        max-height: calc(100vh - var(--dock-height) - 54px);
+        overflow: auto;
+      }
+      #controls[hidden] { display: none; }
+
+      #controls-toggle {
+        position: fixed;
+        top: 12px;
+        right: 12px;
+        z-index: 6;
+        display: grid;
+        place-items: center;
+        width: 26px;
+        height: 22px;
+        padding: 0;
+        border: 1px solid rgba(255, 255, 255, 0.11);
+        border-radius: 5px;
+        background: rgba(10, 14, 20, 0.55);
+        color: var(--dim);
+        font-size: 12px;
+        line-height: 1;
+        cursor: pointer;
+        opacity: 0.5;
+        transition: opacity 120ms ease, color 120ms ease, border-color 120ms ease;
+      }
+      #controls-toggle:hover { opacity: 1; color: var(--accent); border-color: var(--edge); }
+      #controls-toggle.on { opacity: 0.85; color: var(--accent); border-color: rgba(122, 209, 255, 0.55); }
+      #controls-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+      #controls button, #transport button, #clip-inspector select {
+        appearance: none;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.11);
+        border-radius: 5px;
+        color: var(--ink);
+        font: inherit;
+        padding: 5px 8px;
+      }
+
+      #controls button {
+        text-align: left;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+
+      #controls button:hover, #transport button:hover { border-color: var(--edge); background: rgba(122, 209, 255, 0.08); }
+      #controls .controls-group { margin-top: 3px; color: #5f6b80; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; }
+      #controls .controls-group:first-child { margin-top: 0; }
+      #controls button em { font-style: normal; color: var(--dim); }
+      #controls button.on, #transport button.on { border-color: rgba(122, 209, 255, 0.55); color: var(--accent); }
+
+      /* --- Fixture side panel (right of the arrangement) ------------------- */
+      #side-panel {
+        position: relative;
+        grid-column: 2;
+        grid-row: 2 / span 2;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        width: var(--side-panel-width);
+        border-left: 1px solid rgba(122, 209, 255, 0.22);
+        background: #0d1219;
+      }
+      #side-panel[hidden] { display: none; }
+
+      #side-panel-resizer {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: -4px;
+        z-index: 9;
+        width: 8px;
+        cursor: col-resize;
+        touch-action: none;
+      }
+      #side-panel-resizer::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 3px;
+        width: 2px;
+        background: transparent;
+      }
+      #side-panel-resizer:hover::after,
+      #side-panel-resizer.dragging::after { background: rgba(122, 209, 255, 0.45); }
+
+      #side-panel .panel-header {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 9px 10px 9px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      }
+      #side-panel .panel-eyebrow {
+        display: block;
+        color: #5f6b80;
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      #fixture-panel-name {
+        display: block;
+        overflow: hidden;
+        color: var(--accent);
+        font-size: 13px;
+        font-weight: 500;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #fixture-panel-meta {
+        display: block;
+        overflow: hidden;
+        color: #8290a4;
+        font-size: 10px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #fixture-panel-close {
+        flex: 0 0 auto;
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        margin-left: auto;
+        padding: 0;
+        border: 1px solid rgba(255, 255, 255, 0.11);
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--dim);
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+      }
+      #fixture-panel-close:hover { border-color: var(--edge); color: var(--accent); }
+
+      #side-panel .panel-body {
+        min-height: 0;
+        overflow: auto;
+        overscroll-behavior: contain;
+        padding: 10px 12px 14px;
+        scrollbar-color: #394455 #10151d;
+        scrollbar-width: thin;
+      }
+      #side-panel section { margin-bottom: 14px; }
+      #side-panel section:last-child { margin-bottom: 0; }
+      #side-panel h3 {
+        margin: 0 0 5px;
+        color: #7f8ca1;
+        font-size: 9px;
+        font-weight: 500;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      #side-panel .section-head { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+      #side-panel .section-head h3 { margin: 0; }
+      #side-panel .panel-note { margin: 0 0 8px; color: var(--dim); font-size: 10px; line-height: 1.5; }
+      #side-panel .subhead {
+        margin: 12px 0 0;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        color: #5f6b80;
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      #side-panel label {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 3px 8px;
+        margin-top: 8px;
+        color: #a9b4c7;
+        font-size: 11px;
+      }
+      #side-panel label input { grid-column: 1 / span 2; width: 100%; accent-color: var(--accent); }
+      #side-panel label input:disabled { opacity: 0.4; }
+      #side-panel output { color: var(--ink); font-variant-numeric: tabular-nums; font-size: 11px; }
+      #side-panel [hidden] { display: none; }
+
+      #panel-capabilities { display: flex; flex-wrap: wrap; gap: 4px; }
+      .sp-chip {
+        padding: 1px 7px;
+        border: 1px solid rgba(122, 209, 255, 0.3);
+        border-radius: 999px;
+        background: rgba(122, 209, 255, 0.06);
+        color: #9fb0c6;
+        font-size: 9px;
+        letter-spacing: 0.03em;
+      }
+      .sp-empty { color: #667184; font-size: 10px; }
+      #panel-clips { display: grid; gap: 4px; }
+      #panel-clips div { display: flex; justify-content: space-between; gap: 10px; color: var(--dim); font-size: 10px; }
+      #panel-clips b { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+      /* --- Rig editor ---------------------------------------------------- */
+      #side-panel .sp-btn, #side-panel .sp-danger, #add-lights-dialog button {
+        padding: 3px 8px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--ink);
+        font: inherit;
+        font-size: 10px;
+        cursor: pointer;
+      }
+      #side-panel .sp-btn { margin-left: auto; }
+      #side-panel .sp-btn:hover, #add-lights-dialog button:hover { border-color: var(--edge); color: var(--accent); }
+      #side-panel .sp-danger { width: 100%; margin-top: 12px; color: #ff9b9b; border-color: rgba(255, 155, 155, 0.3); }
+      #side-panel .sp-danger:hover:not(:disabled) { background: rgba(255, 90, 90, 0.12); border-color: rgba(255, 155, 155, 0.6); }
+      #side-panel .sp-danger:disabled { opacity: 0.4; cursor: not-allowed; }
+
+      #fixture-pane[hidden] { display: none; }
+      #rig-list { display: grid; gap: 2px; }
+      .rig-group { margin: 0 0 2px; color: #5f6b80; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; }
+      .rig-group:not(:first-child) { margin-top: 8px; }
+      .rig-entry {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 4px;
+        border-radius: 4px;
+        color: #a9b4c7;
+        font-size: 10px;
+        cursor: pointer;
+      }
+      .rig-entry:hover { background: rgba(122, 209, 255, 0.08); color: var(--ink); }
+      .rig-entry.selected { background: rgba(122, 209, 255, 0.14); color: #91dcff; }
+      .rig-entry span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .rig-entry em { margin-left: auto; color: #667184; font-style: normal; font-size: 9px; }
+
+      #side-panel select, #side-panel input[type='text'] {
+        grid-column: 1 / span 2;
+        width: 100%;
+        padding: 3px 6px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 5px;
+        background: #111720;
+        color: var(--ink);
+        font: inherit;
+        font-size: 11px;
+        color-scheme: dark;
+      }
+      #side-panel input[type='text']:disabled, #side-panel select:disabled { opacity: 0.45; }
+
+      #add-lights-dialog {
+        min-width: 268px;
+        padding: 14px 16px;
+        border: 1px solid var(--edge);
+        border-radius: 10px;
+        background: #0d1219;
+        color: var(--ink);
+        font: inherit;
+      }
+      #add-lights-dialog::backdrop { background: rgba(2, 4, 8, 0.66); }
+      #add-lights-dialog h3 { margin: 0 0 10px; color: var(--accent); font-size: 12px; font-weight: 500; }
+      #add-lights-dialog label { display: grid; gap: 3px; margin-bottom: 9px; color: #a9b4c7; font-size: 10px; }
+      #add-lights-dialog select,
+      #add-lights-dialog input {
+        padding: 4px 7px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 5px;
+        background: #111720;
+        color: var(--ink);
+        font: inherit;
+        color-scheme: dark;
+      }
+      #add-lights-dialog menu { display: flex; justify-content: flex-end; gap: 7px; margin: 12px 0 0; padding: 0; }
+      #add-lights-dialog .sp-primary { border-color: rgba(122, 209, 255, 0.55); color: var(--accent); }
+      #add-lights-dialog .panel-note { margin: 0; }
+
+      #timeline-dock {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        /* Keep the dock on its own compositor layer. In Firefox it otherwise
+           shares a raster layer with the WebGPU canvas and is repainted every
+           frame, even though its content is static. */
+        will-change: transform;
+        height: var(--dock-height);
+        min-height: 180px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        background: #0a0d13;
+        border-top: 1px solid rgba(122, 209, 255, 0.3);
+        box-shadow: 0 -12px 34px rgba(0, 0, 0, 0.35);
+      }
+
+      #timeline-dock.collapsed {
+        height: auto;
+        min-height: 0;
+        grid-template-rows: auto;
+      }
+      #timeline-dock.collapsed #clip-inspector,
+      #timeline-dock.collapsed #arrangement-scroll,
+      #timeline-dock.collapsed #side-panel,
+      #timeline-dock.collapsed #zoom-tools { display: none; }
+
+      #dock-resizer {
+        position: absolute;
+        grid-column: 1 / -1;
+        grid-row: 1;
+        top: -4px;
+        left: 0;
+        right: 0;
+        z-index: 9;
+        height: 8px;
+        cursor: ns-resize;
+        touch-action: none;
+      }
+      #dock-resizer::after {
+        content: '';
+        position: absolute;
+        top: 3px;
+        left: 50%;
+        width: 54px;
+        height: 2px;
+        transform: translateX(-50%);
+        border-radius: 2px;
+        background: rgba(122, 209, 255, 0.35);
+      }
+      #dock-resizer:hover::after, #dock-resizer.dragging::after { background: var(--accent); }
+      #timeline-dock.collapsed #dock-resizer { display: none; }
+
+      #transport #btn-dock { min-width: 0; margin-left: auto; }
+
+      #transport {
+        position: sticky;
+        top: 0;
+        grid-column: 1 / -1;
+        grid-row: 1;
+        z-index: 6;
+        left: auto;
+        right: auto;
+        bottom: auto;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        min-height: 54px;
+        padding: 7px 12px;
+        border: 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 0;
+        background: #111720;
+      }
+
+      #transport button { min-width: 78px; cursor: pointer; white-space: nowrap; }
+      #transport button:disabled, #clip-inspector select:disabled { opacity: 0.45; cursor: not-allowed; }
+
+      #volume-control { display: flex; align-items: center; gap: 6px; }
+      #volume { width: 92px; accent-color: var(--accent); cursor: pointer; }
+      #volume.muted { accent-color: #5f6b80; }
+
+      #transport-meta {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-rows: auto auto auto;
+        align-items: center;
+        column-gap: 14px;
+        min-width: 0;
+        flex: 1;
+      }
+
+      #transport-meta b { grid-row: 1 / span 3; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      #transport-meta span { overflow: hidden; color: var(--dim); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+      #transport-meta #transport-track { grid-column: 2; grid-row: 1; }
+      #transport-meta #audio-status { grid-column: 2; grid-row: 2; color: var(--accent); }
+      #transport-meta #audio-status:empty { display: none; }
+      #transport-meta #project-status { grid-column: 2; grid-row: 3; color: #9aa6b8; }
+      #transport-meta #project-status:empty { display: none; }
+      #audio-file { display: none; }
+      #project-file { display: none; }
+
+      #clip-inspector {
+        position: relative;
+        grid-column: 1;
+        grid-row: 2;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        padding: 5px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        background: #0e141c;
+      }
+      #clip-inspector .inspector-title {
+        flex: 0 0 auto;
+        padding-right: 10px;
+        border-right: 1px solid rgba(255, 255, 255, 0.09);
+        color: #7f8ca1;
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      #clip-inspector .inspector-target {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 5px;
+        min-width: 0;
+      }
+      #selected-fixture {
+        max-width: 135px;
+        overflow: hidden;
+        color: var(--accent);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #selected-fixture.empty { color: var(--dim); font-style: italic; }
+      #clip-inspector .clip-field {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 5px;
+        min-width: 0;
+      }
+      #clip-inspector .clip-field-label {
+        flex: 0 0 auto;
+        color: #5f6b80;
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      /* Drop / Select mode switch. It leads the Tools bar because it changes
+         what every pointer gesture on the timeline does. */
+      #clip-inspector .tool-modes { display: flex; flex: 0 0 auto; align-items: center; }
+      #clip-inspector .tool-modes button {
+        min-width: 54px;
+        padding: 4px 9px;
+        border-radius: 0;
+        color: #9aa6b8;
+      }
+      #clip-inspector .tool-modes button:first-child { border-radius: 5px 0 0 5px; }
+      #clip-inspector .tool-modes button:last-child { border-radius: 0 5px 5px 0; margin-left: -1px; }
+      #clip-inspector .tool-modes button[aria-pressed='true'] {
+        background: rgba(122, 209, 255, 0.16);
+        border-color: rgba(122, 209, 255, 0.55);
+        color: var(--accent);
+      }
+      #clip-inspector .clip-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
+      #clip-inspector button {
+        appearance: none;
+        padding: 4px 10px;
+        border: 1px solid rgba(255, 255, 255, 0.11);
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--ink);
+        font: inherit;
+        white-space: nowrap;
+        cursor: pointer;
+      }
+      #clip-inspector button:disabled { opacity: 0.4; cursor: not-allowed; }
+      /* Delete only appears while a clip is selected, so the bar stays clear
+         when the user is just setting defaults for the next clip. */
+      #btn-cue-delete[hidden] { display: none; }
+      #btn-cue-delete:not(:disabled) {
+        border-color: rgba(255, 155, 155, 0.28);
+        color: #ff9b9b;
+      }
+      #btn-cue-delete:not(:disabled):hover { background: rgba(255, 90, 90, 0.12); border-color: rgba(255, 155, 155, 0.6); }
+
+      /* The bar shows the current color plus the picker button. All palettes
+         and recent colors live in the popover, so the bar never grows. */
+      #cue-color { display: flex; align-items: center; gap: 6px; }
+      #cue-color[data-disabled='true'] { opacity: 0.4; }
+      /* Both bar swatches share one size/shape so they read as a pair. */
+      #cue-color .color-swatch {
+        width: 24px;
+        height: 24px;
+        border-radius: 5px;
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+      #cue-color .color-swatch:not(:disabled):hover { transform: none; filter: brightness(1.15); }
+      .cp-palette { display: flex; flex-wrap: wrap; gap: 5px; }
+      .cp-palette .color-swatch { width: 20px; height: 20px; border-radius: 50%; }
+      .color-swatch {
+        position: relative;
+        width: 18px;
+        height: 18px;
+        padding: 0;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 50%;
+        /* ID-qualified so the generic `#clip-inspector button` background
+           cannot override the swatch color. */
+        background: var(--swatch) !important;
+        cursor: pointer;
+      }
+      .color-swatch:not(:disabled):hover { transform: scale(1.12); }
+      .color-swatch:disabled { cursor: not-allowed; }
+      .color-swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .color-swatch.selected {
+        border-color: #f3fbff;
+        box-shadow: 0 0 0 2px rgba(4, 6, 10, 0.9), 0 0 0 3px var(--accent);
+        transform: scale(1.08);
+      }
+      /* The custom swatch advertises "anything else": a conic rainbow until a
+         custom color is applied, then it shows that color. */
+      .color-swatch.custom {
+        background: conic-gradient(#ff2f2f, #ff8a18, #16d9cc, #397cff, #8c35ff, #ff3380, #ff2f2f) !important;
+      }
+      .color-swatch.custom[data-has-custom='true'] { background: var(--swatch) !important; }
+      /* Recent colors learned from custom picks sit after the palette. */
+      .color-swatch.user { border-radius: 4px; }
+
+      /* --- Custom color picker popover ------------------------------- */
+      #color-picker {
+        position: absolute;
+        top: calc(100% - 2px);
+        left: 220px;
+        z-index: 12;
+        width: 268px;
+        padding: 10px 12px 12px;
+        border: 1px solid var(--edge);
+        border-radius: 8px;
+        background: #0b1017;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+      }
+      #color-picker[hidden] { display: none; }
+      #color-picker .cp-head {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-bottom: 8px;
+      }
+      #color-picker .cp-title {
+        color: #7f8ca1;
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      #cp-close {
+        margin-left: auto;
+        padding: 0 5px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 4px;
+        background: transparent;
+        color: var(--dim);
+        cursor: pointer;
+      }
+      #cp-close:hover { color: var(--accent); border-color: var(--edge); }
+      #cp-preview {
+        width: 22px;
+        height: 22px;
+        flex: 0 0 auto;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        background: #397cff;
+      }
+      #color-picker label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #a9b4c7;
+        font-size: 10px;
+      }
+      /* Native color input: the browser supplies a full HSV picker, so users
+         pick visually instead of typing codes. */
+      #cp-color {
+        flex: 1 1 auto;
+        width: 100%;
+        height: 26px;
+        padding: 2px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 5px;
+        background: #111720;
+        cursor: pointer;
+      }
+      #cp-color::-webkit-color-swatch-wrapper { padding: 0; }
+      #cp-color::-webkit-color-swatch { border: none; border-radius: 3px; }
+      #cp-color::-moz-color-swatch { border: none; border-radius: 3px; }
+      #color-picker .cp-hue-grid { display: flex; gap: 4px; margin-top: 6px; }
+      #color-picker .cp-hue-grid button {
+        flex: 1 1 auto;
+        height: 16px;
+        padding: 0;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 3px;
+        background: var(--swatch);
+        cursor: pointer;
+      }
+      #color-picker .cp-hue-grid button:hover { border-color: #f3fbff; }
+      #color-picker .cp-section {
+        margin-top: 10px;
+        padding-top: 9px;
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
+      }
+      #color-picker .cp-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 5px;
+        color: #a9b4c7;
+        font-size: 10px;
+      }
+
+      /* Native select popups take their panel color from the control's own
+         background. Keep it opaque (not translucent white) and style the
+         options explicitly so the list stays dark and readable in browsers
+         that force/auto-apply dark mode. */
+      #clip-inspector select {
+        max-width: 95px;
+        cursor: pointer;
+        color-scheme: dark;
+        background-color: #111720;
+        color: var(--ink);
+      }
+
+      #clip-inspector select option {
+        background-color: #111720;
+        color: var(--ink);
+      }
+
+      #clip-inspector select option:disabled { color: var(--dim); }
+
+      #clip-inspector select option:checked,
+      #clip-inspector select option:hover {
+        background-color: #1d4f6b;
+        color: #f3fbff;
+      }
+
+      #clip-inspector select:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+
+      #arrangement-scroll {
+        grid-column: 1;
+        grid-row: 3;
+        min-height: 0;
+        overflow: auto;
+        overscroll-behavior: contain;
+        scrollbar-color: #394455 #10151d;
+        scrollbar-width: thin;
+      }
+
+      #arrangement-content { width: max-content; min-width: 100%; padding-bottom: 44px; }
+      #arrangement-scroll.loop-mode,
+      #arrangement-scroll.loop-mode * { cursor: crosshair !important; }
+      #arrangement-scroll.loop-mode { box-shadow: inset 0 0 0 1px rgba(122, 209, 255, 0.45); }
+
+      /* Middle-drag pans the ruler, waveform and lanes as one surface. */
+      #arrangement-scroll.panning,
+      #arrangement-scroll.panning * {
+        cursor: grabbing !important;
+        user-select: none;
+      }
+      #timeline-ruler-row, #waveform-row, .fixture-row { display: grid; grid-template-columns: var(--track-width) auto; width: max-content; }
+
+      .track-name {
+        position: sticky;
+        left: 0;
+        z-index: 3;
+        width: var(--track-width);
+        height: var(--row-height);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 2px 9px;
+        overflow: hidden;
+        text-align: left;
+        background: #111720;
+        border: 0;
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        cursor: pointer;
+      }
+      .track-name:hover { background: #17212e; }
+
+      .track-name b, .track-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .track-name b { color: #dbe3f3; font-size: 11px; font-weight: 500; }
+      .track-copy { min-width: 0; }
+      .track-copy small { color: #778398; font-size: 9px; line-height: 1.2; }
+      .track-indicator { width: 3px; height: 19px; flex: 0 0 3px; border-radius: 2px; background: var(--track-color); }
+      .track-visibility {
+        flex: 0 0 auto;
+        display: grid;
+        place-items: center;
+        width: 20px;
+        height: 20px;
+        margin-left: auto;
+        border-radius: 4px;
+        color: #7d8a9e;
+        font-size: 11px;
+        line-height: 1;
+        cursor: pointer;
+      }
+      .track-visibility:hover { background: rgba(122, 209, 255, 0.12); color: var(--accent); }
+      .fixture-row { transition: opacity 120ms ease; }
+      .fixture-row.hidden { opacity: 0.32; }
+      .fixture-row.hidden .track-visibility { color: #566173; }
+      .fixture-row.selected .track-name { box-shadow: inset 3px 0 0 var(--accent); }
+
+      #timeline-ruler-row { position: sticky; top: 0; z-index: 6; height: 28px; will-change: transform; }
+      /* The ruler's label cell holds the track filter, so the filter lives in
+         the left gutter instead of spanning the timeline. */
+      #timeline-ruler-label {
+        height: 28px;
+        padding: 0 6px;
+        cursor: default;
+        background: #0f151e;
+      }
+      #timeline-ruler-label:hover { background: #0f151e; }
+      #track-filter {
+        flex: 1 1 auto;
+        min-width: 0;
+        height: 20px;
+        padding: 0 3px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 4px;
+        background: #111720;
+        color: var(--ink);
+        font: inherit;
+        font-size: 10px;
+        cursor: pointer;
+        color-scheme: dark;
+      }
+      #track-filter:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+      #track-filter:disabled { opacity: 0.5; cursor: not-allowed; }
+      #track-filter option { background: #111720; color: var(--ink); }
+      /* "Hide others": collapses the scene to the filtered fixture kind. */
+      #btn-hide-unfiltered {
+        flex: 0 0 20px;
+        width: 20px;
+        height: 20px;
+        padding: 0;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 4px;
+        background: #111720;
+        color: #7d8a9e;
+        font: inherit;
+        font-size: 11px;
+        line-height: 1;
+        cursor: pointer;
+      }
+      #btn-hide-unfiltered:hover:not(:disabled) { border-color: var(--edge); color: var(--accent); }
+      #btn-hide-unfiltered:disabled { opacity: 0.4; cursor: not-allowed; }
+      #btn-hide-unfiltered.on {
+        border-color: rgba(122, 209, 255, 0.55);
+        background: rgba(122, 209, 255, 0.12);
+        color: var(--accent);
+      }
+      #btn-hide-unfiltered:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+      .ruler-track { position: relative; width: max-content; }
+      #timeline-ruler { display: block; height: 28px; cursor: ew-resize; touch-action: none; }
+
+      #zoom-tools {
+        /* Anchored to the dock's right edge; the panel-open offset below keeps
+           it over the timeline column instead of the panel. */
+        position: absolute;
+        right: 14px;
+        bottom: 12px;
+        z-index: 8;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 9px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 7px;
+        background: rgba(10, 13, 20, 0.92);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(6px);
+      }
+      #timeline-dock.has-panel #zoom-tools { right: calc(var(--side-panel-width) + 14px); }
+      #zoom-tools button {
+        min-width: 24px;
+        height: 24px;
+        padding: 0 7px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 4px;
+        background: #1b2430;
+        color: #c3cfe0;
+        font-size: 11px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      #zoom-tools button:hover:not(:disabled) { border-color: var(--edge); background: rgba(122, 209, 255, 0.12); }
+      #zoom-tools button:disabled { opacity: 0.45; cursor: not-allowed; }
+      #zoom-tools input { width: 116px; accent-color: var(--accent); cursor: ew-resize; }
+      #zoom-percent { min-width: 36px; color: #9aa8bb; font-size: 9px; text-align: right; }
+      #btn-follow.on { color: var(--accent); border-color: rgba(122, 209, 255, 0.55); background: rgba(122, 209, 255, 0.1); }
+      #btn-loop.on { color: var(--accent); border-color: rgba(122, 209, 255, 0.55); background: rgba(122, 209, 255, 0.1); }
+
+      #waveform-row { position: sticky; top: 28px; z-index: 5; height: var(--wave-height); background: #080b11; will-change: transform; }
+      /* The AUDIO row is the rig entry point: one click opens the rig pane. */
+      #btn-rig-menu {
+        height: var(--wave-height);
+        color: #aab5c8;
+        background: #0f151e;
+        letter-spacing: 0.1em;
+        font-size: 10px;
+        text-transform: uppercase;
+        gap: 6px;
+      }
+      #btn-rig-menu:hover { background: #16202d; color: var(--accent); }
+      #btn-rig-menu.on { background: #16202d; color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+      #btn-rig-menu .rig-menu-label { font-weight: 500; }
+      #btn-rig-menu .rig-menu-count {
+        margin-left: auto;
+        padding: 0 5px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 999px;
+        color: #7d8a9e;
+        font-size: 9px;
+        letter-spacing: 0;
+      }
+      #btn-rig-menu.on .rig-menu-count { color: var(--accent); border-color: rgba(122, 209, 255, 0.4); }
+
+      #rig-pane[hidden] { display: none; }
+      #rig-note { margin-top: 0; }
+      #waveform {
+        display: block;
+        height: var(--wave-height);
+        cursor: ew-resize;
+        touch-action: none;
+      }
+      #waveform-resizer {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -4px;
+        z-index: 6;
+        height: 8px;
+        cursor: ns-resize;
+        touch-action: none;
+      }
+      #waveform-resizer::after {
+        content: '';
+        position: absolute;
+        left: 8px;
+        right: 8px;
+        top: 3px;
+        height: 1px;
+        background: rgba(122, 209, 255, 0.2);
+      }
+      #waveform-resizer:hover::after, #waveform-resizer.dragging::after { background: var(--accent); }
+
+      .fixture-row { height: var(--row-height); }
+      .fixture-row.selected .track-name { background: #1b2633; }
+      .fixture-row.selected .track-name b { color: #91dcff; }
+      .fixture-lane {
+        position: relative;
+        height: var(--row-height);
+        overflow: hidden;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+        background-color: #0b1017;
+        background-image:
+          linear-gradient(to right, rgba(255,255,255,0.035) 1px, transparent 1px),
+          linear-gradient(to right, rgba(255,255,255,0.075) 1px, transparent 1px),
+          linear-gradient(to right, rgba(122,209,255,0.09) 1px, transparent 1px);
+        background-size: var(--sixteenth-width, 12px) 100%, var(--beat-width, 48px) 100%, var(--bar-width, 192px) 100%;
+        /* Grid lines follow the beat offset, so they line up with the ruler. */
+        background-position: var(--grid-offset-x, 0px) 0;
+        cursor: crosshair;
+        touch-action: none;
+      }
+
+      #arrangement-rows[data-grid="beats"] .fixture-lane {
+        background-image:
+          linear-gradient(to right, rgba(255,255,255,0.075) 1px, transparent 1px),
+          linear-gradient(to right, rgba(122,209,255,0.09) 1px, transparent 1px);
+        background-size: var(--beat-width, 48px) 100%, var(--bar-width, 192px) 100%;
+      }
+      #arrangement-rows[data-grid="bars"] .fixture-lane {
+        background-image: linear-gradient(to right, rgba(122,209,255,0.09) 1px, transparent 1px);
+        background-size: var(--bar-width, 192px) 100%;
+      }
+      #arrangement-rows[data-grid="none"] .fixture-lane { background-image: none; }
+
+      .arrangement-ghost {
+        position: absolute;
+        top: 4px;
+        bottom: 4px;
+        z-index: 0;
+        min-width: 2px;
+        overflow: hidden;
+        border: 1px dashed rgba(122, 209, 255, 0.55);
+        border-radius: 4px;
+        background: rgba(122, 209, 255, 0.1);
+        color: #cfe9ff;
+        font-size: 9px;
+        line-height: 16px;
+        padding: 2px 6px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        pointer-events: none;
+      }
+
+      .fixture-row:nth-of-type(even) .fixture-lane { background-color: #0e141d; }
+      .fixture-row.selected .fixture-lane { background-color: #111c28; }
+
+      .lane-outside {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        z-index: 0;
+        background: rgba(0, 0, 0, 0.42);
+        pointer-events: none;
+      }
+      .lane-loop {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        z-index: 0;
+        border-left: 1px solid rgba(122, 209, 255, 0.45);
+        border-right: 1px solid rgba(122, 209, 255, 0.45);
+        background: rgba(122, 209, 255, 0.035);
+        pointer-events: none;
+      }
+
+      /* Clips are invisible hit-test boxes; their visuals are painted into one
+         canvas (#arrangement-clips). Hundreds of painted clip divs made Firefox
+         re-rasterise the whole timeline layer on every repaint. */
+      .arrangement-clip {
+        position: absolute;
+        top: 4px;
+        bottom: 4px;
+        z-index: 1;
+        min-width: 5px;
+        overflow: hidden;
+        background: none;
+        border: 0;
+        box-shadow: none;
+        color: transparent;
+        cursor: grab;
+        touch-action: none;
+      }
+
+      /* Select mode turns the timeline into a clipboard surface: cards can be
+         clicked, marqueed, dragged, and resized from their edges. */
+      #arrangement-rows[data-mode='select'] .fixture-lane { cursor: default; }
+      #arrangement-rows[data-mode='select'] .arrangement-clip { cursor: grab; }
+      #arrangement-rows[data-mode='select'] .arrangement-clip:active { cursor: grabbing; }
+      #arrangement-rows[data-mode='select'] .clip-resize { cursor: ew-resize; }
+
+      .arrangement-marquee {
+        position: absolute;
+        z-index: 5;
+        border: 1px solid rgba(122, 209, 255, 0.9);
+        border-radius: 2px;
+        background: rgba(122, 209, 255, 0.12);
+        pointer-events: none;
+      }
+
+      .arrangement-context-menu {
+        position: fixed;
+        z-index: 30;
+        display: grid;
+        min-width: 190px;
+        padding: 4px;
+        border: 1px solid rgba(122, 209, 255, 0.28);
+        border-radius: 7px;
+        background: #111720;
+        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
+      }
+      .arrangement-context-menu button {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 6px 9px;
+        border: 0;
+        border-radius: 5px;
+        background: none;
+        color: var(--ink);
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+      }
+      .arrangement-context-menu button:hover,
+      .arrangement-context-menu button:focus-visible {
+        background: rgba(122, 209, 255, 0.14);
+        outline: none;
+      }
+      .arrangement-context-menu button:disabled,
+      .arrangement-context-menu button:disabled:hover {
+        background: none;
+        color: var(--dim);
+        cursor: not-allowed;
+      }
+      .arrangement-context-menu .menu-separator {
+        height: 1px;
+        margin: 4px 5px;
+        background: rgba(255, 255, 255, 0.09);
+      }
+      .arrangement-context-menu .menu-time {
+        color: var(--dim);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 10px;
+      }
+
+      .arrangement-clips {
+        position: absolute;
+        top: 0;
+        left: var(--track-width);
+        z-index: 2;
+        pointer-events: none;
+      }
+      .clip-resize { position: absolute; top: 0; bottom: 0; z-index: 2; width: 6px; cursor: ew-resize; }
+      .clip-resize:hover { background: rgba(255, 255, 255, 0.22); }
+      .clip-resize.start { left: 0; }
+      .clip-resize.end { right: 0; }
+      .arrangement-playhead {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 3;
+        width: 1px;
+        background: #f3fbff;
+        box-shadow: 0 0 4px #7ad1ff;
+        pointer-events: none;
+        will-change: transform;
+      }
+      /* One composited line for every track; 32 per-row playheads forced a
+         repaint of the whole timeline layer each frame in Firefox. */
+      #arrangement-rows { position: relative; contain: paint; }
+      .arrangement-playhead.global { z-index: 4; }
+
+      .timeline-hover-line {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 2;
+        width: 1px;
+        background: repeating-linear-gradient(
+          to bottom,
+          rgba(122, 209, 255, 0.75) 0 4px,
+          transparent 4px 8px
+        );
+        pointer-events: none;
+        will-change: transform;
+      }
+
+      #timeline-tooltip {
+        position: fixed;
+        z-index: 20;
+        padding: 4px 8px;
+        border: 1px solid var(--edge);
+        border-radius: 5px;
+        background: rgba(8, 11, 17, 0.94);
+        color: #d7e2f4;
+        font-size: 10px;
+        white-space: nowrap;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+        pointer-events: none;
+      }
+
+      #hint {
+        position: absolute;
+        left: 12px;
+        bottom: 12px;
+        z-index: 4;
+        max-width: 570px;
+        padding: 8px 11px;
+        border: 1px solid var(--edge);
+        border-radius: 8px;
+        background: var(--panel);
+        backdrop-filter: blur(8px);
+        color: var(--dim);
+        font-size: 10px;
+        line-height: 1.75;
+        user-select: none;
+      }
+      #hint summary { color: var(--ink); cursor: pointer; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
+      #hint summary::marker { color: var(--dim); }
+      #hint b { color: var(--ink); font-weight: 500; }
+      #hint kbd {
+        padding: 0 4px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.05);
+        color: #d7e2f4;
+        font: inherit;
+              }
+
+              #loading {
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        display: grid;
+        place-items: center;
+        background: #04060a;
+        color: var(--dim);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      #loading[hidden] { display: none; }
+
+      @media (max-width: 1000px) {
+        :root { --dock-height: 50vh; --side-panel-width: 244px; }
+        #clip-inspector { gap: 6px; padding: 5px 8px; }
+        #clip-inspector .inspector-title { display: none; }
+        #selected-fixture { max-width: 80px; }
+        #transport-meta { column-gap: 8px; }
+      }
+
+      @media (max-width: 680px) {
+        #stats { transform: scale(0.82); transform-origin: top left; }
+        #controls { min-width: 150px; gap: 3px; padding: 7px; }
+        #controls button { padding: 3px 6px; }
+        :root { --side-panel-width: min(230px, 62vw); }
+        #transport { gap: 5px; padding: 5px; }
+        #transport button { min-width: 0; padding: 5px; }
+        #transport-meta { display: none; }
+        #clip-inspector #btn-cue-delete,
+        #clip-inspector #btn-cue-copy,
+        #clip-inspector #btn-cue-paste { display: none; }
+        #clip-inspector .clip-field-label, #selected-fixture { display: none; }
+        #clip-inspector .clip-field { gap: 0; }
+        .color-swatch { width: 14px; height: 14px; }
+        #cue-color .color-swatch { width: 20px; height: 20px; }
+        #zoom-tools { right: 8px; bottom: 8px; gap: 4px; padding: 4px 6px; }
+        #zoom-tools input { width: 64px; }
+        #volume { width: 64px; }
+        #zoom-percent { display: none; }
+        #hint { display: none; }
+        :root { --track-width: 145px; }
+      }

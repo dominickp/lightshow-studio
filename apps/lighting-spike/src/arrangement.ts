@@ -1,163 +1,54 @@
 import type { Clip, FixturePlacement } from '@dmxsim/show-model';
-import { kelvinToCss, kelvinToRgb } from './kelvin';
+import { actionsFor } from './arrangement/capabilities';
+import {
+  canPasteOn,
+  clipboardAnchor,
+  copySelection,
+  pastePlacements as resolvePastePlacements,
+} from './arrangement/clipboard';
+import { CUE_COLORS, resolveCueColor } from './arrangement/colors';
+import { EDGE_GRAB_PX, MIN_CLIP_SEC } from './arrangement/constants';
+import { CueHistory } from './arrangement/history';
+import {
+  buildRowsMarkup,
+  capabilitySummary,
+  gridModeFor,
+  kindLabel,
+  trackColor,
+} from './arrangement/markup';
+import { paintClipOverlay } from './arrangement/paint';
+import { defaultClipLength, snapDelta as snapDeltaToGrid, snapTime } from './arrangement/time';
+import type {
+  ClipClipboardItem,
+  Cue,
+  CueAction,
+  CueColorOverride,
+  CueSnapshot,
+  CueTimeline,
+  TimelineMode,
+} from './arrangement/types';
+import { clamp } from './lib/math';
 
-export const CUE_COLORS = [
-  { name: 'blue', css: '#397cff', rgb: [0.08, 0.35, 1] },
-  { name: 'violet', css: '#8c35ff', rgb: [0.55, 0.08, 1] },
-  { name: 'magenta', css: '#ff3d9a', rgb: [1, 0.24, 0.6] },
-  { name: 'cyan', css: '#16d9cc', rgb: [0.05, 0.85, 0.8] },
-  { name: 'amber', css: '#ff8a18', rgb: [1, 0.42, 0.05] },
-  { name: 'red', css: '#ff2f2f', rgb: [1, 0.08, 0.08] },
-  { name: 'white', css: '#f2f6ff', rgb: [1, 1, 1] },
-] as const;
-
-export type CueAction = 'hold' | 'fade' | 'pulse' | 'sweep' | 'strobe';
-
-/**
- * Per-cue color override. When present it wins over the `CUE_COLORS` entry
- * at `colorIndex` (which stays valid and is kept as a fallback + undo key).
- * `white` stores intent as color temperature; the channel split (white pin
- * vs tinted rgb) happens per fixture in `cueToClip`.
- */
-export type CueColorOverride =
-  | { kind: 'rgb'; r: number; g: number; b: number }
-  | { kind: 'white'; cct: number };
-
-export interface Cue {
-  id: string;
-  fixtureId: string;
-  startSec: number;
-  endSec: number;
-  colorIndex: number;
-  action: CueAction;
-  /** Overrides the default 40 ms fade-in when the cue starts (seconds). */
-  fadeInSec?: number;
-  /** Custom color when the cue was authored with the color picker. */
-  colorOverride?: CueColorOverride;
-}
-
-/** The color a cue actually renders with: palette entry or override. */
-function resolveCueColor(cue: Cue): { css: string; rgb: readonly [number, number, number]; name: string } {
-  const override = cue.colorOverride;
-  if (override?.kind === 'rgb') {
-    const toCss = (value: number): string => Math.round(value * 255).toString(16).padStart(2, '0');
-    return {
-      css: `#${toCss(override.r)}${toCss(override.g)}${toCss(override.b)}`,
-      rgb: [override.r, override.g, override.b],
-      name: 'custom',
-    };
-  }
-  if (override?.kind === 'white') {
-    return {
-      css: kelvinToCss(override.cct),
-      rgb: kelvinToRgb(override.cct),
-      name: `${Math.round(override.cct / 100) / 10}k`,
-    };
-  }
-  const color = CUE_COLORS[cue.colorIndex % CUE_COLORS.length] ?? CUE_COLORS[0];
-  return { css: color.css, rgb: color.rgb, name: color.name };
-}
-
-export interface CueTimeline {
-  durationSec: number;
-  firstBeatSec: number;
-  bpm: number | null;
-  beatsPerBar: number;
-  /** Playback loop region, when the transport is looping. Clips outside it cannot play. */
-  loopStartSec?: number;
-  loopEndSec?: number;
-}
-
-/**
- * `drop` is the authoring mode: dragging a lane draws a new clip. `select`
- * turns the lanes into a clipboard surface: click cards, marquee-drag, then
- * copy/paste or bulk delete without accidentally creating clips.
- */
-export type TimelineMode = 'drop' | 'select';
-
-/** One copied clip, positioned relative to the earliest clip in the copy. */
-interface ClipClipboardItem {
-  fixtureId: string;
-  startSec: number;
-  endSec: number;
-  colorIndex: number;
-  action: CueAction;
-  fadeInSec?: number;
-  colorOverride?: CueColorOverride;
-}
+export { CUE_COLORS } from './arrangement/colors';
+export type {
+  Cue,
+  CueAction,
+  CueColorOverride,
+  CueTimeline,
+  TimelineMode,
+} from './arrangement/types';
 
 export const PIXELS_PER_SECOND = 48;
 export const MIN_PIXELS_PER_SECOND = 0.25;
 export const MAX_PIXELS_PER_SECOND = 480;
 export const TRACK_LABEL_WIDTH = 176;
 
-/** Matches the `.fixture-row.hidden` opacity in index.html. */
-const HIDDEN_ROW_OPACITY = 0.32;
-const MIN_CLIP_SEC = 0.1;
-const EDGE_GRAB_PX = 8;
-const HISTORY_LIMIT = 100;
-
-/**
- * Relative luminance (sRGB, rough) for contrast decisions on clip fills.
- * `rgb` is the 0..1 channel triple the fill was drawn with.
- */
-const textOnColor = (rgb: readonly [number, number, number] | readonly number[]): string => {
-  const [r, g, b] = rgb;
-  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  // Saturated hues read poorly with pure white even at high luminance, so
-  // require a fairly bright fill before inverting to dark text.
-  return luminance > 0.6 ? 'rgba(8, 12, 18, 0.88)' : 'rgba(255, 255, 255, 0.94)';
-};
-
-/**
- * Tone a clip fill down for the timeline: blend ~25% toward the dock
- * background so a wall of saturated cards doesn't vibrate against the UI.
- * Swatches and the 3D rendering keep the full-intensity color.
- */
-const TONE_BG: readonly [number, number, number] = [0x0e / 255, 0x14 / 255, 0x1c / 255];
-const TONE_STRENGTH = 0.25;
-const toneClipColor = (rgb: readonly [number, number, number] | readonly number[]): string => {
-  const mix = (channel: number, bg: number): number =>
-    Math.round((channel * (1 - TONE_STRENGTH) + bg * TONE_STRENGTH) * 255);
-  const [r, g, b] = rgb;
-  return `rgb(${mix(r, TONE_BG[0])}, ${mix(g, TONE_BG[1])}, ${mix(b, TONE_BG[2])})`;
-};
-
-/**
- * Truncate a label with an ellipsis to roughly fit `maxWidthPx` at the clip
- * label font size. Small clips keep a shortened label instead of none.
- */
 /** Short `m:ss` label for the paste-at-pointer menu. */
 const formatClockLabel = (seconds: number): string => {
   const safe = Math.max(0, seconds);
   const minutes = Math.floor(safe / 60);
   return `${minutes}:${Math.floor(safe % 60).toString().padStart(2, '0')}`;
 };
-
-const truncateLabel = (text: string, maxWidthPx: number): string => {
-  if (maxWidthPx <= 0) return '';
-  // ~5.4px per glyph at 9px monospace; one ellipsis glyph costs the same.
-  const glyphPx = 5.4;
-  const fit = Math.floor(maxWidthPx / glyphPx);
-  if (text.length <= fit) return text;
-  if (fit <= 1) return '…';
-  return `${text.slice(0, fit - 1)}…`;
-};
-
-/** Fixture names and ids are user-facing text; never interpolate them raw. */
-const escapeHtml = (value: string): string =>
-  value.replace(/[&<>"']/g, (char) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  })[char] ?? char);
-
-interface CueSnapshot {
-  cues: Cue[];
-  selectedCueIds: string[];
-}
 
 type Gesture =
   | { type: 'create'; fixtureId: string; startSec: number; currentSec: number }
@@ -199,8 +90,7 @@ export class Arrangement {
   private readonly hiddenFixtureIds = new Set<string>();
   private gesture: Gesture | null = null;
   private gestureSnapshot: CueSnapshot | null = null;
-  private readonly undoStack: CueSnapshot[] = [];
-  private readonly redoStack: CueSnapshot[] = [];
+  private readonly history = new CueHistory();
   private nextId = 1;
   private songTime = 0;
   private pixelsPerSecond = PIXELS_PER_SECOND;
@@ -443,13 +333,13 @@ export class Arrangement {
 
   get selectedActions(): CueAction[] {
     const fixture = this.selectedFixture;
-    return fixture === null ? [] : this.actionsFor(fixture);
+    return fixture === null ? [] : actionsFor(fixture);
   }
 
   get suggestedAction(): CueAction {
     const fixture = this.selectedFixture;
     if (fixture === null) return this.pendingAction ?? 'hold';
-    if (this.pendingAction !== null && this.actionsFor(fixture).includes(this.pendingAction)) {
+    if (this.pendingAction !== null && actionsFor(fixture).includes(this.pendingAction)) {
       return this.pendingAction;
     }
     return this.defaultAction(fixture);
@@ -505,18 +395,14 @@ export class Arrangement {
 
   /** Revert the last clip edit (add, delete, move, resize, action or color). */
   undo(): void {
-    const previous = this.undoStack.pop();
-    if (previous === undefined) return;
-    this.redoStack.push(this.snapshot());
-    this.restore(previous);
+    const previous = this.history.undo(this.snapshot());
+    if (previous !== null) this.restore(previous);
   }
 
   /** Re-apply the most recently undone clip edit. */
   redo(): void {
-    const next = this.redoStack.pop();
-    if (next === undefined) return;
-    this.undoStack.push(this.snapshot());
-    this.restore(next);
+    const next = this.history.redo(this.snapshot());
+    if (next !== null) this.restore(next);
   }
 
   /** Update the loop markers without clearing authored clips. */
@@ -555,7 +441,7 @@ export class Arrangement {
       this.selectedCues
         .filter((cue) => {
           const fixture = this.fixtures.find((item) => item.id === cue.fixtureId);
-          return fixture !== undefined && this.actionsFor(fixture).includes(action);
+          return fixture !== undefined && actionsFor(fixture).includes(action);
         })
         .map((cue) => cue.id),
     );
@@ -587,7 +473,7 @@ export class Arrangement {
   /** The action used for the next clip when nothing is selected. */
   setPendingAction(action: CueAction): void {
     const fixture = this.selectedFixture;
-    if (fixture === null || !this.actionsFor(fixture).includes(action)) return;
+    if (fixture === null || !actionsFor(fixture).includes(action)) return;
     this.pendingAction = action;
     this.notifySelection();
   }
@@ -616,18 +502,10 @@ export class Arrangement {
    * keeps each clip on its own track and their relative timing.
    */
   copySelected(): number {
-    const selected = this.selectedCues;
-    if (selected.length === 0) return 0;
-    const origin = Math.min(...selected.map((cue) => cue.startSec));
-    this.clipboard = selected.map((cue) => ({
-      fixtureId: cue.fixtureId,
-      startSec: cue.startSec - origin,
-      endSec: cue.endSec - origin,
-      colorIndex: cue.colorIndex,
-      action: cue.action,
-      ...(cue.fadeInSec === undefined ? {} : { fadeInSec: cue.fadeInSec }),
-      ...(cue.colorOverride === undefined ? {} : { colorOverride: cue.colorOverride }),
-    }));
+    const copied = copySelection(this.selectedCues);
+    // Copying nothing leaves the existing clipboard intact.
+    if (copied.length === 0) return 0;
+    this.clipboard = copied;
     // The new clipboard enables the select-mode paste hover marker.
     this.scheduleDraw();
     return this.clipboard.length;
@@ -639,17 +517,7 @@ export class Arrangement {
    * keep their relative track offsets.
    */
   private clipboardAnchor(): { item: ClipClipboardItem; fixtureIndex: number } | null {
-    let anchor: { item: ClipClipboardItem; fixtureIndex: number } | null = null;
-    for (const item of this.clipboard) {
-      const fixtureIndex = this.fixtures.findIndex((fixture) => fixture.id === item.fixtureId);
-      if (fixtureIndex < 0) continue;
-      if (anchor === null
-        || item.startSec < anchor.item.startSec
-        || (item.startSec === anchor.item.startSec && fixtureIndex < anchor.fixtureIndex)) {
-        anchor = { item, fixtureIndex };
-      }
-    }
-    return anchor;
+    return clipboardAnchor(this.clipboard, this.fixtures);
   }
 
   /**
@@ -664,36 +532,19 @@ export class Arrangement {
   ): { item: ClipClipboardItem; fixtureId: string; startSec: number; endSec: number }[] {
     const timeline = this.timeline;
     if (timeline === null) return [];
-    const anchorSec = this.snap(atSec);
-    const duration = timeline.durationSec;
-    const anchor = targetFixtureId === null ? null : this.clipboardAnchor();
-    const targetIndex = targetFixtureId === null
-      ? -1
-      : this.fixtures.findIndex((fixture) => fixture.id === targetFixtureId);
-    const placements = [];
-    for (const item of this.clipboard) {
-      let fixtureId = item.fixtureId;
-      if (targetFixtureId !== null) {
-        const sourceIndex = this.fixtures.findIndex((fixture) => fixture.id === item.fixtureId);
-        const target = this.fixtures[targetIndex + (sourceIndex - (anchor?.fixtureIndex ?? sourceIndex))];
-        if (target === undefined || !this.isCompatible(item, target)) continue;
-        fixtureId = target.id;
-      } else if (!this.fixtures.some((fixture) => fixture.id === fixtureId)) {
-        continue;
-      }
-      const startSec = clamp(anchorSec + item.startSec, 0, Math.max(0, duration - MIN_CLIP_SEC));
-      if (startSec >= duration) continue;
-      const endSec = Math.min(duration, Math.max(startSec + MIN_CLIP_SEC, anchorSec + item.endSec));
-      placements.push({ item, fixtureId, startSec, endSec });
-    }
-    return placements;
+    return resolvePastePlacements({
+      clipboard: this.clipboard,
+      fixtures: this.fixtures,
+      durationSec: timeline.durationSec,
+      atSec,
+      targetFixtureId,
+      snap: (timeSec) => this.snap(timeSec),
+    });
   }
 
   /** Whether "Paste here" is valid on a track: the anchor clip must fit it. */
   private canPasteOn(fixtureId: string): boolean {
-    const fixture = this.fixtures.find((entry) => entry.id === fixtureId);
-    const anchor = this.clipboardAnchor();
-    return fixture !== undefined && anchor !== null && this.isCompatible(anchor.item, fixture);
+    return canPasteOn(fixtureId, this.clipboard, this.fixtures);
   }
 
   /**
@@ -740,28 +591,6 @@ export class Arrangement {
 
   toClip(cue: Cue): Clip {
     return cueToClip(this.fixtures.find((item) => item.id === cue.fixtureId), cue);
-  }
-
-  /**
-   * Whether a copied clip's controls make sense on another fixture. Actions
-   * map directly to capabilities (sweep needs pan/tilt, strobe needs strobe),
-   * and a custom color needs a color-capable fixture.
-   */
-  private isCompatible(item: ClipClipboardItem, fixture: FixturePlacement): boolean {
-    if (!this.actionsFor(fixture).includes(item.action)) return false;
-    if (item.colorOverride !== undefined && !fixture.profile.capabilities.color) return false;
-    return true;
-  }
-
-  private actionsFor(fixture: FixturePlacement): CueAction[] {
-    const caps = fixture.profile.capabilities;
-    return [
-      'hold',
-      'fade',
-      'pulse',
-      ...(caps.panTilt ? ['sweep' as const] : []),
-      ...(caps.strobe ? ['strobe' as const] : []),
-    ];
   }
 
   private pointerDown(event: PointerEvent): void {
@@ -1350,52 +1179,19 @@ export class Arrangement {
     const timeline = this.timeline;
     if (timeline === null) return;
     this.hoverGhost = null;
-    const secondsWidth = timeline.durationSec * this.pixelsPerSecond;
-    const beatWidth = timeline.bpm !== null && timeline.bpm > 0
-      ? (60 / timeline.bpm) * this.pixelsPerSecond
-      : null;
-    const barWidth = beatWidth === null ? null : beatWidth * timeline.beatsPerBar;
-    const gridMode = beatWidth === null
-      ? 'none'
-      : beatWidth / 4 >= 6
-        ? 'sixteenths'
-        : beatWidth >= 8
-          ? 'beats'
-          : barWidth !== null && barWidth >= 12 ? 'bars' : 'none';
-    this.root.dataset.grid = gridMode;
-    const visibleFixtures = this.visibleFixtures();
-    const rows = visibleFixtures.map((fixture) => {
-      const selected = fixture.id === this.activeFixtureId;
-      const hidden = this.hiddenFixtureIds.has(fixture.id);
-      const clips = this.cues
-        .filter((cue) => cue.fixtureId === fixture.id)
-        .map((cue) => {
-          const left = cue.startSec * this.pixelsPerSecond;
-          const width = (cue.endSec - cue.startSec) * this.pixelsPerSecond;
-          return `<div class="arrangement-clip" data-cue-id="${cue.id}" data-start-px="${left}" data-end-px="${left + width}" style="left:${left}px;width:${width}px" title="${cue.action}">
-            <span class="clip-resize start"></span><span class="clip-resize end"></span>
-          </div>`;
-        }).join('');
-      const gridStyle = beatWidth === null
-        ? ''
-        : `--sixteenth-width:${beatWidth / 4}px;--beat-width:${beatWidth}px;--bar-width:${beatWidth * timeline.beatsPerBar}px;--grid-offset-x:${timeline.firstBeatSec * this.pixelsPerSecond}px;`;
-      const loopMarkup = this.loopMarkup(timeline, secondsWidth);
-      const label = escapeHtml(this.labelFor(fixture));
-      const subtitle = escapeHtml(
-        this.subtitleResolver?.(fixture) ?? `${this.kindLabel(fixture.profile.kind)} · ${this.capabilitySummary(fixture)}`,
-      );
-      return `<div class="fixture-row${selected ? ' selected' : ''}${hidden ? ' hidden' : ''}" data-fixture-id="${escapeHtml(fixture.id)}">
-        <button type="button" class="track-name" title="${escapeHtml(fixture.profile.name)}">
-          <span class="track-indicator" style="--track-color:${this.trackColor(fixture)}"></span>
-          <span class="track-copy"><b>${label}</b><small>${subtitle}</small></span>
-          <span class="track-visibility" role="button" tabindex="0" aria-pressed="${hidden}" aria-label="${hidden ? 'Show' : 'Hide'} ${label} in the 3D scene" title="${hidden ? 'Show' : 'Hide'} in the scene">${hidden ? '◌' : '◉'}</span>
-        </button>
-        <div class="fixture-lane" style="width:${secondsWidth}px;${gridStyle}">
-          ${loopMarkup}${clips}
-        </div>
-      </div>`;
-    }).join('');
-    this.root.innerHTML = `${rows}<span class="arrangement-playhead global" aria-hidden="true"></span>`;
+    this.root.dataset.grid = gridModeFor(timeline, this.pixelsPerSecond);
+    this.root.innerHTML = buildRowsMarkup({
+      fixtures: this.visibleFixtures(),
+      cues: this.cues,
+      timeline,
+      pixelsPerSecond: this.pixelsPerSecond,
+      activeFixtureId: this.activeFixtureId,
+      hiddenFixtureIds: this.hiddenFixtureIds,
+      labelFor: (fixture) => this.labelFor(fixture),
+      subtitleFor: (fixture) =>
+        this.subtitleResolver?.(fixture)
+        ?? `${kindLabel(fixture.profile.kind)} · ${capabilitySummary(fixture)}`,
+    });
     this.root.appendChild(this.overlay);
     this.playheadLine = this.root.querySelector<HTMLElement>('.arrangement-playhead.global');
     this.clipElements = [...this.root.querySelectorAll<HTMLElement>('.arrangement-clip')];
@@ -1446,138 +1242,28 @@ export class Arrangement {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, width, height);
 
-    const pps = this.pixelsPerSecond;
-    const visibleFixtures = this.visibleFixtures();
-    const rowHeight = height / Math.max(1, visibleFixtures.length);
-    const byFixture = new Map<string, Cue[]>();
-    for (const cue of this.cues) {
-      const list = byFixture.get(cue.fixtureId);
-      if (list === undefined) byFixture.set(cue.fixtureId, [cue]);
-      else list.push(cue);
-    }
-
-    ctx.font = '9px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
-    ctx.textBaseline = 'middle';
-
-    for (const [index, fixture] of visibleFixtures.entries()) {
-      const cues = byFixture.get(fixture.id);
-      if (cues === undefined) continue;
-      // Row content is dimmed via CSS, but clips live in this shared canvas.
-      ctx.globalAlpha = this.hiddenFixtureIds.has(fixture.id) ? HIDDEN_ROW_OPACITY : 1;
-      const y = index * rowHeight + 4;
-      const h = Math.max(2, rowHeight - 8);
-      for (const cue of cues) {
-        const x = cue.startSec * pps - scrollLeft;
-        const w = (cue.endSec - cue.startSec) * pps;
-        if (x + w < 0 || x > width) continue;
-        const color = resolveCueColor(cue);
-        const selected = this.selectedCueIds.has(cue.id);
-        const hovered = cue.id === this.hoveredCueId;
-        ctx.beginPath();
-        ctx.roundRect(x, y, Math.max(2, w), h, 4);
-        ctx.fillStyle = toneClipColor(color.rgb);
-        ctx.fill();
-        if (hovered) {
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
-          ctx.fill();
-        }
-        ctx.lineWidth = selected ? 1.5 : 1;
-        ctx.strokeStyle = selected ? '#ffffff' : 'rgba(255, 255, 255, 0.22)';
-        ctx.stroke();
-        // Labels truncate to the card width instead of disappearing; the
-        // text color follows the fill's luminance so bright fills stay
-        // readable.
-        if (w >= 20) {
-          ctx.fillStyle = textOnColor(color.rgb);
-          ctx.fillText(
-            truncateLabel(cue.action, w - 12),
-            x + 6,
-            y + h / 2,
-            Math.max(1, w - 12),
-          );
-        }
-      }
-    }
-    ctx.globalAlpha = 1;
-
-    const preview = this.preview;
-    if (preview !== null) {
-      const index = visibleFixtures.findIndex((fixture) => fixture.id === preview.fixtureId);
-      if (index >= 0) {
-        const x = preview.startSec * pps - scrollLeft;
-        const w = Math.max(2, (preview.endSec - preview.startSec) * pps);
-        const y = index * rowHeight + 4;
-        const h = Math.max(2, rowHeight - 8);
-        ctx.beginPath();
-        ctx.roundRect(x, y, w, h, 4);
-        ctx.fillStyle = 'rgba(122, 209, 255, 0.18)';
-        ctx.fill();
-        ctx.setLineDash([4, 3]);
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = 'rgba(122, 209, 255, 0.9)';
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-    }
-
-    // Select-mode paste target: a subtle grid-aligned line plus a band on the
-    // hovered track, so "here" is visible before right-clicking.
-    if (this.pastePreview === null
-      && this.mode === 'select'
-      && this.gesture === null
-      && this.canPaste
-      && this.pointerTimeSec !== null
-      && this.pointerFixtureId !== null) {
-      const hoverIndex = visibleFixtures.findIndex((fixture) => fixture.id === this.pointerFixtureId);
-      const hoverX = this.snap(this.pointerTimeSec) * pps - scrollLeft;
-      if (hoverIndex >= 0) {
-        ctx.fillStyle = 'rgba(122, 209, 255, 0.06)';
-        ctx.fillRect(0, hoverIndex * rowHeight, width, rowHeight);
-      }
-      ctx.beginPath();
-      ctx.setLineDash([2, 5]);
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = 'rgba(122, 209, 255, 0.38)';
-      ctx.moveTo(hoverX, 0);
-      ctx.lineTo(hoverX, height);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    const pastePreview = this.pastePreview;
-    if (pastePreview !== null && this.clipboard.length > 0) {
-      const anchor = this.snap(pastePreview.anchorSec);
-      const anchorX = anchor * pps - scrollLeft;
-      // A dashed vertical guide makes the paste time unambiguous even when
-      // the copied block is thin or its tracks are scrolled out of view.
-      ctx.beginPath();
-      ctx.setLineDash([3, 4]);
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = 'rgba(122, 209, 255, 0.55)';
-      ctx.moveTo(anchorX, 0);
-      ctx.lineTo(anchorX, height);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      for (const placement of this.pastePlacements(pastePreview.anchorSec, pastePreview.targetFixtureId)) {
-        const index = visibleFixtures.findIndex((fixture) => fixture.id === placement.fixtureId);
-        if (index < 0) continue;
-        const x = placement.startSec * pps - scrollLeft;
-        const w = Math.max(2, (placement.endSec - placement.startSec) * pps);
-        if (x + w < 0 || x > width) continue;
-        const y = index * rowHeight + 4;
-        const h = Math.max(2, rowHeight - 8);
-        ctx.beginPath();
-        ctx.roundRect(x, y, w, h, 4);
-        ctx.fillStyle = 'rgba(122, 209, 255, 0.12)';
-        ctx.fill();
-        ctx.setLineDash([5, 4]);
-        ctx.lineWidth = 1.2;
-        ctx.strokeStyle = 'rgba(122, 209, 255, 0.95)';
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-    }
+    paintClipOverlay(ctx, {
+      width,
+      height,
+      pixelsPerSecond: this.pixelsPerSecond,
+      scrollLeft,
+      visibleFixtures: this.visibleFixtures(),
+      cues: this.cues,
+      hiddenFixtureIds: this.hiddenFixtureIds,
+      selectedCueIds: this.selectedCueIds,
+      hoveredCueId: this.hoveredCueId,
+      preview: this.preview,
+      pastePreview: this.pastePreview,
+      pointerTimeSec: this.pointerTimeSec,
+      pointerFixtureId: this.pointerFixtureId,
+      mode: this.mode,
+      gestureActive: this.gesture !== null,
+      canPaste: this.canPaste,
+      clipboardLength: this.clipboard.length,
+      snap: (timeSec) => this.snap(timeSec),
+      resolvePastePlacements: (atSec, targetFixtureId) =>
+        this.pastePlacements(atSec, targetFixtureId),
+    });
   }
 
   private scheduleClipVisibility(): void {
@@ -1608,17 +1294,6 @@ export class Arrangement {
     }
   }
 
-  private loopMarkup(timeline: CueTimeline, width: number): string {
-    const start = timeline.loopStartSec;
-    const end = timeline.loopEndSec;
-    if (start === undefined || end === undefined || end <= start) return '';
-    const left = clamp(start * this.pixelsPerSecond, 0, width);
-    const right = clamp(end * this.pixelsPerSecond, 0, width);
-    const before = left > 0 ? `<span class="lane-outside" style="left:0;width:${left}px"></span>` : '';
-    const after = right < width ? `<span class="lane-outside" style="left:${right}px;width:${width - right}px"></span>` : '';
-    return `${before}${after}<span class="lane-loop" style="left:${left}px;width:${Math.max(0, right - left)}px"></span>`;
-  }
-
   private notifyChange(): void {
     this.onChange(this.cues);
   }
@@ -1636,14 +1311,11 @@ export class Arrangement {
   }
 
   private pushSnapshot(snapshot: CueSnapshot): void {
-    this.undoStack.push(snapshot);
-    if (this.undoStack.length > HISTORY_LIMIT) this.undoStack.shift();
-    this.redoStack.length = 0;
+    this.history.push(snapshot);
   }
 
   private clearHistory(): void {
-    this.undoStack.length = 0;
-    this.redoStack.length = 0;
+    this.history.clear();
   }
 
   private restore(snapshot: CueSnapshot): void {
@@ -1664,12 +1336,11 @@ export class Arrangement {
   }
 
   private defaultLength(): number {
-    const bpm = this.timeline?.bpm;
-    return bpm !== null && bpm !== undefined && bpm > 0 ? (60 / bpm) * 2 : 2;
+    return defaultClipLength(this.timeline);
   }
 
   private defaultAction(fixture: FixturePlacement): CueAction {
-    if (this.pendingAction !== null && this.actionsFor(fixture).includes(this.pendingAction)) {
+    if (this.pendingAction !== null && actionsFor(fixture).includes(this.pendingAction)) {
       return this.pendingAction;
     }
     return fixture.profile.capabilities.panTilt ? 'sweep' : fixture.profile.capabilities.strobe ? 'strobe' : 'hold';
@@ -1677,47 +1348,15 @@ export class Arrangement {
 
   /** Snap a movement delta (rather than an absolute time) to the grid. */
   private snapDelta(deltaSec: number): number {
-    const timeline = this.timeline;
-    if (timeline === null || timeline.bpm === null || timeline.bpm <= 0) return deltaSec;
-    const divisionSec = 60 / timeline.bpm / 4;
-    return Math.round(deltaSec / divisionSec) * divisionSec;
+    return snapDeltaToGrid(this.timeline, deltaSec);
   }
 
   private snap(timeSec: number): number {
-    const timeline = this.timeline;
-    if (timeline === null || timeline.bpm === null || timeline.bpm <= 0) {
-      return clamp(timeSec, 0, timeline?.durationSec ?? 0);
-    }
-    const divisionSec = 60 / timeline.bpm / 4;
-    return clamp(
-      timeline.firstBeatSec + Math.round((timeSec - timeline.firstBeatSec) / divisionSec) * divisionSec,
-      0,
-      timeline.durationSec,
-    );
+    return snapTime(this.timeline, timeSec);
   }
 
   private xToTime(clientX: number, lane: HTMLElement): number {
     return (clientX - lane.getBoundingClientRect().left) / this.pixelsPerSecond;
-  }
-
-  private trackColor(fixture: FixturePlacement): string {
-    if (fixture.profile.capabilities.panTilt) return '#41a8ff';
-    if (fixture.profile.capabilities.strobe) return '#ff7e53';
-    return '#56d3aa';
-  }
-
-  private kindLabel(kind: string): string {
-    return kind.split('-').map((word) => word[0]!.toUpperCase() + word.slice(1)).join(' ');
-  }
-
-  private capabilitySummary(fixture: FixturePlacement): string {
-    const caps = fixture.profile.capabilities;
-    return [
-      caps.dimmer ? 'Dim' : null,
-      caps.color ? 'Color' : null,
-      caps.panTilt ? 'Pan/Tilt' : null,
-      caps.strobe ? 'Strobe' : null,
-    ].filter((value) => value !== null).join(' · ');
   }
 }
 
@@ -1903,9 +1542,6 @@ export function createRuler(
     ctx.fillText(label, x + 4, 8);
   }
 }
-
-const clamp = (value: number, min: number, max: number): number =>
-  Math.max(min, Math.min(max, value));
 
 /** Structural comparison used to decide whether a drag produced an undo step. */
 function sameCues(a: readonly Cue[], b: readonly Cue[]): boolean {

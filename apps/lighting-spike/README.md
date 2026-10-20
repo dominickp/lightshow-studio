@@ -30,6 +30,7 @@ Open the Vite URL in a WebGPU-capable browser. Uses three.js `WebGPURenderer` wi
 - **3**: toggle shadows
 - **4**: toggle fixture strobes (on by default)
 - **C**: cycle camera presets
+- **O**: toggle a slow orbit across the front of the stage, with a gentle rise/fall and zoom breathing
 - **[ / ]**: cycle fixture counts
 - Mouse drag / scroll: orbit and zoom
 

@@ -35,6 +35,29 @@ interface CameraView {
  * up as a ~1 s freeze exactly when a cue adds or drops a fixture. */
 const LIGHT_POOL_SIZE = 4;
 
+/**
+ * Orbit camera. The stage faces +Z (the LED wall sits at negative Z, camera
+ * presets and the crowd on positive Z), so the orbit is limited to a frontal
+ * arc rather than a full revolution: it sweeps across the front of the stage
+ * and reverses at each edge instead of passing behind the set.
+ *
+ * The sweep also breathes in height and distance. Polar and zoom oscillations
+ * use co-prime-ish periods so the combined motion does not read as a mechanical
+ * loop, and both are relative to the framing the user had when the orbit
+ * started (or last dragged), so the default presets are respected.
+ */
+const ORBIT_ARC_RAD = (65 * Math.PI) / 180;
+/** 6°/s: a slow sweep, roughly 22 s from one edge of the arc to the other. */
+const ORBIT_SPEED_RAD_PER_SEC = (6 * Math.PI) / 180;
+/** Height bob, ±8° of polar angle over a 19 s cycle. */
+const ORBIT_POLAR_AMPLITUDE_RAD = (8 * Math.PI) / 180;
+const ORBIT_HEIGHT_PERIOD_SEC = 19;
+/** Dolly in/out by ±12% of the orbit radius over a 23 s cycle. */
+const ORBIT_ZOOM_AMPLITUDE = 0.12;
+const ORBIT_ZOOM_PERIOD_SEC = 23;
+/** Keep the orbit clear of the straight-down view. */
+const ORBIT_MIN_POLAR_RAD = 0.08;
+
 interface PoolLight {
   light: THREE.SpotLight;
   target: THREE.Object3D;
@@ -79,6 +102,17 @@ export class Stage {
   private haze = 0.65;
   private readonly beatSec: number;
   private viewIndex = 0;
+  private orbit = false;
+  /** Sweep direction: +1 towards +X, -1 back towards -X. */
+  private orbitDirection = 1;
+  private orbitLastMs = 0;
+  private orbitInteracting = false;
+  /** Seconds elapsed since the framing was anchored; drives the bob/dolly. */
+  private orbitPhase = 0;
+  /** Framing the orbit oscillates around. Re-anchored on drag end / view change. */
+  private orbitAzimuth = 0;
+  private orbitPolar = Math.PI / 2;
+  private orbitRadius = 12;
   private venue: VenueTemplate;
   /** Camera presets for the active venue. */
   private views: CameraView[];
@@ -105,6 +139,14 @@ export class Stage {
     this.controls.minDistance = 2;
     this.controls.maxDistance = 42;
     this.controls.maxPolarAngle = Math.PI * 0.495;
+    this.controls.addEventListener('start', () => {
+      this.orbitInteracting = true;
+    });
+    this.controls.addEventListener('end', () => {
+      this.orbitInteracting = false;
+      this.orbitLastMs = 0;
+      if (this.orbit) this.anchorOrbit();
+    });
     this.controls.update();
 
     this.rebuildVenue();
@@ -352,6 +394,7 @@ export class Stage {
     }
     this.controls?.target.set(...view.target);
     this.controls?.update();
+    if (this.orbit) this.anchorOrbit();
   }
 
   /** Current camera preset, so it can be saved with the project. */
@@ -361,6 +404,76 @@ export class Stage {
 
   nextView(): void {
     this.setView(this.viewIndex + 1, true);
+  }
+
+  /**
+   * Slow orbit across the front of the stage, with a gentle height bob and
+   * dolly in/out. The sweep reverses at a frontal arc limit (never passing
+   * behind the set) and pauses while the user drags.
+   */
+  setOrbit(enabled: boolean): void {
+    this.orbit = enabled;
+    this.orbitLastMs = 0;
+    if (enabled) this.anchorOrbit();
+  }
+
+  toggleOrbit(): void {
+    this.setOrbit(!this.orbit);
+  }
+
+  get orbitEnabled(): boolean {
+    return this.orbit;
+  }
+
+  /** Capture the current framing as the centre of the orbit oscillations. */
+  private anchorOrbit(): void {
+    const offset = this.camera.position.clone().sub(this.controls.target);
+    const radius = offset.length();
+    this.orbitRadius = Math.min(this.controls.maxDistance,
+      Math.max(this.controls.minDistance, radius));
+    this.orbitAzimuth = Math.min(ORBIT_ARC_RAD,
+      Math.max(-ORBIT_ARC_RAD, Math.atan2(offset.x, offset.z)));
+    this.orbitPolar = Math.min(this.controls.maxPolarAngle,
+      Math.max(ORBIT_MIN_POLAR_RAD,
+        Math.acos(Math.min(1, Math.max(-1, offset.y / Math.max(radius, 1e-4))))));
+    this.orbitPhase = 0;
+  }
+
+  /** Advance the orbit by one frame's worth of time. */
+  private stepOrbit(): void {
+    const now = performance.now();
+    const deltaSec = this.orbitLastMs === 0 ? 0 : Math.min(0.1, (now - this.orbitLastMs) / 1000);
+    this.orbitLastMs = now;
+    if (this.orbitInteracting) return;
+    this.orbitPhase += deltaSec;
+
+    let azimuth = this.orbitAzimuth + this.orbitDirection * ORBIT_SPEED_RAD_PER_SEC * deltaSec;
+    if (azimuth >= ORBIT_ARC_RAD) {
+      azimuth = ORBIT_ARC_RAD;
+      this.orbitDirection = -1;
+    } else if (azimuth <= -ORBIT_ARC_RAD) {
+      azimuth = -ORBIT_ARC_RAD;
+      this.orbitDirection = 1;
+    }
+    this.orbitAzimuth = azimuth;
+
+    const polar = Math.min(this.controls.maxPolarAngle,
+      Math.max(ORBIT_MIN_POLAR_RAD,
+        this.orbitPolar
+          + ORBIT_POLAR_AMPLITUDE_RAD * Math.sin((this.orbitPhase / ORBIT_HEIGHT_PERIOD_SEC) * Math.PI * 2)));
+    const radius = Math.min(this.controls.maxDistance,
+      Math.max(this.controls.minDistance,
+        this.orbitRadius
+          * (1 + ORBIT_ZOOM_AMPLITUDE * Math.sin((this.orbitPhase / ORBIT_ZOOM_PERIOD_SEC) * Math.PI * 2))));
+
+    const target = this.controls.target;
+    const horizontal = Math.sin(polar) * radius;
+    this.camera.position.set(
+      target.x + Math.sin(azimuth) * horizontal,
+      target.y + Math.cos(polar) * radius,
+      target.z + Math.cos(azimuth) * horizontal,
+    );
+    this.camera.lookAt(target);
   }
 
   update(states: readonly FixtureState[], timeSec: number, options: StageUpdateOptions): void {
@@ -383,6 +496,7 @@ export class Stage {
     }
 
     this.controls.update();
+    if (this.orbit) this.stepOrbit();
 
     const beatPhase = (timeSec / this.beatSec) % 1;
     const energy = Math.exp(-beatPhase * 3.2) * 0.75 + 0.25;

@@ -195,6 +195,7 @@ const ui = {
   haze: element<HTMLInputElement>('haze'),
   hazeValue: element('haze-value'),
   view: element<HTMLButtonElement>('btn-view'),
+  orbit: element<HTMLButtonElement>('btn-orbit'),
   count: element<HTMLButtonElement>('btn-count'),
     stats: element<HTMLButtonElement>('btn-stats'),
     dock: element('timeline-dock'),
@@ -1101,6 +1102,8 @@ interface StoredRenderSettings {
   strobes?: boolean;
   activeFixtureCount?: number;
   cameraView?: number;
+  /** Slow automatic camera sweep across the front of the stage. */
+  orbit?: boolean;
   /** Scene haze 0..1. A render preference, not a project setting: it changes
    * how the room is *shown*, not what the show does. */
   haze?: number;
@@ -1124,6 +1127,7 @@ const snapshotRender = (): StoredRenderSettings => ({
   strobes: strobesOn,
   activeFixtureCount: activeCount,
   cameraView: stage.view,
+  orbit: stage.orbitEnabled,
   haze: stage.hazeLevel,
 });
 
@@ -1148,6 +1152,8 @@ const syncButtons = (): void => {
   ui.haze.value = String(Math.round(stage.hazeLevel * 100));
   ui.hazeValue.textContent = String(Math.round(stage.hazeLevel * 100));
   ui.count.querySelector('em')!.textContent = String(activeCount);
+  ui.orbit.classList.toggle('on', stage.orbitEnabled);
+  ui.orbit.setAttribute('aria-pressed', String(stage.orbitEnabled));
   persistRender();
 };
 
@@ -2088,6 +2094,10 @@ ui.view.addEventListener('click', () => {
   stage.nextView();
   persistRender();
 });
+ui.orbit.addEventListener('click', () => {
+  stage.toggleOrbit();
+  syncButtons();
+});
 ui.count.addEventListener('click', () => {
   const presets = countPresets();
   countIndex = (countIndex + 1) % presets.length;
@@ -2141,6 +2151,8 @@ window.addEventListener('keydown', (event) => {
     updateLoopUi();
   } else if (event.key === 'c' || event.key === 'C') {
     stage.nextView();
+  } else if (event.key === 'o' || event.key === 'O') {
+    stage.toggleOrbit();
   } else if (event.key === 'h' || event.key === 'H') {
     /* Cycle haze: clear → light → club → heavy, so the beam/pool balance can
      * be compared without opening the panel. */
@@ -2309,6 +2321,7 @@ const applyProjectSettings = (settings: ProjectSettings, source: 'project' | 'de
   const presetIndex = presets.indexOf(requested);
   countIndex = presetIndex >= 0 ? presetIndex : presets.length - 1;
   stage.setView(local.cameraView ?? settings.render.cameraView, true);
+  stage.setOrbit(local.orbit ?? false);
 
   volume = settings.playback.volume;
   muted = settings.playback.muted;
@@ -2503,5 +2516,20 @@ requestAnimationFrame(frame);
   /** Active fixture count for the render budget (the `count` button cycles). */
   set fixtureCount(count: number) {
     stage.setActiveCount(count);
+  },
+  /** Slow auto-orbit state (the `O` shortcut / Orbit button toggles it). */
+  set orbit(enabled: boolean) {
+    stage.setOrbit(enabled);
+    syncButtons();
+  },
+  get orbit() {
+    return stage.orbitEnabled;
+  },
+  /** Camera and orbit target positions, for framing checks in test drives. */
+  get camera() {
+    return {
+      position: stage.camera.position.toArray(),
+      target: stage.controls.target.toArray(),
+    };
   },
 };

@@ -7603,8 +7603,7 @@
       "volumetrics": true,
       "bloom": true,
       "shadows": true,
-      "lofi": false,
-      "strobes": false,
+      "strobes": true,
       "activeFixtureCount": 32,
       "cameraView": 0
     },

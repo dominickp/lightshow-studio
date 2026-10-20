@@ -141,8 +141,7 @@ clock.setLoop({ startSec: loopStartSec, endSec: loopEndSec }, true);
 let volumetrics = true;
 let bloomOn = true;
 let shadowsOn = true;
-let lofi = false;
-let strobesOn = false;
+let strobesOn = true;
 let countIndex = counts.length - 1;
 let activeCount = counts[countIndex] ?? show.fixtures.length;
 
@@ -191,7 +190,6 @@ const ui = {
   vol: element<HTMLButtonElement>('btn-vol'),
   bloom: element<HTMLButtonElement>('btn-bloom'),
   shadow: element<HTMLButtonElement>('btn-shadow'),
-  lofi: element<HTMLButtonElement>('btn-lofi'),
   strobe: element<HTMLButtonElement>('btn-strobe'),
   strobeStatus: element('strobe-status'),
   haze: element<HTMLInputElement>('haze'),
@@ -1100,7 +1098,6 @@ interface StoredRenderSettings {
   volumetrics?: boolean;
   bloom?: boolean;
   shadows?: boolean;
-  lofi?: boolean;
   strobes?: boolean;
   activeFixtureCount?: number;
   cameraView?: number;
@@ -1124,7 +1121,6 @@ const snapshotRender = (): StoredRenderSettings => ({
   volumetrics,
   bloom: bloomOn,
   shadows: shadowsOn,
-  lofi,
   strobes: strobesOn,
   activeFixtureCount: activeCount,
   cameraView: stage.view,
@@ -1147,7 +1143,6 @@ const syncButtons = (): void => {
   ui.vol.classList.toggle('on', volumetrics);
   ui.bloom.classList.toggle('on', bloomOn);
   ui.shadow.classList.toggle('on', shadowsOn);
-  ui.lofi.classList.toggle('on', lofi);
   ui.strobe.classList.toggle('on', strobesOn);
   ui.strobeStatus.textContent = strobesOn ? 'on' : 'off';
   ui.haze.value = String(Math.round(stage.hazeLevel * 100));
@@ -1247,16 +1242,15 @@ const toggleStats = (): void => setStatsVisible(!statsVisible);
 applyStats();
 ui.stats.addEventListener('click', toggleStats);
 
-const CONTROLS_KEY = STORAGE_KEYS.controls;
-let controlsVisible = readPreference(CONTROLS_KEY) === 'on';
+/** The render/controls panel always starts closed so it never covers the stage. */
+let controlsVisible = false;
 const applyControls = (): void => {
   ui.controlsPanel.hidden = !controlsVisible;
   ui.controlsToggle.classList.toggle('on', controlsVisible);
   ui.controlsToggle.setAttribute('aria-pressed', String(controlsVisible));
 };
-const setControlsVisible = (visible: boolean, persist = true): void => {
+const setControlsVisible = (visible: boolean): void => {
   controlsVisible = visible;
-  if (persist) writePreference(CONTROLS_KEY, visible ? 'on' : 'off');
   applyControls();
 };
 const toggleControls = (): void => setControlsVisible(!controlsVisible);
@@ -2081,11 +2075,6 @@ ui.shadow.addEventListener('click', () => {
   applyShadows();
   syncButtons();
 });
-ui.lofi.addEventListener('click', () => {
-  lofi = !lofi;
-  post.setLofi(lofi);
-  syncButtons();
-});
 ui.strobe.addEventListener('click', () => {
   strobesOn = !strobesOn;
   syncButtons();
@@ -2142,9 +2131,6 @@ window.addEventListener('keydown', (event) => {
     shadowsOn = !shadowsOn;
     applyShadows();
   } else if (event.key === '4') {
-    lofi = !lofi;
-    post.setLofi(lofi);
-  } else if (event.key === '5') {
     strobesOn = !strobesOn;
   } else if (event.key === 's' || event.key === 'S') {
     toggleStats();
@@ -2309,10 +2295,8 @@ const applyProjectSettings = (settings: ProjectSettings, source: 'project' | 'de
   volumetrics = local.volumetrics ?? settings.render.volumetrics;
   bloomOn = local.bloom ?? settings.render.bloom;
   shadowsOn = local.shadows ?? settings.render.shadows;
-  lofi = local.lofi ?? settings.render.lofi;
   strobesOn = local.strobes ?? settings.render.strobes;
   post.setBloom(bloomOn);
-  post.setLofi(lofi);
   applyShadows();
 
   const requested = (local.activeFixtureCount ?? settings.render.activeFixtureCount) > 0
@@ -2391,7 +2375,6 @@ const buildProject = (): ProjectFile | null => {
       volumetrics,
       bloom: bloomOn,
       shadows: shadowsOn,
-      lofi,
       strobes: strobesOn,
       activeFixtureCount: activeCount,
       cameraView: stage.view,

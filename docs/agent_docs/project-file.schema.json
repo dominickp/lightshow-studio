@@ -797,11 +797,10 @@
               "type": "boolean"
             },
             "lofi": {
-              "default": false,
               "type": "boolean"
             },
             "strobes": {
-              "default": false,
+              "default": true,
               "type": "boolean"
             },
             "activeFixtureCount": {
@@ -821,7 +820,6 @@
             "volumetrics",
             "bloom",
             "shadows",
-            "lofi",
             "strobes",
             "activeFixtureCount",
             "cameraView"

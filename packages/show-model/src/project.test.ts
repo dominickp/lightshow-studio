@@ -81,7 +81,7 @@ function minimalProject(): ProjectFile {
 describe('project file schema', () => {
   it('fills optional sections with documented defaults', () => {
     const project = minimalProject();
-    expect(project.settings.render.strobes).toBe(false);
+    expect(project.settings.render.strobes).toBe(true);
     expect(project.settings.playback.volume).toBe(1);
     expect(project.settings.ui.waveformHeightPx).toBe(62);
     expect(project.audio.source).toBe('external');

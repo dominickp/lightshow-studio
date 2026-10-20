@@ -229,8 +229,7 @@ section.
       "volumetrics": true,
       "bloom": true,
       "shadows": true,
-      "lofi": false,
-      "strobes": false,
+      "strobes": true,
       "activeFixtureCount": 32,
       "cameraView": 0
     },
@@ -252,6 +251,8 @@ section.
 ```
 
 - `render.activeFixtureCount: 0` means "use the whole rig".
+- `render.strobes` defaults to `true`.
+- `render.lofi` is accepted for older files but ignored; the grade was removed.
 - `render.cameraView` is an index into the app's camera presets.
 - `ui.dockHeightPx: 0` keeps the stylesheet default dock height.
 - `ui.waveformHeightPx` is clamped to `40..200`.

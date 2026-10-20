@@ -50,7 +50,7 @@ Enforce with an ESLint `no-restricted-imports` rule in `packages/show-model`.
 - Fixture → scene object factory (`FixtureRig` for spot/wash/fixed, `LaserRig` for multi-beam laser fixtures)
 - Venue builder: structure primitives, LED wall, crowd, booth, haze, exposed surfaces for beam termination
 - TSL beam/volume/fog/emissive materials
-- Post-processing stack (bloom, streaks, lo-fi pass, dynamic resolution)
+- Post-processing stack (bloom, streaks, dynamic resolution)
 - `setFixtureStates(states)` per frame; no show logic
 - Perf instrumentation (frame ms, draw calls, visible lights, active laser beams)
 

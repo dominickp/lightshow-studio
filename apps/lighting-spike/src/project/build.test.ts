@@ -36,7 +36,6 @@ const base = {
     volumetrics: true,
     bloom: true,
     shadows: false,
-    lofi: false,
     strobes: true,
     activeFixtureCount: 1,
     cameraView: 0,

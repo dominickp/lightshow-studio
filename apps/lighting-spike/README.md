@@ -28,8 +28,7 @@ Open the Vite URL in a WebGPU-capable browser. Uses three.js `WebGPURenderer` wi
 - **1**: toggle beam cones (mesh-based haze proxy, not true raymarched volumetrics)
 - **2**: toggle bloom
 - **3**: toggle shadows
-- **4**: toggle lo-fi posterization
-- **5**: opt in/out of brief strobe flashes (off by default)
+- **4**: toggle fixture strobes (on by default)
 - **C**: cycle camera presets
 - **[ / ]**: cycle fixture counts
 - Mouse drag / scroll: orbit and zoom

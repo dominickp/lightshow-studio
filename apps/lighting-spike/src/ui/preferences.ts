@@ -8,7 +8,6 @@ export const STORAGE_KEYS = {
   render: 'dmxsim.spike.render',
   volume: 'dmxsim.spike.volume',
   stats: 'dmxsim.spike.stats',
-  controls: 'dmxsim.spike.controlsVisible',
   dockHeight: 'dmxsim.spike.dockHeight',
   dockCollapsed: 'dmxsim.spike.dockCollapsed',
   waveHeight: 'dmxsim.spike.waveHeight',

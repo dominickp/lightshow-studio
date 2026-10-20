@@ -249,8 +249,9 @@ export const projectSettingsSchema = z
         volumetrics: z.boolean().default(true),
         bloom: z.boolean().default(true),
         shadows: z.boolean().default(true),
-        lofi: z.boolean().default(false),
-        strobes: z.boolean().default(false),
+        /** Deprecated: accepted for older files, but the grade was removed. */
+        lofi: z.boolean().optional(),
+        strobes: z.boolean().default(true),
         /** Number of rig fixtures rendered. 0 means "use the whole rig". */
         activeFixtureCount: z.number().int().nonnegative().default(0),
         cameraView: z.number().int().nonnegative().default(0),

@@ -1,6 +1,6 @@
 import * as THREE from 'three/webgpu';
 import { RenderPipeline } from 'three/webgpu';
-import { float, floor, mix, mx_noise_float, pass, screenUV, smoothstep, uniform, vec3 } from 'three/tsl';
+import { float, mx_noise_float, pass, screenUV, smoothstep, uniform, vec3 } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 
 /* TSL node graphs are not expressible with a stable public type, so the
@@ -11,7 +11,6 @@ export class Post {
   private readonly processing: RenderPipeline;
   private readonly withoutBloom: NodeLike;
   private readonly withBloom: NodeLike;
-  private readonly uLofi = uniform(0);
   private readonly uTime = uniform(0);
   private bloomEnabled = true;
 
@@ -32,9 +31,8 @@ export class Post {
     const grain = mx_noise_float(vec3(screenUV.mul(720), this.uTime.mul(26))).mul(0.03);
 
     const graded = input.mul(vignette).add(vec3(grain));
-    const posterized = floor(graded.mul(24)).div(24);
 
-    return mix(graded, posterized, this.uLofi);
+    return graded;
   }
 
   setBloom(enabled: boolean): void {
@@ -45,10 +43,6 @@ export class Post {
 
   get bloom(): boolean {
     return this.bloomEnabled;
-  }
-
-  setLofi(enabled: boolean): void {
-    this.uLofi.value = enabled ? 1 : 0;
   }
 
   setTime(timeSec: number): void {

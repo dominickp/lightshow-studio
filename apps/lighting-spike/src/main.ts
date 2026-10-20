@@ -2,7 +2,6 @@ import * as THREE from 'three/webgpu';
 import {
   CLUB_STAGE,
   DEFAULT_VENUE_ID,
-  PROJECT_VERSION,
   evaluateFixture,
   findAnchor,
   nextFixtureId,
@@ -26,12 +25,7 @@ import demoProjectUrl from '../../../resources/sample_projects/koto-chill/koto-c
 import {
   applyProjectFixtureSetup,
   cueTimelineFromProject,
-  cueToProjectClip,
-  downloadProject,
-  fixtureIds,
   projectClipToCue,
-  projectFileName,
-  readProjectFile,
   rigMatches,
   showFromProject,
 } from './project-file';
@@ -50,6 +44,15 @@ import {
 } from './arrangement';
 import { kelvinToCss, kelvinToRgb } from './kelvin';
 import { clamp } from './lib/math';
+import { PerfMonitor } from './app/perf';
+import { buildProjectFile } from './project/build';
+import { openProject as openProjectFile, saveProject as saveProjectFile } from './project/session';
+import {
+  STORAGE_KEYS,
+  readNumberPreference,
+  readPreference,
+  writePreference,
+} from './ui/preferences';
 import { Stage } from './stage';
 import { Post } from './post';
 
@@ -537,13 +540,13 @@ const colorOverrideCss = (override: CueColorOverride): string => {
  * popover (most recent first) so frequent custom colors become one click.
  * Persisted per browser.
  */
-const USER_COLORS_KEY = 'dmxsim.recentColors';
+const USER_COLORS_KEY = STORAGE_KEYS.userColors;
 const USER_COLORS_MAX = 7;
 const sameColor = (a: CueColorOverride, b: CueColorOverride): boolean =>
   JSON.stringify(a) === JSON.stringify(b);
 const loadUserColors = (): CueColorOverride[] => {
   try {
-    const raw = localStorage.getItem(USER_COLORS_KEY);
+    const raw = readPreference(USER_COLORS_KEY);
     if (raw === null) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -595,7 +598,7 @@ const renderUserSwatches = (): void => {
 renderUserSwatches();
 const rememberUserColor = (override: CueColorOverride): void => {
   userColors = [override, ...userColors.filter((c) => !sameColor(c, override))].slice(0, USER_COLORS_MAX);
-  try { localStorage.setItem(USER_COLORS_KEY, JSON.stringify(userColors)); } catch { /* private mode */ }
+  writePreference(USER_COLORS_KEY, JSON.stringify(userColors));
   renderUserSwatches();
 };
 
@@ -687,7 +690,7 @@ arrangement = new Arrangement(ui.arrangement, ui.arrangementScroll, show.fixture
 
 // --- Timeline modes (drop / select) ---------------------------------------
 
-const TIMELINE_MODE_KEY = 'dmxsim.spike.timelineMode';
+const TIMELINE_MODE_KEY = STORAGE_KEYS.timelineMode;
 
 const applyTimelineMode = (mode: TimelineMode, persist = true): void => {
   arrangement.setMode(mode);
@@ -697,12 +700,12 @@ const applyTimelineMode = (mode: TimelineMode, persist = true): void => {
   ui.modeDrop.classList.toggle('on', dropMode);
   ui.modeSelect.classList.toggle('on', !dropMode);
   if (!dropMode) ui.arrangementScroll.classList.remove('loop-mode');
-  if (persist) localStorage.setItem(TIMELINE_MODE_KEY, mode);
+  if (persist) writePreference(TIMELINE_MODE_KEY, mode);
 };
 
 ui.modeDrop.addEventListener('click', () => applyTimelineMode('drop'));
 ui.modeSelect.addEventListener('click', () => applyTimelineMode('select'));
-applyTimelineMode(localStorage.getItem(TIMELINE_MODE_KEY) === 'select' ? 'select' : 'drop', false);
+applyTimelineMode(readPreference(TIMELINE_MODE_KEY) === 'select' ? 'select' : 'drop', false);
 
 // --- Rig editing (M3) ------------------------------------------------------
 
@@ -1091,7 +1094,7 @@ const formatClock = (seconds: number): string => {
  * the user's setup. The bundled demo project is re-applied on every load, so
  * its settings are only treated as defaults (see `applyProjectSettings`).
  */
-const RENDER_KEY = 'dmxsim.spike.render';
+const RENDER_KEY = STORAGE_KEYS.render;
 
 interface StoredRenderSettings {
   volumetrics?: boolean;
@@ -1108,7 +1111,7 @@ interface StoredRenderSettings {
 
 const readStoredRender = (): StoredRenderSettings => {
   try {
-    const raw = localStorage.getItem(RENDER_KEY);
+    const raw = readPreference(RENDER_KEY);
     if (raw === null) return {};
     const parsed: unknown = JSON.parse(raw);
     return typeof parsed === 'object' && parsed !== null ? (parsed as StoredRenderSettings) : {};
@@ -1134,7 +1137,7 @@ const persistRender = (): void => {
   const next = JSON.stringify(snapshotRender());
   if (next === persistedRender) return;
   persistedRender = next;
-  localStorage.setItem(RENDER_KEY, next);
+  writePreference(RENDER_KEY, next);
 };
 
 const syncButtons = (): void => {
@@ -1203,8 +1206,8 @@ ui.arrangementScroll.addEventListener('scroll', refreshScrollMetrics, { passive:
 new ResizeObserver(refreshScrollMetrics).observe(ui.arrangementScroll);
 refreshScrollMetrics();
 
-const VOLUME_KEY = 'dmxsim.spike.volume';
-const storedVolume = Number.parseFloat(localStorage.getItem(VOLUME_KEY) ?? '');
+const VOLUME_KEY = STORAGE_KEYS.volume;
+const storedVolume = readNumberPreference(VOLUME_KEY);
 let volume = Number.isFinite(storedVolume) ? Math.min(1, Math.max(0, storedVolume)) : 1;
 let muted = false;
 
@@ -1217,7 +1220,7 @@ const applyVolume = (persist = true): void => {
   ui.volume.value = String(Math.round(volume * 100));
   ui.volume.classList.toggle('muted', muted);
   ui.volume.title = muted ? 'Muted — press M or move the slider to unmute' : 'Playback volume (M mutes)';
-  if (persist) localStorage.setItem(VOLUME_KEY, String(volume));
+  if (persist) writePreference(VOLUME_KEY, String(volume));
 };
 
 ui.volume.addEventListener('input', () => {
@@ -1228,8 +1231,8 @@ ui.volume.addEventListener('input', () => {
 applyVolume(false);
 
 // --- View preferences (persisted) -----------------------------------------
-const STATS_KEY = 'dmxsim.spike.stats';
-let statsVisible = localStorage.getItem(STATS_KEY) !== 'off';
+const STATS_KEY = STORAGE_KEYS.stats;
+let statsVisible = readPreference(STATS_KEY) !== 'off';
 const applyStats = (): void => {
   ui.statsPanel.hidden = !statsVisible;
   ui.stats.classList.toggle('on', statsVisible);
@@ -1237,15 +1240,15 @@ const applyStats = (): void => {
 };
 const setStatsVisible = (visible: boolean, persist = true): void => {
   statsVisible = visible;
-  if (persist) localStorage.setItem(STATS_KEY, visible ? 'on' : 'off');
+  if (persist) writePreference(STATS_KEY, visible ? 'on' : 'off');
   applyStats();
 };
 const toggleStats = (): void => setStatsVisible(!statsVisible);
 applyStats();
 ui.stats.addEventListener('click', toggleStats);
 
-const CONTROLS_KEY = 'dmxsim.spike.controlsVisible';
-let controlsVisible = localStorage.getItem(CONTROLS_KEY) === 'on';
+const CONTROLS_KEY = STORAGE_KEYS.controls;
+let controlsVisible = readPreference(CONTROLS_KEY) === 'on';
 const applyControls = (): void => {
   ui.controlsPanel.hidden = !controlsVisible;
   ui.controlsToggle.classList.toggle('on', controlsVisible);
@@ -1253,21 +1256,21 @@ const applyControls = (): void => {
 };
 const setControlsVisible = (visible: boolean, persist = true): void => {
   controlsVisible = visible;
-  if (persist) localStorage.setItem(CONTROLS_KEY, visible ? 'on' : 'off');
+  if (persist) writePreference(CONTROLS_KEY, visible ? 'on' : 'off');
   applyControls();
 };
 const toggleControls = (): void => setControlsVisible(!controlsVisible);
 applyControls();
 ui.controlsToggle.addEventListener('click', toggleControls);
 
-const DOCK_HEIGHT_KEY = 'dmxsim.spike.dockHeight';
-const DOCK_COLLAPSED_KEY = 'dmxsim.spike.dockCollapsed';
-const WAVE_HEIGHT_KEY = 'dmxsim.spike.waveHeight';
+const DOCK_HEIGHT_KEY = STORAGE_KEYS.dockHeight;
+const DOCK_COLLAPSED_KEY = STORAGE_KEYS.dockCollapsed;
+const WAVE_HEIGHT_KEY = STORAGE_KEYS.waveHeight;
 const COLLAPSED_DOCK_PX = 54;
 
-const storedDockHeight = Number.parseFloat(localStorage.getItem(DOCK_HEIGHT_KEY) ?? '');
+const storedDockHeight = readNumberPreference(DOCK_HEIGHT_KEY);
 let dockHeightPx = Number.isFinite(storedDockHeight) ? storedDockHeight : 0;
-let dockCollapsed = localStorage.getItem(DOCK_COLLAPSED_KEY) === 'on';
+let dockCollapsed = readPreference(DOCK_COLLAPSED_KEY) === 'on';
 
 const applyDock = (): void => {
   const root = document.documentElement;
@@ -1302,18 +1305,18 @@ const endDockDrag = (): void => {
   if (dockDrag === null) return;
   dockDrag = null;
   ui.dockResizer.classList.remove('dragging');
-  localStorage.setItem(DOCK_HEIGHT_KEY, String(Math.round(dockHeightPx)));
+  writePreference(DOCK_HEIGHT_KEY, String(Math.round(dockHeightPx)));
 };
 ui.dockResizer.addEventListener('pointerup', endDockDrag);
 ui.dockResizer.addEventListener('pointercancel', endDockDrag);
 
 ui.dockToggle.addEventListener('click', () => {
   dockCollapsed = !dockCollapsed;
-  localStorage.setItem(DOCK_COLLAPSED_KEY, dockCollapsed ? 'on' : 'off');
+  writePreference(DOCK_COLLAPSED_KEY, dockCollapsed ? 'on' : 'off');
   applyDock();
 });
 
-const storedWaveHeight = Number.parseFloat(localStorage.getItem(WAVE_HEIGHT_KEY) ?? '');
+const storedWaveHeight = readNumberPreference(WAVE_HEIGHT_KEY);
 let waveHeightPx = Number.isFinite(storedWaveHeight) ? Math.max(40, Math.min(200, storedWaveHeight)) : 62;
 const applyWaveHeight = (): void => {
   document.documentElement.style.setProperty('--wave-height', `${waveHeightPx}px`);
@@ -1337,7 +1340,7 @@ const endWaveDrag = (): void => {
   if (waveDrag === null) return;
   waveDrag = null;
   ui.waveformResizer.classList.remove('dragging');
-  localStorage.setItem(WAVE_HEIGHT_KEY, String(Math.round(waveHeightPx)));
+  writePreference(WAVE_HEIGHT_KEY, String(Math.round(waveHeightPx)));
 };
 ui.waveformResizer.addEventListener('pointerup', endWaveDrag);
 ui.waveformResizer.addEventListener('pointercancel', endWaveDrag);
@@ -1345,10 +1348,10 @@ ui.waveformResizer.addEventListener('pointercancel', endWaveDrag);
 applyDock();
 
 // --- Fixture side panel ---------------------------------------------------
-const PANEL_WIDTH_KEY = 'dmxsim.spike.sidePanelWidth';
+const PANEL_WIDTH_KEY = STORAGE_KEYS.panelWidth;
 const PANEL_MIN_WIDTH = 210;
 const PANEL_MAX_WIDTH = 520;
-const storedPanelWidth = Number.parseFloat(localStorage.getItem(PANEL_WIDTH_KEY) ?? '');
+const storedPanelWidth = readNumberPreference(PANEL_WIDTH_KEY);
 let panelWidthPx = Number.isFinite(storedPanelWidth)
   ? clamp(storedPanelWidth, PANEL_MIN_WIDTH, PANEL_MAX_WIDTH)
   : 0;
@@ -1446,7 +1449,7 @@ const endPanelResize = (): void => {
   window.removeEventListener('pointermove', movePanelResize);
   window.removeEventListener('pointerup', endPanelResize);
   window.removeEventListener('pointercancel', endPanelResize);
-  localStorage.setItem(PANEL_WIDTH_KEY, String(Math.round(panelWidthPx)));
+  writePreference(PANEL_WIDTH_KEY, String(Math.round(panelWidthPx)));
   refreshScrollMetrics();
   waveform.requestPaint();
 };
@@ -2178,57 +2181,27 @@ const resizeViewport = (): void => {
 };
 window.addEventListener('resize', resizeViewport);
 
-let resolutionScale = 1;
-let smoothedFrameMs = 16.7;
-let smoothedCpuMs = 1;
-let lastFrame = performance.now();
-let lastStats = 0;
-let lastResolutionChange = 0;
-const RESOLUTION_COOLDOWN_MS = 3000;
-
-const applyResolutionScale = (now: number): void => {
-  lastResolutionChange = now;
-  renderer.setPixelRatio(baseRatio * resolutionScale);
+let perf: PerfMonitor;
+const applyResolutionScale = (): void => {
+  renderer.setPixelRatio(baseRatio * perf.resolutionScale);
   renderer.setSize(viewport.clientWidth, viewport.clientHeight);
 };
-
-/**
- * Adaptive resolution is a GPU lever. Two rules keep it from misfiring:
- * - never resize while paused (a framebuffer reallocation reads as a flash,
- *   and there is no playback load to measure);
- * - only downscale when the main thread is not the bottleneck, because a
- *   CPU-paint-bound frame (e.g. Firefox with the timeline) cannot be fixed by
- *   rendering fewer pixels.
- */
-const adjustResolution = (deltaMs: number, cpuMs: number, now: number): void => {
-  if (document.hidden || !clock.playing) return;
-  if (now - lastResolutionChange < RESOLUTION_COOLDOWN_MS) return;
-
-  if (smoothedFrameMs < 13.2) {
-    if (resolutionScale >= 1) return;
-    resolutionScale = Math.min(1, resolutionScale + 0.1);
-    applyResolutionScale(now);
-    return;
-  }
-  if (smoothedFrameMs < 20.5) return;
-
-  const gpuBound = cpuMs < deltaMs * 0.5;
-  if (!gpuBound || resolutionScale <= 0.55) return;
-  resolutionScale = Math.max(0.55, resolutionScale - 0.1);
-  applyResolutionScale(now);
-};
+perf = new PerfMonitor({
+  applyResolutionScale,
+  isPlaying: () => clock.playing,
+  isHidden: () => document.hidden,
+});
 
 const updateStats = (now: number, states: readonly FixtureState[], songTime: number): void => {
-  if (now - lastStats < 250) return;
-  lastStats = now;
+  if (!perf.shouldRefreshStats(now)) return;
   syncButtons();
 
   const info = renderer.info.render;
-  ui.fps.textContent = (1000 / smoothedFrameMs).toFixed(0);
-  ui.ms.textContent = `${smoothedFrameMs.toFixed(1)} ms`;
+  ui.fps.textContent = (1000 / perf.frameMs).toFixed(0);
+  ui.ms.textContent = `${perf.frameMs.toFixed(1)} ms`;
   ui.calls.textContent = String(info.drawCalls);
   ui.tris.textContent = info.triangles.toLocaleString('en-US');
-  ui.res.textContent = `${(resolutionScale * 100).toFixed(0)}%`;
+  ui.res.textContent = `${(perf.resolutionScale * 100).toFixed(0)}%`;
   ui.latency.textContent = `${(clock.latencySec * 1000).toFixed(1)} ms`;
 
   const active = states.slice(0, activeCount).filter((state) => state.active).length;
@@ -2245,9 +2218,7 @@ const updateStats = (now: number, states: readonly FixtureState[], songTime: num
 
 const frame = (now: number): void => {
   const workStart = performance.now();
-  const delta = now - lastFrame;
-  lastFrame = now;
-  smoothedFrameMs += (Math.min(delta, 100) - smoothedFrameMs) * 0.08;
+  perf.sampleFrame(now);
 
   const songTime = clock.time;
   if (clock.playing && followPlayhead) {
@@ -2290,8 +2261,8 @@ const frame = (now: number): void => {
   setWaveformPlayhead(playheadX);
 
   const cpuMs = performance.now() - workStart;
-  smoothedCpuMs += (cpuMs - smoothedCpuMs) * 0.08;
-  adjustResolution(delta, smoothedCpuMs, now);
+  perf.sampleCpu(cpuMs);
+  perf.adjustResolution(now);
   updateStats(now, states, songTime);
 
   requestAnimationFrame(frame);
@@ -2367,11 +2338,11 @@ const applyProjectSettings = (settings: ProjectSettings, source: 'project' | 'de
     setStatsVisible(settings.ui.statsVisible);
     dockCollapsed = settings.ui.dockCollapsed;
     dockHeightPx = settings.ui.dockHeightPx;
-    localStorage.setItem(DOCK_COLLAPSED_KEY, dockCollapsed ? 'on' : 'off');
-    localStorage.setItem(DOCK_HEIGHT_KEY, String(Math.round(dockHeightPx)));
+    writePreference(DOCK_COLLAPSED_KEY, dockCollapsed ? 'on' : 'off');
+    writePreference(DOCK_HEIGHT_KEY, String(Math.round(dockHeightPx)));
     applyDock();
     waveHeightPx = Math.max(40, Math.min(200, settings.ui.waveformHeightPx));
-    localStorage.setItem(WAVE_HEIGHT_KEY, String(Math.round(waveHeightPx)));
+    writePreference(WAVE_HEIGHT_KEY, String(Math.round(waveHeightPx)));
     applyWaveHeight();
   }
 
@@ -2408,93 +2379,53 @@ const applyProject = (project: ProjectFile, source: 'project' | 'default' = 'pro
 const buildProject = (): ProjectFile | null => {
   const timeline = currentTimeline;
   if (timeline === null) return null;
-  return {
-    format: 'dmxsim-project',
-    version: PROJECT_VERSION,
+  return buildProjectFile({
     name: projectName,
-    ...(projectDescription === undefined ? {} : { description: projectDescription }),
+    description: projectDescription,
     venue: { id: activeVenue.id, name: activeVenue.name },
-    show: {
-      version: 2,
-      name: show.name,
-      fixtures: show.fixtures,
-      tracks: [],
+    show: { name: show.name, fixtures: show.fixtures },
+    timeline,
+    loop: loopRegion,
+    cues,
+    render: {
+      volumetrics,
+      bloom: bloomOn,
+      shadows: shadowsOn,
+      lofi,
+      strobes: strobesOn,
+      activeFixtureCount: activeCount,
+      cameraView: stage.view,
     },
-    timeline: {
-      durationSec: timeline.durationSec,
-      beatGrid: {
-        bpm: timeline.bpm,
-        offsetSec: timeline.firstBeatSec,
-        beatsPerBar: timeline.beatsPerBar,
-      },
-      loop: { startSec: loopRegion.startSec, endSec: loopRegion.endSec },
+    playback: {
+      volume,
+      muted,
+      loopEnabled: clock.loopEnabled,
+      followPlayhead,
+      zoomPixelsPerSecond: arrangement.zoomLevel,
     },
-    arrangement: {
-      clips: cues.map(cueToProjectClip),
-    },
-    settings: {
-      render: {
-        volumetrics,
-        bloom: bloomOn,
-        shadows: shadowsOn,
-        lofi,
-        strobes: strobesOn,
-        activeFixtureCount: activeCount,
-        cameraView: stage.view,
-      },
-      playback: {
-        volume,
-        muted,
-        loopEnabled: clock.loopEnabled,
-        followPlayhead,
-        zoomPixelsPerSecond: arrangement.zoomLevel,
-      },
-      ui: {
-        statsVisible,
-        dockCollapsed,
-        dockHeightPx,
-        waveformHeightPx: waveHeightPx,
-      },
+    ui: {
+      statsVisible,
+      dockCollapsed,
+      dockHeightPx,
+      waveformHeightPx: waveHeightPx,
     },
     audio: projectAudio,
-  };
+  });
 };
 
 const saveProject = (): void => {
-  const project = buildProject();
-  if (project === null) {
-    setProjectStatus('Load audio before saving a project');
-    return;
-  }
-  downloadProject(project);
-  setProjectStatus(`Saved ${projectFileName(project.name)} · ${project.arrangement.clips.length} clips`);
+  saveProjectFile({ build: buildProject, setStatus: setProjectStatus });
 };
 
 const openProject = async (file: File): Promise<void> => {
-  ui.projectOpen.disabled = true;
-  setProjectStatus(`Opening ${file.name}…`);
-  try {
-    const project = await readProjectFile(file);
-    if (currentTimeline === null || clock.duration <= 0) {
-      setProjectStatus('Load audio before opening a project');
-      return;
-    }
-    if (!rigMatches(project, show.fixtures)) {
-      setProjectStatus(
-        `Cannot open ${file.name}: its rig (${fixtureIds(project).length} fixtures) does not match this build`,
-      );
-      return;
-    }
-    applyProject(project);
-    // `project.name` comes from the opened file's own `name` field, so the
-    // status always describes the project the user actually loaded.
-    setProjectStatus(`Opened ${project.name} · ${project.arrangement.clips.length} clips · ${file.name}`);
-  } catch (error) {
-    console.error(`could not open project "${file.name}"`, error);
-    setProjectStatus(error instanceof Error ? `Could not open ${file.name}: ${error.message}` : `Could not open ${file.name}`);
-  } finally {
-    ui.projectOpen.disabled = false;
-  }
+  await openProjectFile({
+    file,
+    hasAudio: () => currentTimeline !== null && clock.duration > 0,
+    rigMatches: (project) => rigMatches(project, show.fixtures),
+    apply: applyProject,
+    setBusy: (busy) => { ui.projectOpen.disabled = busy; },
+    setStatus: setProjectStatus,
+  });
 };
 
 ui.projectSave.addEventListener('click', saveProject);

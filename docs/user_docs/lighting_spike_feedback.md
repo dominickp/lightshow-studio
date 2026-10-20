@@ -58,3 +58,5 @@
   - Along with this work, the current koto chill demo needs to be loaded from that filetype off of the disk. This way, the user can iterate on the demo project.
 - [ ] Need cold gas sprays, fog, and haze
 - Copy and paste clips
+- Add orbit camera mode
+- Fix the default off strobe bug

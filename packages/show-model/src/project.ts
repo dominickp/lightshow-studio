@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { LED_LOOK_KINDS, LED_SYNCS } from './led';
 import { DEFAULT_VENUE_ID } from './venue';
 
 /**
@@ -15,7 +16,7 @@ import { DEFAULT_VENUE_ID } from './venue';
  */
 
 export const PROJECT_FORMAT = 'dmxsim-project';
-export const PROJECT_VERSION = 2;
+export const PROJECT_VERSION = 3;
 
 export const CUE_ACTIONS = ['hold', 'fade', 'pulse', 'sweep', 'strobe', 'fire'] as const;
 export type ProjectCueAction = (typeof CUE_ACTIONS)[number];
@@ -218,6 +219,56 @@ export const projectClipSchema = z
     path: ['endSec'],
   });
 
+const hexColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'expected #rrggbb');
+
+/** One procedural look instance on a wall. */
+export const ledLookSchema = z.object({
+  kind: z.enum(LED_LOOK_KINDS),
+  colors: z.array(hexColorSchema).min(1).max(4),
+  speed: z.number().nonnegative(),
+  scale: z.number().positive(),
+  angleDeg: z.number(),
+  softness: z.number().min(0).max(1),
+  intensity: z.number().min(0).max(1),
+  seed: z.number(),
+  sync: z.enum(LED_SYNCS).default('none'),
+});
+
+/** Physical and calibration properties of a wall (not per-clip). */
+export const ledSurfaceSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  widthM: z.number().positive(),
+  heightM: z.number().positive(),
+  y: z.number(),
+  z: z.number(),
+  /** LED pitch in millimetres. */
+  pitchMm: z.number().positive(),
+  /** Dark gap share of each pixel cell. */
+  gap: z.number().min(0).max(1),
+  brightness: z.number().nonnegative(),
+  blackLevel: z.number().min(0).max(1),
+  gamma: z.number().min(0.5).max(4),
+  emit: z.number().min(0).max(1),
+});
+
+/** A look playing on a wall. Kept apart from fixture clips so neither path
+ * has to branch on the other's fields. */
+export const ledSurfaceClipSchema = z
+  .object({
+    id: z.string().min(1),
+    surfaceId: z.string().min(1),
+    startSec: z.number().nonnegative(),
+    endSec: z.number().positive(),
+    look: ledLookSchema,
+    opacity: z.number().min(0).max(1).default(1),
+    fadeInSec: z.number().nonnegative().optional(),
+  })
+  .refine((clip) => clip.endSec > clip.startSec, {
+    message: 'endSec must be greater than startSec',
+    path: ['endSec'],
+  });
+
 export const projectTimelineSchema = z
   .object({
     durationSec: z.number().positive(),
@@ -319,6 +370,9 @@ export const projectFileSchema = z
     arrangement: z
       .object({
         clips: z.array(projectClipSchema).default([]),
+        /** Walls owned by this project. Empty means "use the venue's wall". */
+        surfaces: z.array(ledSurfaceSchema).default([]),
+        surfaceClips: z.array(ledSurfaceClipSchema).default([]),
       })
       .prefault({}),
     settings: projectSettingsSchema,
@@ -355,6 +409,38 @@ export const projectFileSchema = z
         });
       }
     }
+
+    const surfaceIds = new Set<string>();
+    for (const [index, surface] of project.arrangement.surfaces.entries()) {
+      if (surfaceIds.has(surface.id)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `Duplicate surface id \`${surface.id}\``,
+          path: ['arrangement', 'surfaces', index, 'id'],
+        });
+      }
+      surfaceIds.add(surface.id);
+    }
+
+    for (const [index, clip] of project.arrangement.surfaceClips.entries()) {
+      if (clipIds.has(clip.id)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `Duplicate clip id \`${clip.id}\``,
+          path: ['arrangement', 'surfaceClips', index, 'id'],
+        });
+      }
+      clipIds.add(clip.id);
+      // An empty `surfaces` list falls back to the venue wall, so the id is
+      // only checked when the project declares walls of its own.
+      if (surfaceIds.size > 0 && !surfaceIds.has(clip.surfaceId)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `Clip references unknown surface \`${clip.surfaceId}\``,
+          path: ['arrangement', 'surfaceClips', index, 'surfaceId'],
+        });
+      }
+    }
   });
 
 /** Schema defaults, e.g. for a new project or a settings section omitted in a file. */
@@ -365,6 +451,9 @@ export function defaultProjectSettings(): ProjectSettings {
 export type ProjectFile = z.infer<typeof projectFileSchema>;
 export type ProjectVenue = z.infer<typeof projectVenueSchema>;
 export type ProjectClip = z.infer<typeof projectClipSchema>;
+export type ProjectSurface = z.infer<typeof ledSurfaceSchema>;
+export type ProjectSurfaceClip = z.infer<typeof ledSurfaceClipSchema>;
+export type ProjectLedLook = z.infer<typeof ledLookSchema>;
 export type ProjectTimeline = z.infer<typeof projectTimelineSchema>;
 export type ProjectSettings = z.infer<typeof projectSettingsSchema>;
 export type ProjectShow = z.infer<typeof projectShowSchema>;
@@ -401,8 +490,26 @@ function migrateV1toV2(project: Record<string, unknown>): Record<string, unknown
 }
 
 /**
- * Forward-only migration hook. The current version is 2; files from the future
- * are rejected with a clear message instead of being silently half-loaded.
+ * v3 adds LED wall content: `arrangement.surfaces` and
+ * `arrangement.surfaceClips`. Both default to empty, so a v2 file keeps
+ * playing its fixture clips unchanged and falls back to the venue's wall.
+ */
+function migrateV2toV3(project: Record<string, unknown>): Record<string, unknown> {
+  const arrangement = project.arrangement;
+  const nextArrangement = typeof arrangement === 'object' && arrangement !== null
+    ? { surfaces: [], surfaceClips: [], ...(arrangement as Record<string, unknown>) }
+    : arrangement;
+
+  return {
+    ...project,
+    version: 3,
+    ...(arrangement === undefined ? {} : { arrangement: nextArrangement }),
+  };
+}
+
+/**
+ * Forward-only migration hook. Files from the future are rejected with a
+ * clear message instead of being silently half-loaded.
  */
 export function migrateProject(input: unknown): unknown {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
@@ -425,7 +532,8 @@ export function migrateProject(input: unknown): unknown {
   }
 
   const project = candidate as Record<string, unknown>;
-  if (candidate.version === 1) return migrateV1toV2(project);
+  if (candidate.version === 1) return migrateV2toV3(migrateV1toV2(project));
+  if (candidate.version === 2) return migrateV2toV3(project);
   return project;
 }
 

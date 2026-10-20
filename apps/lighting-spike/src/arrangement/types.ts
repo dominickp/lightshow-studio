@@ -1,4 +1,19 @@
+import type { LedLookState } from '@dmxsim/show-model';
+
 export type CueAction = 'hold' | 'fade' | 'pulse' | 'sweep' | 'strobe' | 'fire';
+
+/**
+ * Surface clips reuse the cue record so selection, history, gestures and
+ * painting stay one path. For a surface cue `fixtureId` holds the surface id
+ * (the lane key) and `surfaceId` marks which lane kind it belongs to.
+ */
+export interface SurfaceCueFields {
+  surfaceId?: string;
+  look?: LedLookState;
+  opacity?: number;
+}
+
+export const isSurfaceCue = (cue: { surfaceId?: string }): boolean => cue.surfaceId !== undefined;
 
 /**
  * Per-cue color override. When present it wins over the `CUE_COLORS` entry
@@ -10,8 +25,9 @@ export type CueColorOverride =
   | { kind: 'rgb'; r: number; g: number; b: number }
   | { kind: 'white'; cct: number };
 
-export interface Cue {
+export interface Cue extends SurfaceCueFields {
   id: string;
+  /** Fixture id, or the surface id for a surface lane. */
   fixtureId: string;
   startSec: number;
   endSec: number;
@@ -41,7 +57,7 @@ export interface CueTimeline {
 export type TimelineMode = 'drop' | 'select';
 
 /** One copied clip, positioned relative to the earliest clip in the copy. */
-export interface ClipClipboardItem {
+export interface ClipClipboardItem extends SurfaceCueFields {
   fixtureId: string;
   startSec: number;
   endSec: number;

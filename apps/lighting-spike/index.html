@@ -103,6 +103,10 @@
           <span class="clip-field-label">Action</span>
           <select id="cue-action" aria-label="Clip action" disabled></select>
         </label>
+        <div class="clip-field" id="cue-look-field" hidden>
+          <span class="clip-field-label">LED look</span>
+          <button id="btn-look-edit" type="button" title="Edit the selected look" hidden>▤ Gradient drift ▾</button>
+        </div>
         <div class="clip-field" id="cue-color-field">
           <span class="clip-field-label" id="cue-color-label">Color</span>
           <div id="cue-color" class="color-swatches" role="radiogroup" aria-labelledby="cue-color-label" data-disabled="true"></div>
@@ -114,6 +118,19 @@
           <button id="btn-cue-paste" type="button" title="Paste at the playhead (Ctrl/⌘ V) · Ctrl/⌘ Shift V pastes at the pointer and hovered track · right-click a lane to paste here" disabled>Paste</button>
           <button id="btn-cue-delete" type="button" title="Delete the selected clips (Backspace)" hidden>Delete clip</button>
         </span>
+        <div id="look-editor" role="dialog" aria-label="LED look editor" hidden>
+          <div class="cp-head">
+            <span class="le-glyph" id="le-glyph" aria-hidden="true">▤</span>
+            <span class="cp-title" id="le-title">Look</span>
+            <button id="le-close" type="button" title="Close look editor (Esc)" aria-label="Close look editor">×</button>
+          </div>
+          <div class="le-grid" id="le-grid" role="group" aria-label="Look generator"></div>
+          <div id="le-controls"></div>
+          <div class="cp-section">
+            <div class="cp-row"><span>Presets</span></div>
+            <div id="le-presets" class="le-presets"></div>
+          </div>
+        </div>
         <div id="color-picker" role="dialog" aria-label="Custom clip color" hidden>
           <div class="cp-head">
             <span id="cp-preview" aria-hidden="true"></span>
@@ -217,7 +234,7 @@
               <input id="setup-yaw" type="range" min="-180" max="180" step="1" value="0" aria-label="Fixture mounting yaw" disabled />
             </label>
             <label id="setup-pitch-row"><span>Mount pitch</span><output id="setup-pitch-value">0°</output>
-              <input id="setup-pitch" type="range" min="-90" max="90" step="1" value="0" aria-label="Fixture mounting pitch" disabled />
+              <input id="setup-pitch" type="range" min="-180" max="180" step="1" value="0" aria-label="Fixture mounting pitch" disabled />
             </label>
             <p class="subhead">Beam &amp; level</p>
             <label><span>Level</span><output id="setup-dimmer-value">0%</output>
@@ -226,6 +243,18 @@
             <label id="setup-spread-row"><span>Beam angle</span><output id="setup-spread-value">—</output>
               <input id="setup-spread" type="range" min="0" max="100" step="1" value="0" aria-label="Fixture beam angle" disabled />
             </label>
+            <div id="setup-laser-group" hidden>
+              <p class="subhead">Laser</p>
+              <label><span>Pattern</span>
+                <select id="setup-laser-pattern" aria-label="Laser pattern" disabled></select>
+              </label>
+              <label><span>Beams</span><output id="setup-laser-beams-value">8</output>
+                <input id="setup-laser-beams" type="range" min="1" max="32" step="1" value="8" aria-label="Laser beam count" disabled />
+              </label>
+              <label title="Full fan width for fan patterns; cone half-angle for tunnel."><span>Fan / cone</span><output id="setup-laser-fan-value">40°</output>
+                <input id="setup-laser-fan" type="range" min="0" max="120" step="1" value="40" aria-label="Laser fan width" disabled />
+              </label>
+            </div>
             <button id="btn-remove-fixture" type="button" class="sp-danger" disabled>Remove light</button>
           </section>
           <section>
@@ -239,6 +268,44 @@
               <div><span>Under playhead</span><b id="panel-clip-active">0</b></div>
             </div>
           </section>
+          </div>
+          <div id="surface-pane" hidden>
+            <section>
+              <div class="section-head"><h3>LED wall</h3></div>
+              <p class="panel-note" id="surface-summary"></p>
+              <label><span>Width</span><output id="surface-width-value">13.5 m</output>
+                <input id="surface-width" type="range" min="2" max="40" step="0.1" value="13.5" aria-label="LED wall width in metres" />
+              </label>
+              <label><span>Height</span><output id="surface-height-value">6.2 m</output>
+                <input id="surface-height" type="range" min="1" max="12" step="0.1" value="6.2" aria-label="LED wall height in metres" />
+              </label>
+              <label><span>Pixel pitch</span>              <output id="surface-pitch-value">10.0 mm</output>
+                              <input id="surface-pitch" type="range" min="1" max="20" step="0.1" value="10" aria-label="LED pixel pitch" />
+              </label>
+              <label><span>Pixel gap</span>              <output id="surface-gap-value">25%</output>
+                              <input id="surface-gap" type="range" min="0" max="80" step="1" value="25" aria-label="LED pixel gap" />
+              </label>
+              <p class="subhead">Calibration</p>
+              <label><span>Brightness</span><output id="surface-brightness-value">100%</output>
+                <input id="surface-brightness" type="range" min="0" max="200" step="1" value="100" aria-label="LED wall brightness" />
+              </label>
+              <label><span>Black level</span><output id="surface-black-value">2%</output>
+                <input id="surface-black" type="range" min="0" max="20" step="1" value="2" aria-label="LED black level" />
+              </label>
+              <label><span>Gamma</span><output id="surface-gamma-value">2.2</output>
+                <input id="surface-gamma" type="range" min="10" max="40" step="1" value="22" aria-label="LED wall gamma" />
+              </label>
+              <label><span>Light thrown</span><output id="surface-emit-value">35%</output>
+                <input id="surface-emit" type="range" min="0" max="100" step="1" value="35" aria-label="Light the wall throws into the room" />
+              </label>
+            </section>
+            <section>
+              <h3>Clips on this wall</h3>
+              <div id="panel-surface-clips">
+                <div><span>Total</span><b id="panel-surface-count">0</b></div>
+                <div><span>Under playhead</span><b id="panel-surface-active">0</b></div>
+              </div>
+            </section>
           </div>
         </div>
       </aside>

@@ -1,4 +1,4 @@
-import type { Clip, FixturePlacement } from '@dmxsim/show-model';
+import type { Clip, FixturePlacement, LedLookState, LedSurface } from '@dmxsim/show-model';
 import { actionsFor } from './arrangement/capabilities';
 import {
   canPasteOn,
@@ -27,6 +27,9 @@ import type {
   CueTimeline,
   TimelineMode,
 } from './arrangement/types';
+import { isSurfaceCue } from './arrangement/types';
+import { defaultLedLook } from '@dmxsim/show-model';
+import { lookDefinition } from './led/look-definitions';
 import { clamp } from './lib/math';
 
 export { CUE_COLORS } from './arrangement/colors';
@@ -37,6 +40,7 @@ export type {
   CueTimeline,
   TimelineMode,
 } from './arrangement/types';
+export { isSurfaceCue } from './arrangement/types';
 
 export const PIXELS_PER_SECOND = 48;
 export const MIN_PIXELS_PER_SECOND = 0.25;
@@ -67,6 +71,9 @@ export class Arrangement {
   private timeline: CueTimeline | null = null;
   private cues: Cue[] = [];
   private fixtures: FixturePlacement[];
+  /** Walls that own a lane in this arrangement. */
+  private surfaces: LedSurface[];
+  /** Lane id of the selected fixture or surface. */
   private selectedFixtureId: string | null = null;
   /**
    * Fixture whose settings are open in the side panel. The row highlight and
@@ -97,6 +104,10 @@ export class Arrangement {
   private pendingAction: CueAction | null = null;
   private pendingColorIndex: number | null = null;
   private pendingColorOverride: CueColorOverride | null = null;
+  /** Look used for the next surface clip when one is pending. */
+  private pendingLook: LedLookState | null = null;
+  /** One undo boundary for a continuous look-slider gesture. */
+  private lookEditSnapshot: CueSnapshot | null = null;
   private preview: { fixtureId: string; startSec: number; endSec: number } | null = null;
   private hoverGhost: HTMLElement | null = null;
   private playheadLine: HTMLElement | null = null;
@@ -117,16 +128,22 @@ export class Arrangement {
     private readonly scroller: HTMLElement,
     fixtures: FixturePlacement[],
     private readonly onChange: (cues: readonly Cue[]) => void,
-    private readonly onSelection: (fixture: FixturePlacement | null, cues: readonly Cue[]) => void,
+    private readonly onSelection: (
+      fixture: FixturePlacement | null,
+      cues: readonly Cue[],
+      surface: LedSurface | null,
+    ) => void,
     private readonly onVisibilityChange?: (fixtureId: string, hidden: boolean) => void,
     /**
      * Fired when a track's name is clicked (after selection has been applied).
      * The shell uses it to toggle the fixture side panel without the
      * arrangement needing to know whether that panel is open.
      */
-    private readonly onTrackName?: (fixture: FixturePlacement) => void,
+    private readonly onTrackName?: (fixture: FixturePlacement | null, surface: LedSurface | null) => void,
+    surfaces: readonly LedSurface[] = [],
   ) {
     this.fixtures = fixtures;
+    this.surfaces = [...surfaces];
     this.root.dataset.mode = this.mode;
     const overlay = document.createElement('canvas');
     overlay.className = 'arrangement-clips';
@@ -253,6 +270,86 @@ export class Arrangement {
       : this.fixtures.filter((fixture) => fixture.profile.kind === this.kindFilter);
   }
 
+  /** `led-wall` is a filter value surfaces answer to; every other filter hides
+   * them, so isolating a fixture type really isolates it. */
+  private visibleSurfaces(): LedSurface[] {
+    return this.kindFilter === null || this.kindFilter === 'led-wall' ? this.surfaces : [];
+  }
+
+  private surfaceById(id: string | null): LedSurface | null {
+    if (id === null) return null;
+    return this.surfaces.find((surface) => surface.id === id) ?? null;
+  }
+
+  get selectedSurface(): LedSurface | null {
+    return this.surfaceById(this.selectedFixtureId);
+  }
+
+  private laneExists(id: string): boolean {
+    return this.fixtures.some((fixture) => fixture.id === id)
+      || this.surfaces.some((surface) => surface.id === id);
+  }
+
+  /** Replace the wall list, e.g. after opening a project or editing the wall. */
+  setSurfaces(surfaces: readonly LedSurface[]): void {
+    this.surfaces = [...surfaces];
+    this.renderRows();
+  }
+
+  /** Look of the selected surface clip, or the pending look when none is. */
+  get selectedLook(): LedLookState | null {
+    return this.selectedCue?.look ?? null;
+  }
+
+  get suggestedLook(): LedLookState {
+    return this.pendingLook ?? this.selectedCue?.look ?? defaultLedLook('gradient');
+  }
+
+  /** Apply a look to every selected surface clip (or set it as the default). */
+  setSelectedLook(look: LedLookState): void {
+    this.applyLookToSelection(look, true);
+  }
+
+  /** Start a live-edited look gesture with a single undo snapshot. */
+  beginLookEdit(): void {
+    if (this.lookEditSnapshot === null) this.lookEditSnapshot = this.snapshot();
+  }
+
+  /** Preview a slider value without creating one history entry per input event. */
+  previewSelectedLook(look: LedLookState): void {
+    this.applyLookToSelection(look, false);
+  }
+
+  /** Commit the live preview as one undoable look edit. */
+  commitLookEdit(): void {
+    const snapshot = this.lookEditSnapshot;
+    this.lookEditSnapshot = null;
+    if (snapshot !== null && !sameCues(snapshot.cues, this.cues)) this.pushSnapshot(snapshot);
+  }
+
+  private applyLookToSelection(look: LedLookState, record: boolean): void {
+    const targets = new Set(
+      this.selectedCues.filter((cue) => isSurfaceCue(cue)).map((cue) => cue.id),
+    );
+    const copy = { ...look, colors: [...look.colors] };
+    if (targets.size === 0) {
+      this.pendingLook = copy;
+      this.notifySelection();
+      return;
+    }
+    if (record) this.pushHistory();
+    this.cues = this.cues.map((cue) => (targets.has(cue.id) ? { ...cue, look: copy } : cue));
+    this.renderRows();
+    this.notifyChange();
+    this.notifySelection();
+  }
+
+  /** Choose the generator used for the next surface clip. */
+  setPendingLookKind(kind: LedLookState['kind']): void {
+    this.pendingLook = { ...defaultLedLook(kind) };
+    this.notifySelection();
+  }
+
   /** Friendly label for a fixture: its name when set, otherwise its id. */
   labelFor(fixture: FixturePlacement): string {
     return fixture.name ?? fixture.id;
@@ -305,7 +402,10 @@ export class Arrangement {
 
   /** Select every cue on the currently visible tracks. */
   selectAll(): void {
-    const fixtures = new Set(this.visibleFixtures().map((fixture) => fixture.id));
+    const fixtures = new Set([
+      ...this.visibleSurfaces().map((surface) => surface.id),
+      ...this.visibleFixtures().map((fixture) => fixture.id),
+    ]);
     this.selectedCueIds.clear();
     for (const cue of this.cues) {
       if (fixtures.has(cue.fixtureId)) this.selectedCueIds.add(cue.id);
@@ -379,7 +479,7 @@ export class Arrangement {
     // Cue ids are the identity used by selection, gestures and delete, so two
     // cues sharing one must be repaired on load. See `reserveCueIds`.
     const reserved = reserveCueIds(
-      cues.filter((cue) => this.fixtures.some((fixture) => fixture.id === cue.fixtureId)),
+      cues.filter((cue) => this.laneExists(cue.fixtureId)),
     );
     this.cues = reserved.cues;
     // Never move the counter backwards: a later save can then not reissue an
@@ -428,7 +528,7 @@ export class Arrangement {
   }
 
   selectFixture(fixtureId: string): void {
-    if (!this.fixtures.some((fixture) => fixture.id === fixtureId)) return;
+    if (!this.laneExists(fixtureId)) return;
     this.selectedFixtureId = fixtureId;
     this.selectedCueIds.clear();
     this.renderRows();
@@ -517,7 +617,7 @@ export class Arrangement {
    * keep their relative track offsets.
    */
   private clipboardAnchor(): { item: ClipClipboardItem; fixtureIndex: number } | null {
-    return clipboardAnchor(this.clipboard, this.fixtures);
+    return clipboardAnchor(this.clipboard, this.fixtures, this.surfaces);
   }
 
   /**
@@ -535,6 +635,7 @@ export class Arrangement {
     return resolvePastePlacements({
       clipboard: this.clipboard,
       fixtures: this.fixtures,
+      surfaces: this.surfaces,
       durationSec: timeline.durationSec,
       atSec,
       targetFixtureId,
@@ -544,7 +645,7 @@ export class Arrangement {
 
   /** Whether "Paste here" is valid on a track: the anchor clip must fit it. */
   private canPasteOn(fixtureId: string): boolean {
-    return canPasteOn(fixtureId, this.clipboard, this.fixtures);
+    return canPasteOn(fixtureId, this.clipboard, this.fixtures, this.surfaces);
   }
 
   /**
@@ -558,6 +659,7 @@ export class Arrangement {
     const pasted: Cue[] = placements.map((placement) => ({
       ...placement.item,
       fixtureId: placement.fixtureId,
+      ...(placement.item.surfaceId === undefined ? {} : { surfaceId: placement.fixtureId }),
       id: this.nextCueId(),
       startSec: placement.startSec,
       endSec: placement.endSec,
@@ -581,7 +683,8 @@ export class Arrangement {
     return this.paste(atSec, this.pointerFixtureId);
   }
 
-  private toggleFixtureVisibility(fixtureId: string): void {    if (!this.fixtures.some((fixture) => fixture.id === fixtureId)) return;
+  private toggleFixtureVisibility(fixtureId: string): void {
+    if (!this.laneExists(fixtureId)) return;
     const hidden = !this.hiddenFixtureIds.has(fixtureId);
     if (hidden) this.hiddenFixtureIds.add(fixtureId);
     else this.hiddenFixtureIds.delete(fixtureId);
@@ -590,7 +693,12 @@ export class Arrangement {
   }
 
   toClip(cue: Cue): Clip {
-    return cueToClip(this.fixtures.find((item) => item.id === cue.fixtureId), cue);
+    // Surface clips are media, not fixture envelopes; keep them out of the
+    // fixture evaluator so a wall cue can never produce a bogus fixture clip.
+    return cueToClip(
+      cue.surfaceId === undefined ? this.fixtures.find((item) => item.id === cue.fixtureId) : undefined,
+      cue,
+    );
   }
 
   private pointerDown(event: PointerEvent): void {
@@ -615,8 +723,7 @@ export class Arrangement {
       // Announce the name click before the selection sync: the shell uses this
       // to decide whether to open, switch or close the fixture panel, and the
       // sync would otherwise overwrite the panel's previous fixture.
-      const fixture = this.selectedFixture;
-      if (fixture !== null) this.onTrackName?.(fixture);
+      this.onTrackName?.(this.selectedFixture, this.selectedSurface);
       this.notifySelection();
       return;
     }
@@ -783,6 +890,11 @@ export class Arrangement {
     const here = this.snap(this.xToTime(event.clientX, lane));
     const fixtureId = lane.closest<HTMLElement>('.fixture-row')?.dataset.fixtureId;
     const targetFixture = this.fixtures.find((fixture) => fixture.id === fixtureId) ?? null;
+    const targetSurface = this.surfaceById(fixtureId ?? null);
+    const targetLaneId = targetFixture?.id ?? targetSurface?.id ?? null;
+    const targetLaneLabel = targetFixture !== null
+      ? this.labelFor(targetFixture)
+      : targetSurface?.name ?? '';
 
     if (cue !== undefined) {
       // Right-clicking an unselected card selects it; right-clicking inside a
@@ -855,7 +967,7 @@ export class Arrangement {
       });
     }
 
-    if (this.clipboard.length > 0 && targetFixture !== null) {
+    if (this.clipboard.length > 0 && targetLaneId !== null) {
       if (cue !== undefined) {
         const separator = document.createElement('div');
         separator.className = 'menu-separator';
@@ -863,15 +975,15 @@ export class Arrangement {
       }
       // "Here" is the clicked row and pointer time; there is no separate
       // playhead or other-track target.
-      const compatible = this.canPasteOn(targetFixture.id);
-      item('Paste here', here, () => this.paste(here, targetFixture.id), {
+      const compatible = this.canPasteOn(targetLaneId);
+      item('Paste here', here, () => this.paste(here, targetLaneId), {
         disabled: !compatible,
         title: compatible
-          ? `Paste on ${this.labelFor(targetFixture)}`
+          ? `Paste on ${targetLaneLabel}`
           : 'This track cannot play the copied clip',
-        targetFixtureId: targetFixture.id,
+        targetFixtureId: targetLaneId,
       });
-      this.pastePreview = { anchorSec: here, targetFixtureId: targetFixture.id };
+      this.pastePreview = { anchorSec: here, targetFixtureId: targetLaneId };
       this.scheduleDraw();
     }
 
@@ -1078,15 +1190,28 @@ export class Arrangement {
     const duration = this.timeline?.durationSec ?? 0;
     const endSec = Math.min(duration, Math.max(startSec + MIN_CLIP_SEC, requestedEnd ?? startSec + this.defaultLength()));
     if (endSec - startSec < MIN_CLIP_SEC) return;
-    const cue: Cue = {
-      id: this.nextCueId(),
-      fixtureId,
-      startSec,
-      endSec,
-      colorIndex: this.suggestedColorIndex,
-      action,
-      ...(this.pendingColorOverride === null ? {} : { colorOverride: this.pendingColorOverride }),
-    };
+    const surface = this.surfaceById(fixtureId);
+    const cue: Cue = surface === null
+      ? {
+          id: this.nextCueId(),
+          fixtureId,
+          startSec,
+          endSec,
+          colorIndex: this.suggestedColorIndex,
+          action,
+          ...(this.pendingColorOverride === null ? {} : { colorOverride: this.pendingColorOverride }),
+        }
+      : {
+          id: this.nextCueId(),
+          fixtureId,
+          surfaceId: surface.id,
+          startSec,
+          endSec,
+          colorIndex: 0,
+          action,
+          look: this.suggestedLook,
+          opacity: 1,
+        };
     this.pushHistory();
     this.cues = [...this.cues, cue];
     this.selectedFixtureId = fixtureId;
@@ -1146,7 +1271,8 @@ export class Arrangement {
     const lane = target.closest<HTMLElement>('.fixture-lane');
     const fixtureId = lane?.parentElement?.dataset.fixtureId;
     const fixture = this.fixtures.find((item) => item.id === fixtureId);
-    if (lane === null || fixture === undefined) {
+    const surface = this.surfaceById(fixtureId ?? null);
+    if (lane === null || (fixture === undefined && surface === null)) {
       this.hideHover();
       return;
     }
@@ -1156,7 +1282,9 @@ export class Arrangement {
       this.defaultLength(),
       this.timeline.durationSec - startSec,
     ));
-    const action = this.defaultAction(fixture);
+    const action = surface !== null
+      ? lookDefinition(this.suggestedLook.kind).label
+      : this.defaultAction(fixture!);
 
     let ghost = this.hoverGhost;
     if (ghost === null || !ghost.isConnected) {
@@ -1182,6 +1310,7 @@ export class Arrangement {
     this.root.dataset.grid = gridModeFor(timeline, this.pixelsPerSecond);
     this.root.innerHTML = buildRowsMarkup({
       fixtures: this.visibleFixtures(),
+      surfaces: this.visibleSurfaces(),
       cues: this.cues,
       timeline,
       pixelsPerSecond: this.pixelsPerSecond,
@@ -1248,6 +1377,7 @@ export class Arrangement {
       pixelsPerSecond: this.pixelsPerSecond,
       scrollLeft,
       visibleFixtures: this.visibleFixtures(),
+      visibleSurfaces: this.visibleSurfaces(),
       cues: this.cues,
       hiddenFixtureIds: this.hiddenFixtureIds,
       selectedCueIds: this.selectedCueIds,
@@ -1300,7 +1430,7 @@ export class Arrangement {
 
   private snapshot(): CueSnapshot {
     return {
-      cues: this.cues.map((cue) => ({ ...cue })),
+      cues: this.cues.map((cue) => cloneCue(cue)),
       selectedCueIds: [...this.selectedCueIds],
     };
   }
@@ -1319,7 +1449,7 @@ export class Arrangement {
   }
 
   private restore(snapshot: CueSnapshot): void {
-    this.cues = snapshot.cues.map((cue) => ({ ...cue }));
+    this.cues = snapshot.cues.map((cue) => cloneCue(cue));
     const existing = new Set(this.cues.map((cue) => cue.id));
     this.selectedCueIds.clear();
     for (const id of snapshot.selectedCueIds) {
@@ -1332,7 +1462,7 @@ export class Arrangement {
   }
 
   private notifySelection(): void {
-    this.onSelection(this.selectedFixture, this.selectedCues);
+    this.onSelection(this.selectedFixture, this.selectedCues, this.selectedSurface);
   }
 
   private defaultLength(): number {
@@ -1370,11 +1500,21 @@ export class Arrangement {
  * could take an id a loaded clip already owned and the two then moved together.
  * Duplicates are repaired here so projects saved during that time still open.
  */
+/** Deep-copy the fields a surface cue nests, so undo snapshots are isolated. */
+function cloneCue(cue: Cue): Cue {
+  return {
+    ...cue,
+    ...(cue.look === undefined
+      ? {}
+      : { look: { ...cue.look, colors: [...cue.look.colors] } }),
+  };
+}
+
 export function reserveCueIds(cues: readonly Cue[]): { cues: Cue[]; nextId: number } {
   const used = new Set<string>();
   let nextId = 1;
   const reserved = cues.map((cue) => {
-    const copy: Cue = { ...cue };
+    const copy: Cue = cloneCue(cue);
     if (copy.id === '' || used.has(copy.id)) {
       let id = `cue-${nextId++}`;
       while (used.has(id)) id = `cue-${nextId++}`;
@@ -1394,7 +1534,8 @@ export function reserveCueIds(cues: readonly Cue[]): { cues: Cue[]; nextId: numb
  * Converts one arrangement cue into the evaluator's clip form. Pure so the
  * stage and headless tests share exactly the same interpretation of a cue.
  */
-export function cueToClip(fixture: FixturePlacement | undefined, cue: Cue): Clip {  const caps = fixture?.profile.capabilities;
+export function cueToClip(fixture: FixturePlacement | undefined, cue: Cue): Clip {
+  const caps = fixture?.profile.capabilities;
   const color = resolveCueColor(cue);
   const attrs: Clip['attributes'] = {
     dimmer: cue.action === 'fire'
@@ -1565,6 +1706,8 @@ function sameCues(a: readonly Cue[], b: readonly Cue[]): boolean {
       || left.colorIndex !== right.colorIndex
       || left.action !== right.action
       || left.fadeInSec !== right.fadeInSec
+      || left.surfaceId !== right.surfaceId
+      || JSON.stringify(left.look ?? null) !== JSON.stringify(right.look ?? null)
       || JSON.stringify(left.colorOverride ?? null) !== JSON.stringify(right.colorOverride ?? null)) return false;
   }
   return true;

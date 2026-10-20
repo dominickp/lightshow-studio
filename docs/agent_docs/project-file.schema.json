@@ -8,7 +8,7 @@
     },
     "version": {
       "type": "number",
-      "const": 2
+      "const": 3
     },
     "name": {
       "type": "string",
@@ -803,10 +803,203 @@
             ],
             "additionalProperties": false
           }
+        },
+        "surfaces": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "widthM": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "heightM": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "y": {
+                "type": "number"
+              },
+              "z": {
+                "type": "number"
+              },
+              "pitchMm": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "gap": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "brightness": {
+                "type": "number",
+                "minimum": 0
+              },
+              "blackLevel": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "gamma": {
+                "type": "number",
+                "minimum": 0.5,
+                "maximum": 4
+              },
+              "emit": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "widthM",
+              "heightM",
+              "y",
+              "z",
+              "pitchMm",
+              "gap",
+              "brightness",
+              "blackLevel",
+              "gamma",
+              "emit"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "surfaceClips": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "surfaceId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "startSec": {
+                "type": "number",
+                "minimum": 0
+              },
+              "endSec": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "look": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "solid",
+                      "gradient",
+                      "wave",
+                      "radial",
+                      "noise",
+                      "grid",
+                      "scan",
+                      "dots",
+                      "blackout"
+                    ]
+                  },
+                  "colors": {
+                    "minItems": 1,
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^#[0-9a-fA-F]{6}$"
+                    }
+                  },
+                  "speed": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "scale": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "angleDeg": {
+                    "type": "number"
+                  },
+                  "softness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "intensity": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "seed": {
+                    "type": "number"
+                  },
+                  "sync": {
+                    "default": "none",
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "beat",
+                      "bar"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "colors",
+                  "speed",
+                  "scale",
+                  "angleDeg",
+                  "softness",
+                  "intensity",
+                  "seed",
+                  "sync"
+                ],
+                "additionalProperties": false
+              },
+              "opacity": {
+                "default": 1,
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "fadeInSec": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "id",
+              "surfaceId",
+              "startSec",
+              "endSec",
+              "look",
+              "opacity"
+            ],
+            "additionalProperties": false
+          }
         }
       },
       "required": [
-        "clips"
+        "clips",
+        "surfaces",
+        "surfaceClips"
       ],
       "additionalProperties": false
     },

@@ -2,17 +2,19 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  CLUB_STAGE,
   PROJECT_FORMAT,
   PROJECT_VERSION,
   defaultProjectSettings,
+  ledSurfaceFromFeature,
   projectJsonSchema,
   serializeProject,
   type ProjectFile,
 } from '@dmxsim/show-model';
 import type { CueTimeline } from '../src/arrangement';
-import { createDemoCues } from '../src/demo-arrangement';
+import { createDemoCues, createDemoSurfaceCues } from '../src/demo-arrangement';
 import { createDemoRig } from '../src/demo-rig';
-import { cueToProjectClip } from '../src/project-file';
+import { splitCues } from '../src/project-file';
 import { TRACK, loopEndSec, loopStartSec } from '../src/track';
 
 /**
@@ -39,6 +41,10 @@ const timeline: CueTimeline = {
 };
 
 const defaults = defaultProjectSettings();
+const wallFeature = CLUB_STAGE.features.ledWall;
+const surfaces = wallFeature === undefined ? [] : [ledSurfaceFromFeature(wallFeature)];
+const cues = [...createDemoCues(rig.fixtures, timeline), ...createDemoSurfaceCues(timeline)];
+const { clips, surfaceClips } = splitCues(cues);
 const project: ProjectFile = {
   format: PROJECT_FORMAT,
   version: PROJECT_VERSION,
@@ -61,7 +67,9 @@ const project: ProjectFile = {
     loop: { startSec: loopStartSec, endSec: loopEndSec },
   },
   arrangement: {
-    clips: createDemoCues(rig.fixtures, timeline).map(cueToProjectClip),
+    clips,
+    surfaces,
+    surfaceClips,
   },
   settings: {
     ...defaults,

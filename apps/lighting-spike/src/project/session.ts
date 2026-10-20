@@ -20,9 +20,8 @@ export function saveProject(context: SaveProjectContext): void {
     return;
   }
   downloadProject(project);
-  context.setStatus(
-    `Saved ${projectFileName(project.name)} · ${project.arrangement.clips.length} clips`,
-  );
+  const clipCount = project.arrangement.clips.length + project.arrangement.surfaceClips.length;
+  context.setStatus(`Saved ${projectFileName(project.name)} · ${clipCount} clips`);
 }
 
 export interface OpenProjectContext {
@@ -54,9 +53,8 @@ export async function openProject(context: OpenProjectContext): Promise<void> {
     context.apply(project);
     // `project.name` comes from the opened file's own `name` field, so the
     // status always describes the project the user actually loaded.
-    context.setStatus(
-      `Opened ${project.name} · ${project.arrangement.clips.length} clips · ${file.name}`,
-    );
+    const clipCount = project.arrangement.clips.length + project.arrangement.surfaceClips.length;
+    context.setStatus(`Opened ${project.name} · ${clipCount} clips · ${file.name}`);
   } catch (error) {
     console.error(`could not open project "${file.name}"`, error);
     context.setStatus(

@@ -1,4 +1,5 @@
-import type { FixturePlacement } from '@dmxsim/show-model';
+import type { FixturePlacement, LedSurface } from '@dmxsim/show-model';
+import { lookSummary } from '../led/look-definitions';
 import { clamp } from '../lib/math';
 import { escapeHtml } from '../lib/html';
 import type { Cue, CueTimeline } from './types';
@@ -70,13 +71,15 @@ export function loopMarkup(
 function clipMarkup(cue: Cue, pixelsPerSecond: number): string {
   const left = cue.startSec * pixelsPerSecond;
   const width = (cue.endSec - cue.startSec) * pixelsPerSecond;
-  return `<div class="arrangement-clip" data-cue-id="${cue.id}" data-start-px="${left}" data-end-px="${left + width}" style="left:${left}px;width:${width}px" title="${cue.action}">
+  const title = cue.look === undefined ? cue.action : lookSummary(cue.look);
+  return `<div class="arrangement-clip" data-cue-id="${cue.id}" data-start-px="${left}" data-end-px="${left + width}" style="left:${left}px;width:${width}px" title="${escapeHtml(title)}">
             <span class="clip-resize start"></span><span class="clip-resize end"></span>
           </div>`;
 }
 
 export interface RowsMarkupInput {
   fixtures: readonly FixturePlacement[];
+  surfaces: readonly LedSurface[];
   cues: readonly Cue[];
   timeline: CueTimeline;
   pixelsPerSecond: number;
@@ -90,6 +93,7 @@ export interface RowsMarkupInput {
 export function buildRowsMarkup(input: RowsMarkupInput): string {
   const {
     fixtures,
+    surfaces,
     cues,
     timeline,
     pixelsPerSecond,
@@ -101,25 +105,54 @@ export function buildRowsMarkup(input: RowsMarkupInput): string {
   const secondsWidth = timeline.durationSec * pixelsPerSecond;
   const gridStyle = gridStyleFor(timeline, pixelsPerSecond);
   const loop = loopMarkup(timeline, pixelsPerSecond, secondsWidth);
-  const rows = fixtures.map((fixture) => {
-    const selected = fixture.id === activeFixtureId;
-    const hidden = hiddenFixtureIds.has(fixture.id);
+
+  const row = (
+    id: string,
+    title: string,
+    label: string,
+    subtitle: string,
+    indicator: string,
+    laneClass: string,
+  ): string => {
+    const selected = id === activeFixtureId;
+    const hidden = hiddenFixtureIds.has(id);
     const clips = cues
-      .filter((cue) => cue.fixtureId === fixture.id)
+      .filter((cue) => cue.fixtureId === id)
       .map((cue) => clipMarkup(cue, pixelsPerSecond))
       .join('');
-    const label = escapeHtml(labelFor(fixture));
-    const subtitle = escapeHtml(subtitleFor(fixture));
-    return `<div class="fixture-row${selected ? ' selected' : ''}${hidden ? ' hidden' : ''}" data-fixture-id="${escapeHtml(fixture.id)}">
-        <button type="button" class="track-name" title="${escapeHtml(fixture.profile.name)}">
-          <span class="track-indicator" style="--track-color:${trackColor(fixture)}"></span>
-          <span class="track-copy"><b>${label}</b><small>${subtitle}</small></span>
-          <span class="track-visibility" role="button" tabindex="0" aria-pressed="${hidden}" aria-label="${hidden ? 'Show' : 'Hide'} ${label} in the 3D scene" title="${hidden ? 'Show' : 'Hide'} in the scene">${hidden ? '◌' : '◉'}</span>
+    return `<div class="fixture-row${laneClass}${selected ? ' selected' : ''}${hidden ? ' hidden' : ''}" data-fixture-id="${escapeHtml(id)}">
+        <button type="button" class="track-name" title="${escapeHtml(title)}">
+          <span class="track-indicator" style="--track-color:${indicator}"></span>
+          <span class="track-copy"><b>${escapeHtml(label)}</b><small>${escapeHtml(subtitle)}</small></span>
+          <span class="track-visibility" role="button" tabindex="0" aria-pressed="${hidden}" aria-label="${hidden ? 'Show' : 'Hide'} ${escapeHtml(label)} in the 3D scene" title="${hidden ? 'Show' : 'Hide'} in the scene">${hidden ? '◌' : '◉'}</span>
         </button>
         <div class="fixture-lane" style="width:${secondsWidth}px;${gridStyle}">
           ${loop}${clips}
         </div>
       </div>`;
-  }).join('');
-  return `${rows}<span class="arrangement-playhead global" aria-hidden="true"></span>`;
+  };
+
+  const surfaceRows = surfaces.map((surface) =>
+    row(
+      surface.id,
+      'LED wall',
+      surface.name,
+      `${surface.widthM.toFixed(1)} × ${surface.heightM.toFixed(1)} m · P${surface.pitchMm.toFixed(1)}`,
+      '#a06bff',
+      ' surface-row',
+    ),
+  ).join('');
+
+  const fixtureRows = fixtures.map((fixture) =>
+    row(
+      fixture.id,
+      fixture.profile.name,
+      labelFor(fixture),
+      subtitleFor(fixture),
+      trackColor(fixture),
+      '',
+    ),
+  ).join('');
+
+  return `${surfaceRows}${fixtureRows}<span class="arrangement-playhead global" aria-hidden="true"></span>`;
 }

@@ -32,6 +32,7 @@ const base = {
   timeline,
   loop: { startSec: 16, endSec: 32 },
   cues: [cue],
+  surfaces: [],
   render: {
     volumetrics: true,
     bloom: true,

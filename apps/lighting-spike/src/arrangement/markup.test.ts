@@ -59,6 +59,7 @@ describe('loopMarkup', () => {
 describe('buildRowsMarkup', () => {
   const base = {
     fixtures: [fixture('a', 'Front')],
+    surfaces: [],
     cues: [cue()],
     timeline,
     pixelsPerSecond: 48,

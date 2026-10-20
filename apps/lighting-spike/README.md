@@ -8,6 +8,17 @@ Playback is driven by the audio clock prototype ([src/audio-clock.ts](src/audio-
 
 Findings live in [../../docs/agent_docs/spike-notes.md](../../docs/agent_docs/spike-notes.md).
 
+## LED wall
+
+The venue's LED wall is a persistent surface lane, separate from DMX fixtures.
+It remains visible as a dark, unlit panel when no surface clip is active. Drag
+in its lane to add a procedural look clip; select a clip to choose a generator
+and edit its palette, speed, scale, angle, softness, intensity, seed, and beat
+sync from **Edit look…**. Adjacent clips crossfade. Click the wall lane name to
+open its calibration panel (pixel pitch, pixel gap, brightness, black level,
+gamma, and approximate room spill). The built-in generators are Solid, Gradient drift, Linear wave, Radial pulse,
+Noise field, Grid / tunnel, Scan bars, and Blackout.
+
 ## Audio
 
 The demo loads `resources/sample_projects/koto-chill/The Koto Chill.ogg` (zircon, third-party music). Vite bundles it into production output; confirm distribution rights before publishing. Its beat grid was measured offline, not detected at import time: **130.00 BPM**, first beat at 0.02 s, default loop bars 41–56. Those constants live in [src/track.ts](src/track.ts) and are a placeholder for the real import-time analysis described in ADR-003.

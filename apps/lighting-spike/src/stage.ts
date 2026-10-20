@@ -1,13 +1,16 @@
 import * as THREE from 'three/webgpu';
-import { float, floor, mix, mx_noise_float, sin, smoothstep, uniform, uv, vec2, vec3 } from 'three/tsl';
+import { float, smoothstep, uniform, uv, vec3 } from 'three/tsl';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
   CLUB_STAGE,
   secondsPerBeat,
   type FixtureState,
+  type LedSurface,
   type Show,
   type VenueTemplate,
 } from '@dmxsim/show-model';
+import { LedWall, type LedPlaybackLayer } from './led/led-wall';
+import { ledMaskStrength } from './led/looks';
 import { createFixtureRig, type LaserRig } from './laser-rig';
 import type { FixtureRig } from './rig';
 import type { CryoJetRig } from './cryo-jet-rig';
@@ -98,8 +101,14 @@ export class Stage {
   private readonly poolLights: PoolLight[] = [];
   private readonly ambient: THREE.AmbientLight;
   private shadowsEnabled = true;
-  private readonly ledUniforms = { time: uniform(0), energy: uniform(0.4) };
   private readonly edgeUniforms = { color: uniform(new THREE.Color(0xffffff)), energy: uniform(0.5) };
+  /** LED walls by surface id. Geometry is static; content is clip playback. */
+  private readonly ledWalls = new Map<string, LedWall>();
+  private ledSurfaces: LedSurface[] = [];
+  private ledPlayback: ReadonlyMap<string, readonly LedPlaybackLayer[]> = new Map();
+  /** Approximate room fill thrown by the walls. */
+  private readonly ledGlow: THREE.PointLight;
+  private beatGrid: { bpm: number | null; beatsPerBar: number };
   /** Scene haze, 0..1. Beams are only visible where light scatters off it. */
   private readonly hazeUniform = uniform(0.65);
   private haze = 0.65;
@@ -122,8 +131,9 @@ export class Stage {
   /** Everything owned by the venue, removed and disposed when it changes. */
   private venueObjects: THREE.Object3D[] = [];
 
-  constructor(domElement: HTMLElement, show: Show, venue: VenueTemplate = CLUB_STAGE) {
+  constructor(private readonly domElement: HTMLElement, show: Show, venue: VenueTemplate = CLUB_STAGE) {
     this.beatSec = secondsPerBeat(show.beatGrid);
+    this.beatGrid = { bpm: show.beatGrid.bpm, beatsPerBar: show.beatGrid.beatsPerBar };
     this.venue = venue;
     this.views = viewsFrom(venue);
     this.haze = venue.features.haze === true ? 0.65 : 0.05;
@@ -179,6 +189,12 @@ export class Stage {
     this.ambient = new THREE.AmbientLight(0x2a3550, 0.16);
     this.scene.add(this.ambient);
 
+    /* A soft fill that approximates the wall throwing light into the room.
+     * It is a single light, not GI: enough to make the stage react to a bright
+     * wall without pretending to be a radiance transfer solution. */
+    this.ledGlow = new THREE.PointLight(0xffffff, 0, 34, 2);
+    this.scene.add(this.ledGlow);
+
     this.setShow(show);
   }
 
@@ -221,10 +237,10 @@ export class Stage {
       this.venueObjects.push(crowd);
     }
 
-    const leds = this.buildLeds();
-    if (leds !== null) {
-      this.scene.add(leds);
-      this.venueObjects.push(leds);
+    const strips = this.buildAccentStrips();
+    if (strips !== null) {
+      this.scene.add(strips);
+      this.venueObjects.push(strips);
     }
 
     if (this.venue.features.haze === true) {
@@ -234,53 +250,95 @@ export class Stage {
     }
   }
 
-  /** LED wall plus the emissive accent strips that pulse with the beat. */
-  private buildLeds(): THREE.Object3D | null {
-    const feature = this.venue.features.ledWall;
+  /** Emissive accent strips that pulse with the beat. */
+  private buildAccentStrips(): THREE.Object3D | null {
     const strips = this.venue.features.accentStrips ?? [];
-    if (feature === undefined && strips.length === 0) return null;
+    if (strips.length === 0) return null;
 
     const group = new THREE.Group();
-    group.name = 'venue:leds';
+    group.name = 'venue:accent-strips';
+    const edgeMaterial = new THREE.MeshBasicNodeMaterial();
+    edgeMaterial.colorNode = this.edgeUniforms.color.mul(this.edgeUniforms.energy);
+    edgeMaterial.fog = false;
 
-    if (feature !== undefined) {
-      const wallMaterial = new THREE.MeshBasicNodeMaterial();
-      const grid = vec2(26, 14);
-      const pixel = floor(uv().mul(grid)).add(0.5).div(grid);
-      const wave = sin(pixel.x.mul(34).add(this.ledUniforms.time.mul(1.6))).mul(0.5).add(0.5);
-      const scan = sin(pixel.y.mul(46).sub(this.ledUniforms.time.mul(3.4))).mul(0.5).add(0.5);
-      const sparkle = mx_noise_float(vec3(pixel.mul(26), this.ledUniforms.time.mul(0.8))).mul(0.5).add(0.5);
-      const hue = smoothstep(0, 1, pixel.x.add(sin(pixel.y.mul(3).add(this.ledUniforms.time)).mul(0.2)));
-      const base = mix(vec3(0.01, 0.03, 0.16), vec3(0.5, 0.05, 0.65), hue);
-      wallMaterial.colorNode = base
-        .mul(wave.mul(0.6).add(0.35))
-        .mul(scan.mul(0.5).add(0.5))
-        .mul(sparkle.mul(0.5).add(0.65))
-        .mul(this.ledUniforms.energy)
-        .mul(2.1);
-      wallMaterial.fog = false;
-
-      const wall = new THREE.Mesh(new THREE.PlaneGeometry(feature.width, feature.height), wallMaterial);
-      wall.position.set(0, feature.y, feature.z);
-      group.add(wall);
+    for (const strip of strips) {
+      const stripMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(strip.size.x, strip.size.y, strip.size.z),
+        edgeMaterial,
+      );
+      stripMesh.position.set(strip.position.x, strip.position.y, strip.position.z);
+      group.add(stripMesh);
     }
-
-    if (strips.length > 0) {
-      const edgeMaterial = new THREE.MeshBasicNodeMaterial();
-      edgeMaterial.colorNode = this.edgeUniforms.color.mul(this.edgeUniforms.energy);
-      edgeMaterial.fog = false;
-
-      for (const strip of strips) {
-        const stripMesh = new THREE.Mesh(
-          new THREE.BoxGeometry(strip.size.x, strip.size.y, strip.size.z),
-          edgeMaterial,
-        );
-        stripMesh.position.set(strip.position.x, strip.position.y, strip.position.z);
-        group.add(stripMesh);
-      }
-    }
-
     return group;
+  }
+
+  /**
+   * Replace the rendered walls. Geometry and calibration live on the surface;
+   * content arrives per frame through `setLedPlayback`.
+   */
+  setLedSurfaces(surfaces: readonly LedSurface[]): void {
+    this.ledPlayback = new Map();
+    this.ledGlow.intensity = 0;
+    this.ledSurfaces = [...surfaces];
+    for (const wall of this.ledWalls.values()) {
+      this.scene.remove(wall.group);
+      wall.dispose();
+    }
+    this.ledWalls.clear();
+    for (const surface of surfaces) {
+      const wall = new LedWall(surface);
+      this.ledWalls.set(surface.id, wall);
+      this.scene.add(wall.group);
+      this.syncVenueLedSurface(surface);
+    }
+  }
+
+  /** Active look layers per wall. Crossfades are resolved by the caller. */
+  setLedPlayback(playback: ReadonlyMap<string, readonly LedPlaybackLayer[]>): void {
+    this.ledPlayback = playback;
+  }
+
+  /** Lane visibility toggle: hide the wall without removing its content. */
+  setLedSurfaceVisible(surfaceId: string, visible: boolean): void {
+    const wall = this.ledWalls.get(surfaceId);
+    if (wall !== undefined) wall.group.visible = visible;
+  }
+
+  /** Re-render wall calibration from the side panel sliders. */
+  updateLedSurfaceById(surfaceId: string, patch: Partial<LedSurface>): void {
+    const surface = this.ledSurfaces.find((entry) => entry.id === surfaceId);
+    if (surface === undefined) return;
+    this.updateLedSurface({ ...surface, ...patch });
+  }
+
+  /** Wall calibration from the project, without rebuilding scene objects. */
+  updateLedSurface(surface: LedSurface): void {
+    const wall = this.ledWalls.get(surface.id);
+    if (wall === undefined) return;
+    wall.setSurface(surface);
+    const index = this.ledSurfaces.findIndex((entry) => entry.id === surface.id);
+    if (index >= 0) this.ledSurfaces[index] = surface;
+    this.syncVenueLedSurface(surface);
+  }
+
+  /**
+   * Keep beam termination aligned with the rendered panel. The venue declares
+   * the LED wall as a static surface, so resizing the wall has to update that
+   * plane or lights would stop at the panel's original footprint.
+   */
+  private syncVenueLedSurface(surface: LedSurface): void {
+    const target = this.venue.surfaces.find((entry) => entry.kind === 'led');
+    if (target === undefined) return;
+    target.value = surface.z;
+    target.bounds = {
+      x: [-surface.widthM / 2, surface.widthM / 2],
+      y: [surface.y - surface.heightM / 2, surface.y + surface.heightM / 2],
+      z: [surface.z - 0.05, surface.z + 0.05],
+    };
+  }
+
+  get ledWallSurfaces(): readonly LedSurface[] {
+    return this.ledSurfaces;
   }
 
   private addSelectionMarker(): void {
@@ -321,6 +379,7 @@ export class Stage {
   }
 
   setShow(show: Show): void {
+    this.beatGrid = { bpm: show.beatGrid.bpm, beatsPerBar: show.beatGrid.beatsPerBar };
     for (const rig of this.rigs) rig.removeFrom(this.scene);
     this.rigs.length = 0;
 
@@ -504,8 +563,8 @@ export class Stage {
 
     const beatPhase = (timeSec / this.beatSec) % 1;
     const energy = Math.exp(-beatPhase * 3.2) * 0.75 + 0.25;
-    this.ledUniforms.time.value = timeSec;
-    this.ledUniforms.energy.value = 0.3 + energy * 0.7;
+
+    this.updateLedWalls(timeSec);
 
     const color = new THREE.Color();
     let r = 0;
@@ -534,6 +593,42 @@ export class Stage {
     this.ambient.intensity = active > 0 ? 0.1 + energy * 0.14 : 0.06;
 
     this.updateLights(states);
+  }
+
+  /**
+   * Advance every wall's content and derive one room-fill light from it.
+   *
+   * The wall is emissive geometry, so it does not light the room by itself.
+   * A single soft point light in front of the busiest wall approximates the
+   * spill cheaply; it is deliberately not per-pixel GI.
+   */
+  private updateLedWalls(timeSec: number): void {
+    if (this.ledWalls.size === 0) return;
+    const viewportHeight = Math.max(1, this.domElement.clientHeight);
+    const glow = new THREE.Color(0, 0, 0);
+    let glowWeight = 0;
+    for (const [surfaceId, wall] of this.ledWalls) {
+      const layers = this.ledPlayback.get(surfaceId) ?? [];
+      const surface = wall.currentSurface;
+      wall.update(
+        layers,
+        timeSec,
+        this.beatGrid,
+        ledMaskStrength(surface, this.camera, viewportHeight),
+      );
+      if (layers.length > 0 && wall.group.visible) {
+        glow.add(wall.glowColor(layers));
+        glowWeight += surface.emit;
+      }
+    }
+    if (glowWeight > 0) {
+      glow.multiplyScalar(1 / Math.max(1, this.ledWalls.size));
+      this.ledGlow.color.copy(glow);
+      this.ledGlow.intensity = Math.min(24, glowWeight * 14);
+      this.ledGlow.position.set(0, 3.4, -7.5);
+    } else {
+      this.ledGlow.intensity = 0;
+    }
   }
 
   /**

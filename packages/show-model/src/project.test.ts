@@ -237,7 +237,7 @@ function legacyV1Project(): Record<string, unknown> {
 describe('project migration and rig placement', () => {
   it('upgrades a v1 file onto the club stage and leaves fixtures intact', () => {
     const project = parseProject(legacyV1Project());
-    expect(project.version).toBe(2);
+    expect(project.version).toBe(PROJECT_VERSION);
     expect(project.venue).toEqual({ id: 'club-stage', name: 'Club Stage' });
     expect(project.show.version).toBe(2);
     expect(project.show.fixtures[0]).toMatchObject({
@@ -247,6 +247,78 @@ describe('project migration and rig placement', () => {
     });
     // Unanchored until the user re-mounts it.
     expect(project.show.fixtures[0]?.mount).toBeUndefined();
+  });
+
+  it('upgrades a v2 file and defaults the LED collections', () => {
+    const project = parseProject({
+      ...minimalProject(),
+      version: 2,
+      arrangement: { clips: [] },
+    });
+    expect(project.version).toBe(PROJECT_VERSION);
+    expect(project.arrangement.surfaces).toEqual([]);
+    expect(project.arrangement.surfaceClips).toEqual([]);
+  });
+
+  it('round-trips LED surface clips and rejects dangling surface refs', () => {
+    const base = minimalProject();
+    const project = parseProject({
+      ...base,
+      arrangement: {
+        clips: [],
+        surfaces: [
+          {
+            id: 'led-main',
+            name: 'LED Wall',
+            widthM: 13.5,
+            heightM: 6.2,
+            y: 4.9,
+            z: -11.85,
+            pitchMm: 3.9,
+            gap: 0.18,
+            brightness: 1,
+            blackLevel: 0.015,
+            gamma: 2.2,
+            emit: 0.35,
+          },
+        ],
+        surfaceClips: [
+          {
+            id: 'sclip-1',
+            surfaceId: 'led-main',
+            startSec: 1,
+            endSec: 5,
+            look: {
+              kind: 'gradient',
+              colors: ['#1b0b4d', '#ff2d95'],
+              speed: 0.15,
+              scale: 1,
+              angleDeg: 20,
+              softness: 0.5,
+              intensity: 1,
+              seed: 7,
+            },
+          },
+        ],
+      },
+    });
+    expect(project.arrangement.surfaceClips[0]).toMatchObject({
+      surfaceId: 'led-main',
+      opacity: 1,
+      look: { kind: 'gradient', sync: 'none' },
+    });
+
+    expect(() => parseProject({
+      ...project,
+      arrangement: {
+        ...project.arrangement,
+        surfaceClips: [{
+          ...project.arrangement.surfaceClips[0]!,
+          id: 'sclip-2',
+          surfaceId: 'missing',
+        }],
+      },
+    })).toThrow(/unknown surface/);
   });
 
   it('round-trips mounts, names, and laser setup', () => {

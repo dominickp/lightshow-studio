@@ -1,11 +1,12 @@
 import {
   PROJECT_VERSION,
   type FixturePlacement,
+  type LedSurface,
   type ProjectFile,
   type ProjectSettings,
 } from '@dmxsim/show-model';
 import type { Cue, CueTimeline } from '../arrangement/types';
-import { cueToProjectClip } from '../project-file';
+import { splitCues } from '../project-file';
 
 export interface BuildProjectInput {
   name: string;
@@ -15,6 +16,7 @@ export interface BuildProjectInput {
   timeline: CueTimeline;
   loop: { startSec: number; endSec: number };
   cues: readonly Cue[];
+  surfaces: readonly LedSurface[];
   render: ProjectSettings['render'];
   playback: ProjectSettings['playback'];
   ui: ProjectSettings['ui'];
@@ -24,6 +26,7 @@ export interface BuildProjectInput {
 /** Assemble the portable project document from the current editor state. */
 export function buildProjectFile(input: BuildProjectInput): ProjectFile {
   const { timeline, loop } = input;
+  const clips = splitCues(input.cues);
   return {
     format: 'dmxsim-project',
     version: PROJECT_VERSION,
@@ -46,7 +49,9 @@ export function buildProjectFile(input: BuildProjectInput): ProjectFile {
       loop: { startSec: loop.startSec, endSec: loop.endSec },
     },
     arrangement: {
-      clips: input.cues.map(cueToProjectClip),
+      clips: clips.clips,
+      surfaces: [...input.surfaces],
+      surfaceClips: clips.surfaceClips,
     },
     settings: {
       render: input.render,

@@ -1,6 +1,6 @@
 # Project File Format (`.dmxsim`)
 
-**Status:** version 2, implemented in `packages/show-model/src/project.ts`.
+**Status:** version 3, implemented in `packages/show-model/src/project.ts`.
 **Schema companion:** `project-file.schema.json` (generated).
 **Reader/writer:** `parseProject()` / `serializeProject()` in `@dmxsim/show-model`.
 
@@ -25,27 +25,28 @@ the current rig, timeline, clips, and settings back out.
 - Version explicitly and extend without breaking older files.
 - Never embed audio; store a reference instead (ADR-003).
 
-## Non-goals (version 2)
+## Non-goals (version 3)
 
 - Embedding audio samples or rendered video.
 - Referencing fixture profiles by ID only; profiles are embedded snapshots.
 - Storing venue geometry. The file names a venue template and stores each
   fixture's mount plus resolved transform; the geometry ships with the app.
 - Undo history, autosave state, or in-flight UI selection.
-- Cross-version migrations beyond rejecting newer files with a clear error.
+- Implicit cross-version migrations. Supported upgrades are explicit, tested,
+  and run before schema validation.
 
 ## Top-level shape
 
 ```json
 {
   "format": "dmxsim-project",
-  "version": 2,
+  "version": 3,
   "name": "Koto Chill demo",
   "description": "optional free text",
   "venue": { "id": "club-stage", "name": "Club Stage" },
   "show": { "...": "rig" },
   "timeline": { "...": "duration, beat grid, loop" },
-  "arrangement": { "clips": [] },
+  "arrangement": { "clips": [], "surfaces": [], "surfaceClips": [] },
   "settings": { "...": "render, playback, ui" },
   "audio": { "...": "reference only" }
 }
@@ -54,7 +55,7 @@ the current rig, timeline, clips, and settings back out.
 | Field | Required | Meaning |
 |---|---|---|
 | `format` | yes | Literal `dmxsim-project`. |
-| `version` | yes | Integer document version. This spec describes `2`. |
+| `version` | yes | Integer document version. This spec describes `3`. |
 | `name` | yes | Human-readable project name; used for the export filename. |
 | `description` | no | Free text. |
 | `venue` | yes | Venue template id and display name. |
@@ -206,6 +207,47 @@ Cues are evaluated against the loop only when they fall inside the loop
 region; clips outside it are authored but cannot play. The demo generator
 places every clip on the loop's bar grid.
 
+## `arrangement.surfaces` and `arrangement.surfaceClips`
+
+Version 3 adds venue surfaces that have their own timeline content. The first
+surface is the LED wall: it remains part of the venue when no clip is active,
+showing its dark, unlit panel. A surface clip turns on a procedural look for a
+time range; adjacent clips crossfade. Surfaces are not fixtures and do not
+participate in DMX fixture evaluation.
+
+```json
+{
+  "arrangement": {
+    "surfaces": [{
+      "id": "led-main", "name": "LED Wall",
+      "widthM": 13.5, "heightM": 6.2, "y": 4.9, "z": -11.85,
+      "pitchMm": 10, "gap": 0.25, "brightness": 1,
+      "blackLevel": 0.015, "gamma": 2.2, "emit": 0.35
+    }],
+    "surfaceClips": [{
+      "id": "led-clip-1", "surfaceId": "led-main",
+      "startSec": 73.866, "endSec": 77.558, "opacity": 1,
+      "look": {
+        "kind": "gradient", "colors": ["#1b0b4d", "#ff2d95"],
+        "speed": 0.15, "scale": 1, "angleDeg": 20,
+        "softness": 0.5, "intensity": 1, "seed": 7, "sync": "beat"
+      }
+    }]
+  }
+}
+```
+
+- `surfaces` stores physical placement and display calibration. An empty list
+  means use the wall declared by the venue template.
+- `surfaceClips[].look.kind` is one of `solid`, `gradient`, `wave`, `radial`,
+  `noise`, `grid`, `scan`, or `blackout`. Older v3 `dots` values load as scan bars.
+- `colors` contains 1–4 `#rrggbb` stops; `speed`, `scale`, `angleDeg`,
+  `softness`, `intensity`, `seed`, and `sync` parameterize the generator.
+- `pitchMm` is the physical pixel pitch. The renderer uses a capped, uniformly
+  scaled LED matrix so individual diodes remain legible at viewport resolution.
+- A surface clip must reference a declared surface when the project declares
+  any surfaces. Clip ids are unique across fixture and surface clips.
+
 ### Relationship to `show.tracks[].clips`
 
 The long-term model (ADR-005) is a `Clip` with per-attribute keyframes. The
@@ -300,6 +342,13 @@ Version 1 predates venue templates. The migration:
 A v1 file therefore remains fully loadable; nothing about the rig, clips, or
 settings changes meaning.
 
+### v2 → v3
+
+Version 3 adds procedural LED wall surfaces and clips. The migration creates
+empty `arrangement.surfaces` and `arrangement.surfaceClips` collections; an
+empty surface list means the reader should use the wall from the venue template.
+Fixture clips and rig data are unchanged.
+
 ### Adding a field (checklist)
 
 1. Add it to `project.ts` as optional or with `.default()` / `.prefault()`.
@@ -353,7 +402,7 @@ running build replaces the rig rather than rejecting the file. See
 ```json
 {
   "format": "dmxsim-project",
-  "version": 2,
+  "version": 3,
   "name": "My song",
   "venue": { "id": "club-stage", "name": "Club Stage" },
   "show": {

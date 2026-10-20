@@ -1187,3 +1187,52 @@
         #hint { display: none; }
         :root { --track-width: 145px; }
       }
+
+      /* --- LED walls ------------------------------------------------------ */
+      .fixture-row.surface-row .track-indicator { background: #a06bff; }
+      .fixture-row.surface-row .track-copy b { color: #cdb2ff; }
+
+      #cue-look-field select { min-width: 132px; }
+
+      #look-editor {
+        position: absolute;
+        z-index: 40;
+        left: 8px;
+        bottom: calc(100% - 4px);
+        width: min(360px, 92vw);
+        max-height: 62vh;
+        overflow: auto;
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #10161f;
+        box-shadow: 0 18px 42px rgba(0, 0, 0, 0.55);
+      }
+      #look-editor[hidden] { display: none; }
+
+      .le-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 8px 0; }
+      .le-tile {
+        display: flex; flex-direction: column; align-items: center; gap: 1px;
+        padding: 5px 3px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #0b1119;
+        color: var(--txt);
+        font: inherit; font-size: 9px; line-height: 1.15;
+        cursor: pointer;
+      }
+      .le-tile b { font-size: 14px; line-height: 1; }
+      .le-tile[aria-pressed="true"] { border-color: #a06bff; background: #1a1230; color: #fff; }
+
+      .le-field { display: grid; grid-template-columns: 78px 1fr; gap: 2px 8px; align-items: center; margin: 5px 0; }
+      .le-field > span { color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+      .le-field > output { justify-self: end; font-size: 10px; color: var(--txt); }
+      .le-field > input[type="range"] { grid-column: 2; width: 100%; }
+      .le-field > select { grid-column: 2; }
+      .le-colors { display: flex; gap: 4px; align-items: center; }
+      .le-colors input[type="color"] { width: 26px; height: 22px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: none; }
+      .le-add { width: 20px; height: 20px; padding: 0; border-radius: 4px; }
+      .le-presets { display: flex; flex-wrap: wrap; gap: 5px; }
+      .le-preset { width: 54px; height: 16px; border: 1px solid var(--line); border-radius: 4px; cursor: pointer; }
+
+      .le-glyph { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 5px; background: #1a1230; color: #cdb2ff; }

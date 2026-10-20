@@ -1,4 +1,5 @@
-import type { FixturePlacement } from '@dmxsim/show-model';
+import type { FixturePlacement, LedLookState, LedSurface } from '@dmxsim/show-model';
+import { lookSummary } from '../led/look-definitions';
 import { resolveCueColor, textOnColor, toneClipColor, truncateLabel } from './colors';
 import type { Cue, TimelineMode } from './types';
 
@@ -16,6 +17,7 @@ export interface ClipOverlayState {
   pixelsPerSecond: number;
   scrollLeft: number;
   visibleFixtures: readonly FixturePlacement[];
+  visibleSurfaces: readonly LedSurface[];
   cues: readonly Cue[];
   hiddenFixtureIds: ReadonlySet<string>;
   selectedCueIds: ReadonlySet<string>;
@@ -68,6 +70,41 @@ function paintRect(
   if (style.dash !== undefined) ctx.setLineDash([]);
 }
 
+/**
+ * A surface card shows its look, not one colour: a small gradient built from
+ * the palette reads as content at a glance and distinguishes two clips with
+ * the same generator.
+ */
+function paintLookCard(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  look: LedLookState,
+  selected: boolean,
+  hovered: boolean,
+): void {
+  const colors = look.colors.length > 0 ? look.colors : ['#101018'];
+  const gradient = ctx.createLinearGradient(x, y, x + Math.max(2, width), y + height);
+  colors.forEach((css, index) => {
+    gradient.addColorStop(colors.length === 1 ? 0 : index / (colors.length - 1), css);
+  });
+  ctx.beginPath();
+  ctx.roundRect(x, y, Math.max(2, width), height, 4);
+  ctx.globalAlpha *= 0.55 + look.intensity * 0.45;
+  ctx.fillStyle = gradient;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  if (hovered) {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+    ctx.fill();
+  }
+  ctx.lineWidth = selected ? 1.5 : 1;
+  ctx.strokeStyle = selected ? '#ffffff' : 'rgba(255, 255, 255, 0.22)';
+  ctx.stroke();
+}
+
 /** Paint authored clips plus the preview/paste guides into the shared overlay. */
 export function paintClipOverlay(ctx: CanvasRenderingContext2D, state: ClipOverlayState): void {
   const {
@@ -75,8 +112,9 @@ export function paintClipOverlay(ctx: CanvasRenderingContext2D, state: ClipOverl
     height,
     pixelsPerSecond: pps,
     scrollLeft,
-    visibleFixtures,
+    visibleSurfaces,
   } = state;
+  const visibleFixtures = [...visibleSurfaces, ...state.visibleFixtures];
   const rowHeight = height / Math.max(1, visibleFixtures.length);
   const byFixture = new Map<string, Cue[]>();
   for (const cue of state.cues) {
@@ -101,11 +139,25 @@ export function paintClipOverlay(ctx: CanvasRenderingContext2D, state: ClipOverl
       const x = cue.startSec * pps - scrollLeft;
       const w = (cue.endSec - cue.startSec) * pps;
       if (x + w < 0 || x > width) continue;
-      const color = resolveCueColor(cue);
       const selected = state.selectedCueIds.has(cue.id);
+      const hovered = cue.id === state.hoveredCueId;
+      if (cue.look !== undefined) {
+        paintLookCard(ctx, x, y, w, rowH, cue.look, selected, hovered);
+        if (w >= 24) {
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.94)';
+          ctx.fillText(
+            truncateLabel(lookSummary(cue.look), w - 12),
+            x + 6,
+            y + rowH / 2,
+            Math.max(1, w - 12),
+          );
+        }
+        continue;
+      }
+      const color = resolveCueColor(cue);
       paintRect(ctx, x, y, w, rowH, {
         fill: toneClipColor(color.rgb),
-        highlight: cue.id === state.hoveredCueId ? 'rgba(255, 255, 255, 0.18)' : undefined,
+        highlight: hovered ? 'rgba(255, 255, 255, 0.18)' : undefined,
         stroke: selected ? '#ffffff' : 'rgba(255, 255, 255, 0.22)',
         lineWidth: selected ? 1.5 : 1,
       });

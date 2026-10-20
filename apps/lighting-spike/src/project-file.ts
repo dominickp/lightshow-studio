@@ -4,8 +4,9 @@ import {
   serializeProject,
   type ProjectClip,
   type ProjectFile,
+  type ProjectSurfaceClip,
 } from '@dmxsim/show-model';
-import type { FixturePlacement, Show } from '@dmxsim/show-model';
+import type { FixturePlacement, LedSurface, Show } from '@dmxsim/show-model';
 import type { Cue, CueTimeline } from './arrangement';
 
 /** Map an authored arrangement cue into the portable project representation. */
@@ -34,6 +35,56 @@ export function projectClipToCue(clip: ProjectClip): Cue {
     ...(clip.colorOverride === undefined ? {} : { colorOverride: clip.colorOverride }),
     ...(clip.fadeInSec === undefined ? {} : { fadeInSec: clip.fadeInSec }),
   };
+}
+
+/**
+ * Surface clips are stored separately from fixture clips because they carry a
+ * look instead of DMX controls. The arrangement still keys them by lane id, so
+ * `fixtureId` receives the surface id here and `surfaceId` marks the kind.
+ */
+export function surfaceCueToProjectClip(cue: Cue): ProjectSurfaceClip {
+  return {
+    id: cue.id,
+    surfaceId: cue.surfaceId ?? cue.fixtureId,
+    startSec: cue.startSec,
+    endSec: cue.endSec,
+    look: cue.look!,
+    opacity: cue.opacity ?? 1,
+    ...(cue.fadeInSec === undefined ? {} : { fadeInSec: cue.fadeInSec }),
+  };
+}
+
+export function projectSurfaceClipToCue(clip: ProjectSurfaceClip): Cue {
+  return {
+    id: clip.id,
+    fixtureId: clip.surfaceId,
+    surfaceId: clip.surfaceId,
+    startSec: clip.startSec,
+    endSec: clip.endSec,
+    action: 'hold',
+    colorIndex: 0,
+    look: clip.look,
+    opacity: clip.opacity,
+    ...(clip.fadeInSec === undefined ? {} : { fadeInSec: clip.fadeInSec }),
+  };
+}
+
+/** Split an in-memory cue list into the two portable clip collections. */
+export function splitCues(cues: readonly Cue[]): {
+  clips: ProjectClip[];
+  surfaceClips: ProjectSurfaceClip[];
+} {
+  return {
+    clips: cues.filter((cue) => cue.surfaceId === undefined).map(cueToProjectClip),
+    surfaceClips: cues.filter((cue) => cue.surfaceId !== undefined).map(surfaceCueToProjectClip),
+  };
+}
+
+/** Surfaces the project declares, or the venue's wall when it declares none. */
+export function surfacesFromProject(project: ProjectFile, fallback: readonly LedSurface[]): LedSurface[] {
+  return project.arrangement.surfaces.length > 0
+    ? project.arrangement.surfaces
+    : [...fallback];
 }
 
 /** The project timeline is authoritative for the beat grid and loop. */

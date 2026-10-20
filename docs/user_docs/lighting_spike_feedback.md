@@ -57,3 +57,6 @@
 - [x] The timeline and settings need to be exportable and importable as a project file
   - Along with this work, the current koto chill demo needs to be loaded from that filetype off of the disk. This way, the user can iterate on the demo project.
 - [ ] Need cold gas sprays, fog, and haze
+- modify the project export to bundle audio, led wall, all assets, compressed to make transport easier
+- camera orbit mode should pause when timeline isnt running
+- mantissa vj videos

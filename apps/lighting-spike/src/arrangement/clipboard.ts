@@ -1,4 +1,4 @@
-import type { FixturePlacement } from '@dmxsim/show-model';
+import type { FixturePlacement, LedSurface } from '@dmxsim/show-model';
 import { actionsFor } from './capabilities';
 import { MIN_CLIP_SEC } from './constants';
 import { clamp } from '../lib/math';
@@ -21,9 +21,20 @@ export function copySelection(selected: readonly Cue[]): ClipClipboardItem[] {
     endSec: cue.endSec - origin,
     colorIndex: cue.colorIndex,
     action: cue.action,
+    ...(cue.surfaceId === undefined ? {} : { surfaceId: cue.surfaceId }),
+    ...(cue.look === undefined ? {} : { look: cue.look }),
+    ...(cue.opacity === undefined ? {} : { opacity: cue.opacity }),
     ...(cue.fadeInSec === undefined ? {} : { fadeInSec: cue.fadeInSec }),
     ...(cue.colorOverride === undefined ? {} : { colorOverride: cue.colorOverride }),
   }));
+}
+
+/** Lane ids in display order: surfaces first, then fixtures. */
+function laneIds(
+  fixtures: readonly FixturePlacement[],
+  surfaces: readonly LedSurface[],
+): string[] {
+  return [...surfaces.map((surface) => surface.id), ...fixtures.map((fixture) => fixture.id)];
 }
 
 /**
@@ -34,10 +45,12 @@ export function copySelection(selected: readonly Cue[]): ClipClipboardItem[] {
 export function clipboardAnchor(
   clipboard: readonly ClipClipboardItem[],
   fixtures: readonly FixturePlacement[],
+  surfaces: readonly LedSurface[] = [],
 ): { item: ClipClipboardItem; fixtureIndex: number } | null {
+  const lanes = laneIds(fixtures, surfaces);
   let anchor: { item: ClipClipboardItem; fixtureIndex: number } | null = null;
   for (const item of clipboard) {
-    const fixtureIndex = fixtures.findIndex((fixture) => fixture.id === item.fixtureId);
+    const fixtureIndex = lanes.indexOf(item.fixtureId);
     if (fixtureIndex < 0) continue;
     if (anchor === null
       || item.startSec < anchor.item.startSec
@@ -54,14 +67,23 @@ export function clipboardAnchor(
  * and a custom color needs a color-capable fixture.
  */
 export function isCompatible(item: ClipClipboardItem, fixture: FixturePlacement): boolean {
+  // Surface clips carry a look, not DMX controls: never paste them onto a
+  // lighting fixture.
+  if (item.surfaceId !== undefined) return false;
   if (!actionsFor(fixture).includes(item.action)) return false;
   if (item.colorOverride !== undefined && !fixture.profile.capabilities.color) return false;
   return true;
 }
 
+/** A surface lane accepts only surface clips, and needs no capability check. */
+function isSurfaceCompatible(item: ClipClipboardItem): boolean {
+  return item.surfaceId !== undefined && item.look !== undefined;
+}
+
 export interface PasteContext {
   clipboard: readonly ClipClipboardItem[];
   fixtures: readonly FixturePlacement[];
+  surfaces?: readonly LedSurface[];
   durationSec: number;
   atSec: number;
   targetFixtureId: string | null;
@@ -76,20 +98,26 @@ export interface PasteContext {
  */
 export function pastePlacements(context: PasteContext): PastePlacement[] {
   const { clipboard, fixtures, durationSec, targetFixtureId, snap } = context;
+  const surfaces = context.surfaces ?? [];
+  const lanes = laneIds(fixtures, surfaces);
   const anchorSec = snap(context.atSec);
-  const anchor = targetFixtureId === null ? null : clipboardAnchor(clipboard, fixtures);
-  const targetIndex = targetFixtureId === null
-    ? -1
-    : fixtures.findIndex((fixture) => fixture.id === targetFixtureId);
+  const anchor = targetFixtureId === null ? null : clipboardAnchor(clipboard, fixtures, surfaces);
+  const targetIndex = targetFixtureId === null ? -1 : lanes.indexOf(targetFixtureId);
   const placements: PastePlacement[] = [];
   for (const item of clipboard) {
     let fixtureId = item.fixtureId;
     if (targetFixtureId !== null) {
-      const sourceIndex = fixtures.findIndex((fixture) => fixture.id === item.fixtureId);
-      const target = fixtures[targetIndex + (sourceIndex - (anchor?.fixtureIndex ?? sourceIndex))];
-      if (target === undefined || !isCompatible(item, target)) continue;
-      fixtureId = target.id;
-    } else if (!fixtures.some((fixture) => fixture.id === fixtureId)) {
+      const sourceIndex = lanes.indexOf(item.fixtureId);
+      const targetId = lanes[targetIndex + (sourceIndex - (anchor?.fixtureIndex ?? sourceIndex))];
+      if (targetId === undefined) continue;
+      const targetSurface = surfaces.find((surface) => surface.id === targetId);
+      const targetFixture = fixtures.find((fixture) => fixture.id === targetId);
+      const compatible = targetSurface !== undefined
+        ? isSurfaceCompatible(item)
+        : targetFixture !== undefined && isCompatible(item, targetFixture);
+      if (!compatible) continue;
+      fixtureId = targetId;
+    } else if (!lanes.includes(fixtureId)) {
       continue;
     }
     const startSec = clamp(anchorSec + item.startSec, 0, Math.max(0, durationSec - MIN_CLIP_SEC));
@@ -105,8 +133,12 @@ export function canPasteOn(
   fixtureId: string,
   clipboard: readonly ClipClipboardItem[],
   fixtures: readonly FixturePlacement[],
+  surfaces: readonly LedSurface[] = [],
 ): boolean {
+  const surface = surfaces.find((entry) => entry.id === fixtureId);
   const fixture = fixtures.find((entry) => entry.id === fixtureId);
-  const anchor = clipboardAnchor(clipboard, fixtures);
-  return fixture !== undefined && anchor !== null && isCompatible(anchor.item, fixture);
+  const anchor = clipboardAnchor(clipboard, fixtures, surfaces);
+  if (anchor === null) return false;
+  if (surface !== undefined) return isSurfaceCompatible(anchor.item);
+  return fixture !== undefined && isCompatible(anchor.item, fixture);
 }

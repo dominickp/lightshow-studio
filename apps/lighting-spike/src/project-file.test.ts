@@ -5,7 +5,9 @@ import {
   cueTimelineFromProject,
   cueToProjectClip,
   projectClipToCue,
+  projectSurfaceClipToCue,
   projectFileName,
+  surfaceCueToProjectClip,
   rigMatches,
   showFromProject,
 } from './project-file';
@@ -73,6 +75,32 @@ describe('project mapping', () => {
   it('omits fadeInSec when the cue has none', () => {
     const withoutFade = { ...cue, fadeInSec: undefined };
     expect(cueToProjectClip(withoutFade)).not.toHaveProperty('fadeInSec');
+  });
+
+  it('round-trips procedural surface clips separately from fixture clips', () => {
+    const surfaceCue: Cue = {
+      id: 'led-1',
+      fixtureId: 'led-main',
+      surfaceId: 'led-main',
+      startSec: 5,
+      endSec: 9,
+      action: 'hold',
+      colorIndex: 0,
+      opacity: 0.75,
+      fadeInSec: 0.2,
+      look: {
+        kind: 'noise',
+        colors: ['#0a1030', '#397cff'],
+        speed: 0.25,
+        scale: 2,
+        angleDeg: 10,
+        softness: 0.6,
+        intensity: 0.8,
+        seed: 41,
+        sync: 'beat',
+      },
+    };
+    expect(projectSurfaceClipToCue(surfaceCueToProjectClip(surfaceCue))).toEqual(surfaceCue);
   });
 
   it('maps the project timeline to the arrangement timeline', () => {

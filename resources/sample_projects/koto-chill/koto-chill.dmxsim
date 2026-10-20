@@ -1,6 +1,6 @@
 {
   "format": "dmxsim-project",
-  "version": 2,
+  "version": 3,
   "name": "Koto Chill demo",
   "description": "Bundled demo project: the full rig plus a 16-bar arrangement on The Koto Chill.",
   "venue": {
@@ -7797,6 +7797,157 @@
         "action": "sweep",
         "colorIndex": 0,
         "fadeInSec": 0
+      }
+    ],
+    "surfaces": [
+      {
+        "id": "led-main",
+        "name": "LED Wall",
+        "widthM": 13.5,
+        "heightM": 6.2,
+        "y": 4.9,
+        "z": -11.85,
+        "pitchMm": 10,
+        "gap": 0.25,
+        "brightness": 1,
+        "blackLevel": 0.015,
+        "gamma": 2.2,
+        "emit": 0.35
+      }
+    ],
+    "surfaceClips": [
+      {
+        "id": "demo-led-0",
+        "surfaceId": "led-main",
+        "startSec": 73.86615384615385,
+        "endSec": 81.25076923076924,
+        "look": {
+          "kind": "gradient",
+          "colors": [
+            "#1b0b4d",
+            "#ff2d95"
+          ],
+          "speed": 0.08,
+          "scale": 1,
+          "angleDeg": 20,
+          "softness": 0.6,
+          "intensity": 1,
+          "seed": 7,
+          "sync": "none"
+        },
+        "opacity": 1,
+        "fadeInSec": 0.35
+      },
+      {
+        "id": "demo-led-1",
+        "surfaceId": "led-main",
+        "startSec": 81.25076923076924,
+        "endSec": 84.94307692307693,
+        "look": {
+          "kind": "wave",
+          "colors": [
+            "#04121f",
+            "#16d9cc"
+          ],
+          "speed": 0.5,
+          "scale": 1.8,
+          "angleDeg": 0,
+          "softness": 0.45,
+          "intensity": 1,
+          "seed": 3,
+          "sync": "beat"
+        },
+        "opacity": 1,
+        "fadeInSec": 0.35
+      },
+      {
+        "id": "demo-led-2",
+        "surfaceId": "led-main",
+        "startSec": 84.94307692307693,
+        "endSec": 88.63538461538462,
+        "look": {
+          "kind": "gradient",
+          "colors": [
+            "#050a26",
+            "#397cff"
+          ],
+          "speed": 0.05,
+          "scale": 1,
+          "angleDeg": 20,
+          "softness": 0.8,
+          "intensity": 1,
+          "seed": 7,
+          "sync": "none"
+        },
+        "opacity": 1,
+        "fadeInSec": 0.35
+      },
+      {
+        "id": "demo-led-3",
+        "surfaceId": "led-main",
+        "startSec": 88.63538461538462,
+        "endSec": 96.02000000000001,
+        "look": {
+          "kind": "radial",
+          "colors": [
+            "#ff3d9a",
+            "#12041f"
+          ],
+          "speed": 0.5,
+          "scale": 1.4,
+          "angleDeg": 0,
+          "softness": 0.35,
+          "intensity": 1,
+          "seed": 5,
+          "sync": "beat"
+        },
+        "opacity": 1,
+        "fadeInSec": 0.35
+      },
+      {
+        "id": "demo-led-4",
+        "surfaceId": "led-main",
+        "startSec": 96.02000000000001,
+        "endSec": 99.71230769230769,
+        "look": {
+          "kind": "grid",
+          "colors": [
+            "#050714",
+            "#8c35ff"
+          ],
+          "speed": 0.35,
+          "scale": 1.6,
+          "angleDeg": 0,
+          "softness": 0.15,
+          "intensity": 1,
+          "seed": 11,
+          "sync": "bar"
+        },
+        "opacity": 1,
+        "fadeInSec": 0.35
+      },
+      {
+        "id": "demo-led-5",
+        "surfaceId": "led-main",
+        "startSec": 99.71230769230769,
+        "endSec": 103.4046153846154,
+        "look": {
+          "kind": "scan",
+          "colors": [
+            "#05060c",
+            "#ffffff",
+            "#397cff"
+          ],
+          "speed": 0.3,
+          "scale": 1,
+          "angleDeg": 90,
+          "softness": 0.25,
+          "intensity": 1,
+          "seed": 2,
+          "sync": "beat"
+        },
+        "opacity": 1,
+        "fadeInSec": 0.35
       }
     ]
   },

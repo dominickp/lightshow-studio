@@ -1,9 +1,12 @@
 import * as THREE from 'three/webgpu';
 import {
   CLUB_STAGE,
+  DEFAULT_LASER_SETUP,
   DEFAULT_VENUE_ID,
+  defaultLedLook,
   evaluateFixture,
   findAnchor,
+  ledSurfaceFromFeature,
   nextFixtureId,
   parseProject,
   resolveMount,
@@ -12,12 +15,22 @@ import {
   type FixtureDefaults,
   type FixturePlacement,
   type FixtureState,
+  type LaserPattern,
+  type LaserSetup,
+  type LedLookState,
+  type LedSurface,
   type ProjectFile,
   type ProjectSettings,
 } from '@dmxsim/show-model';
+import type { LedPlaybackLayer } from './led/led-wall';
+import {
+  LOOK_DEFINITIONS,
+  PALETTE_PRESETS,
+  lookDefinition,
+} from './led/look-definitions';
 import { PROFILE_LIBRARY } from '@dmxsim/fixtures';
 import { createDemoRig } from './demo-rig';
-import { createDemoCues } from './demo-arrangement';
+import { createDemoCues, createDemoSurfaceCues } from './demo-arrangement';
 import { AudioClock } from './audio-clock';
 import { CryoJetAudio } from './cryo-jet-audio';
 import cryoJetSfxUrl from './assets/cryo-jet.ogg?url';
@@ -28,8 +41,10 @@ import {
   applyProjectFixtureSetup,
   cueTimelineFromProject,
   projectClipToCue,
+  projectSurfaceClipToCue,
   rigMatches,
   showFromProject,
+  surfacesFromProject,
 } from './project-file';
 import {
   Arrangement,
@@ -92,6 +107,14 @@ const activeVenue = venueById(requestedVenueId) ?? CLUB_STAGE;
 if (activeVenue.id !== requestedVenueId) {
   console.warn(`unknown venue "${requestedVenueId}"; using ${activeVenue.id}`);
 }
+/**
+ * Walls owned by the current project. Empty `surfaces` in a file falls back to
+ * the venue's declared wall, so older projects still show one.
+ */
+const venueSurfaces = (venue: typeof activeVenue): LedSurface[] =>
+  venue.features.ledWall === undefined ? [] : [ledSurfaceFromFeature(venue.features.ledWall)];
+let surfaces: LedSurface[] = venueSurfaces(activeVenue);
+
 let projectAudio: ProjectFile['audio'] = bundledProject?.audio ?? {
   source: 'bundled',
   id: 'koto-chill',
@@ -130,6 +153,7 @@ container.appendChild(renderer.domElement);
 await renderer.init();
 
 const stage = new Stage(renderer.domElement, show, activeVenue);
+stage.setLedSurfaces(surfaces);
 // TEMP DEBUG
 (window as unknown as { __stage: Stage }).__stage = stage;
 // The renderer draws into #stage-viewport (window minus the timeline dock), not
@@ -215,6 +239,35 @@ const ui = {
     panelCapabilities: element('panel-capabilities'),
     panelClipCount: element('panel-clip-count'),
     panelClipActive: element('panel-clip-active'),
+    cueLookField: element('cue-look-field'),
+    lookEdit: element<HTMLButtonElement>('btn-look-edit'),
+    lookEditor: element<HTMLElement>('look-editor'),
+    lookGlyph: element('le-glyph'),
+    lookTitle: element('le-title'),
+    lookGrid: element('le-grid'),
+    lookControls: element('le-controls'),
+    lookPresets: element('le-presets'),
+    lookClose: element<HTMLButtonElement>('le-close'),
+    surfacePane: element('surface-pane'),
+    surfaceSummary: element('surface-summary'),
+    surfaceWidth: element<HTMLInputElement>('surface-width'),
+    surfaceWidthValue: element('surface-width-value'),
+    surfaceHeight: element<HTMLInputElement>('surface-height'),
+    surfaceHeightValue: element('surface-height-value'),
+    surfacePitch: element<HTMLInputElement>('surface-pitch'),
+    surfacePitchValue: element('surface-pitch-value'),
+    surfaceGap: element<HTMLInputElement>('surface-gap'),
+    surfaceGapValue: element('surface-gap-value'),
+    surfaceBrightness: element<HTMLInputElement>('surface-brightness'),
+    surfaceBrightnessValue: element('surface-brightness-value'),
+    surfaceBlack: element<HTMLInputElement>('surface-black'),
+    surfaceBlackValue: element('surface-black-value'),
+    surfaceGamma: element<HTMLInputElement>('surface-gamma'),
+    surfaceGammaValue: element('surface-gamma-value'),
+    surfaceEmit: element<HTMLInputElement>('surface-emit'),
+    surfaceEmitValue: element('surface-emit-value'),
+    panelSurfaceCount: element('panel-surface-count'),
+    panelSurfaceActive: element('panel-surface-active'),
   waveform: element<HTMLCanvasElement>('waveform'),
   waveformPlayhead: element('waveform-playhead'),
   waveformHover: element('waveform-hover'),
@@ -263,6 +316,12 @@ const ui = {
   setupPositionRow: element('setup-position-row'),
   setupPosition: element<HTMLInputElement>('setup-position'),
   setupPositionValue: element('setup-position-value'),
+  setupLaserGroup: element('setup-laser-group'),
+  setupLaserPattern: element<HTMLSelectElement>('setup-laser-pattern'),
+  setupLaserBeams: element<HTMLInputElement>('setup-laser-beams'),
+  setupLaserBeamsValue: element('setup-laser-beams-value'),
+  setupLaserFan: element<HTMLInputElement>('setup-laser-fan'),
+  setupLaserFanValue: element('setup-laser-fan-value'),
   rigList: element('rig-list'),
   rigPane: element('rig-pane'),
   fixturePane: element('fixture-pane'),
@@ -282,7 +341,7 @@ const ui = {
  * The side panel shows one thing at a time: the rig (opened from the timeline's
  * RIG row) or a single fixture's settings (opened from its track name).
  */
-type SidePanelMode = 'rig' | 'fixture';
+type SidePanelMode = 'rig' | 'fixture' | 'surface';
 let sidePanelMode: SidePanelMode = 'fixture';
 let sidePanelOpen = false;
 let sidePanelFixtureId: string | null = null;
@@ -297,6 +356,12 @@ type Fixture = (typeof show.fixtures)[number];
 const defaultsFor = (fixture: Fixture): FixtureDefaults => {
   fixture.defaults ??= {};
   return fixture.defaults;
+};
+
+/** Laser setup lives on the placement; seed it from the profile defaults. */
+const laserSetupFor = (fixture: Fixture): LaserSetup => {
+  fixture.laser ??= { ...DEFAULT_LASER_SETUP };
+  return fixture.laser;
 };
 
 const backend = (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend ? 'WebGPU' : 'WebGL2';
@@ -366,7 +431,14 @@ const refreshPanelClipStats = (): void => {
  * Panel header text. In rig mode the header describes the venue, so the pane
  * does not read as if a fixture were selected.
  */
-const syncPanelHeader = (fixture: Fixture | null): void => {
+const syncPanelHeader = (fixture: Fixture | null, surface: LedSurface | null = null): void => {
+  if (sidePanelMode === 'surface' && surface !== null) {
+    ui.panelFixtureKind.textContent = 'LED wall';
+    ui.panelFixtureName.textContent = surface.name;
+    ui.panelFixtureMeta.textContent =
+      `${surface.widthM.toFixed(1)} × ${surface.heightM.toFixed(1)} m · P${surface.pitchMm.toFixed(1)}`;
+    return;
+  }
   if (sidePanelMode === 'rig') {
     ui.panelFixtureKind.textContent = 'Venue';
     ui.panelFixtureName.textContent = activeVenue.name;
@@ -386,17 +458,23 @@ const syncPanelHeader = (fixture: Fixture | null): void => {
 const syncCueInspector = (
   fixture: (typeof show.fixtures)[number] | null,
   cues: readonly Cue[],
+  surface: LedSurface | null = null,
 ): void => {
   const cue = cues[0] ?? null;
   const count = cues.length;
-  const label = fixture === null ? null : arrangement.labelFor(fixture);
+  const isSurface = surface !== null || cue?.surfaceId !== undefined;
+  const label = surface !== null
+    ? surface.name
+    : fixture === null
+      ? null
+      : arrangement.labelFor(fixture);
   ui.selectedFixture.textContent = count > 1
     ? `${count} clips selected`
     : label ?? 'None selected';
   ui.selectedFixture.classList.toggle('empty', count === 0);
-  syncPanelHeader(fixture);
+  syncPanelHeader(fixture, surface);
   renderPanelCapabilities(fixture);
-  if (sidePanelOpen) sidePanelFixtureId = fixture?.id ?? null;
+  if (sidePanelOpen) sidePanelFixtureId = (fixture ?? surface)?.id ?? null;
 
   // Mount options are venue data, so rebuild them with the current selection.
   const mountOptions = activeVenue.anchors.map((anchor) => {
@@ -407,12 +485,27 @@ const syncCueInspector = (
   });
   ui.setupMount.replaceChildren(...mountOptions);
 
-  if (fixture === null) {
+  if (isSurface) {
     ui.setupDimmer.disabled = true;
     ui.setupYaw.disabled = true;
     ui.setupPitch.disabled = true;
     ui.setupSpread.disabled = true;
     ui.setupSpreadRow.hidden = true;
+    ui.setupLaserGroup.hidden = true;
+    ui.setupName.disabled = true;
+    ui.setupName.value = '';
+    ui.setupMount.disabled = true;
+    ui.setupPositionRow.hidden = true;
+    ui.setupPosition.disabled = true;
+    ui.removeFixture.disabled = true;
+    ui.setupMount.selectedIndex = -1;
+  } else if (fixture === null) {
+    ui.setupDimmer.disabled = true;
+    ui.setupYaw.disabled = true;
+    ui.setupPitch.disabled = true;
+    ui.setupSpread.disabled = true;
+    ui.setupSpreadRow.hidden = true;
+    ui.setupLaserGroup.hidden = true;
     ui.setupName.disabled = true;
     ui.setupName.value = '';
     ui.setupMount.disabled = true;
@@ -456,9 +549,52 @@ const syncCueInspector = (
     ui.setupSpread.disabled = !caps.zoom;
     ui.setupSpread.value = String(Math.round(zoom * 100));
     ui.setupSpreadValue.textContent = `${(spreadMin + (spreadMax - spreadMin) * zoom).toFixed(1)}°`;
+
+    const isLaser = fixture.profile.kind === 'laser';
+    ui.setupLaserGroup.hidden = !isLaser;
+    if (isLaser) {
+      const limits = fixture.profile.laser;
+      const setup = { ...DEFAULT_LASER_SETUP, ...fixture.laser };
+      const patterns = limits?.patterns ?? [DEFAULT_LASER_SETUP.pattern];
+      ui.setupLaserPattern.replaceChildren(...patterns.map((pattern) => {
+        const option = document.createElement('option');
+        option.value = pattern;
+        option.textContent = kindLabel(pattern);
+        return option;
+      }));
+      ui.setupLaserPattern.value = setup.pattern;
+      ui.setupLaserPattern.disabled = false;
+
+      const maxBeams = Math.max(1, Math.round(limits?.maxBeams ?? setup.beams));
+      ui.setupLaserBeams.disabled = false;
+      ui.setupLaserBeams.max = String(maxBeams);
+      const beams = clamp(Math.round(setup.beams), 1, maxBeams);
+      ui.setupLaserBeams.value = String(beams);
+      ui.setupLaserBeamsValue.textContent = String(beams);
+
+      const [fanMin, fanMax] = limits?.fanDeg ?? [0, 120];
+      ui.setupLaserFan.disabled = false;
+      ui.setupLaserFan.min = String(fanMin);
+      ui.setupLaserFan.max = String(fanMax);
+      const fanDeg = clamp(setup.fanDeg, fanMin, fanMax);
+      ui.setupLaserFan.value = String(Math.round(fanDeg));
+      ui.setupLaserFanValue.textContent = `${Math.round(fanDeg)}°`;
+    }
   }
   refreshPanelClipStats();
   renderRigList();
+
+  // Surface clips speak "look", not "action/colour". The look itself is the
+  // editor entry point; the color/palette controls remain inside the popover.
+  const surfaceLook = isSurface ? cue?.look ?? arrangement.suggestedLook : null;
+  (ui.cueAction.parentElement as HTMLElement).hidden = isSurface;
+  ui.cueLookField.hidden = !isSurface;
+  ui.lookEdit.hidden = !isSurface;
+  if (surfaceLook !== null) {
+    const definition = lookDefinition(surfaceLook.kind);
+    ui.lookEdit.textContent = `${definition.glyph} ${definition.label} ▾`;
+    ui.lookEdit.title = `${definition.hint} · Click to edit`;
+  }
 
   const available = arrangement.selectedActions;
   ui.cueAction.replaceChildren(...available.map((action) => {
@@ -480,7 +616,7 @@ const syncCueInspector = (
   }
   ui.cueAction.disabled = fixture === null;
   ui.cueAction.value = mixed ? '' : cue?.action ?? arrangement.suggestedAction;
-  const colorEnabled = fixture !== null && Boolean(fixture.profile.capabilities.color);
+  const colorEnabled = !isSurface && fixture !== null && Boolean(fixture.profile.capabilities.color);
   // Do not show a disabled colour picker for fixtures that cannot mix colour.
   ui.cueColorField.hidden = !colorEnabled;
   if (!colorEnabled) closeColorPicker();
@@ -687,14 +823,17 @@ const indexCues = (): void => {
 arrangement = new Arrangement(ui.arrangement, ui.arrangementScroll, show.fixtures, (nextCues) => {
   cues = nextCues;
   indexCues();
-  syncCueInspector(arrangement.selectedFixture, arrangement.selectedCues);
-}, (fixture, selectedCues) => {
-  syncCueInspector(fixture, selectedCues);
+  syncCueInspector(arrangement.selectedFixture, arrangement.selectedCues, arrangement.selectedSurface);
+}, (fixture, selectedCues, surface) => {
+  syncCueInspector(fixture, selectedCues, surface);
 }, (fixtureId, hidden) => {
   stage.setFixtureHidden(fixtureId, hidden);
-}, (fixture) => {
-  toggleSidePanel(fixture.id);
-});
+  const wall = surfaces.find((entry) => entry.id === fixtureId);
+  if (wall !== undefined) stage.setLedSurfaceVisible(wall.id, !hidden);
+}, (fixture, surface) => {
+  if (fixture !== null) toggleSidePanel(fixture.id);
+  else if (surface !== null) toggleSurfacePanel(surface.id);
+}, surfaces);
 
 // --- Timeline modes (drop / select) ---------------------------------------
 
@@ -730,6 +869,7 @@ arrangement.setSubtitleResolver(
 
 /** Plural, user-facing names for the track filter's fixture kinds. */
 const TRACK_FILTER_LABELS: Record<string, string> = {
+  'led-wall': 'LED walls',
   'moving-head': 'Moving heads',
   wash: 'Washes',
   strobe: 'Strobes',
@@ -754,7 +894,7 @@ const applyTrackFilter = (): void => {
   const filtering = kind !== '';
   arrangement.setKindFilter(filtering ? kind : null);
   if (!filtering) hideUnfiltered = false;
-  const canHide = filtering && show.fixtures.length > 0;
+  const canHide = filtering && (show.fixtures.length > 0 || surfaces.length > 0);
   ui.hideUnfiltered.disabled = !canHide;
   ui.hideUnfiltered.classList.toggle('on', hideUnfiltered);
   ui.hideUnfiltered.setAttribute('aria-pressed', String(hideUnfiltered));
@@ -763,6 +903,9 @@ const applyTrackFilter = (): void => {
     ? 'Showing only the filtered fixture type in the 3D viewport'
     : 'Hide fixture types that are filtered out of the 3D viewport';
   stage.setKindFilter(hideUnfiltered && canHide ? kind : null);
+  for (const surface of surfaces) {
+    stage.setLedSurfaceVisible(surface.id, !hideUnfiltered || kind === 'led-wall');
+  }
 };
 
 /**
@@ -770,7 +913,10 @@ const applyTrackFilter = (): void => {
  * still-valid choice. The filter only hides lanes; clips are untouched.
  */
 const rebuildTrackFilter = (): void => {
-  const kinds = [...new Set<string>(show.fixtures.map((fixture) => fixture.profile.kind))];
+  const kinds = [
+    ...(surfaces.length > 0 ? ['led-wall'] : []),
+    ...new Set<string>(show.fixtures.map((fixture) => fixture.profile.kind)),
+  ];
   const previous = ui.trackFilter.value;
   const allOption = document.createElement('option');
   allOption.value = '';
@@ -1031,6 +1177,20 @@ ui.setupSpread.addEventListener('input', () => updateFixtureSetup((fixture) => {
   const zoom = Number(ui.setupSpread.value) / 100;
   defaultsFor(fixture).zoom = zoom;
   ui.setupSpreadValue.textContent = `${(spreadMin + (spreadMax - spreadMin) * zoom).toFixed(1)}°`;
+}));
+
+ui.setupLaserPattern.addEventListener('change', () => updateFixtureSetup((fixture) => {
+  laserSetupFor(fixture).pattern = ui.setupLaserPattern.value as LaserPattern;
+}));
+ui.setupLaserBeams.addEventListener('input', () => updateFixtureSetup((fixture) => {
+  const beams = Number(ui.setupLaserBeams.value);
+  laserSetupFor(fixture).beams = beams;
+  ui.setupLaserBeamsValue.textContent = String(beams);
+}));
+ui.setupLaserFan.addEventListener('input', () => updateFixtureSetup((fixture) => {
+  const fanDeg = Number(ui.setupLaserFan.value);
+  laserSetupFor(fixture).fanDeg = fanDeg;
+  ui.setupLaserFanValue.textContent = `${fanDeg}°`;
 }));
 
 ui.setupPosition.addEventListener('input', () => {
@@ -1383,13 +1543,17 @@ const applyPanelWidth = (): void => {
  */
 const applySidePanel = (): void => {
   const rigMode = sidePanelOpen && sidePanelMode === 'rig';
+  const fixtureMode = sidePanelMode === 'fixture';
+  const surfaceMode = sidePanelMode === 'surface';
   ui.sidePanel.hidden = !sidePanelOpen;
   ui.rigPane.hidden = !rigMode;
-  ui.fixturePane.hidden = rigMode;
+  ui.fixturePane.hidden = !fixtureMode;
+  ui.surfacePane.hidden = !surfaceMode;
   ui.rigMenu.classList.toggle('on', rigMode);
   ui.rigMenu.setAttribute('aria-pressed', String(rigMode));
   ui.dock.classList.toggle('has-panel', sidePanelOpen);
-  syncPanelHeader(arrangement.selectedFixture);
+  syncPanelHeader(arrangement.selectedFixture, arrangement.selectedSurface);
+  if (surfaceMode) syncSurfacePanel();
   syncActiveFixture();
   requestAnimationFrame(() => {
     refreshScrollMetrics();
@@ -1419,6 +1583,16 @@ const toggleSidePanel = (fixtureId: string): void => {
   }
   sidePanelMode = 'fixture';
   setSidePanelOpen(true, { mode: 'fixture', fixtureId });
+};
+
+/** A wall's name opens its calibration pane, mirroring a fixture's. */
+const toggleSurfacePanel = (surfaceId: string): void => {
+  if (sidePanelOpen && sidePanelMode === 'surface' && sidePanelFixtureId === surfaceId) {
+    setSidePanelOpen(false);
+    return;
+  }
+  sidePanelMode = 'surface';
+  setSidePanelOpen(true, { mode: 'surface', fixtureId: surfaceId });
 };
 
 /** The RIG row opens the rig pane; clicking it again closes the panel. */
@@ -1873,7 +2047,7 @@ window.addEventListener('keydown', (event) => {
     if (arrangement.selectionCount === 0) return;
     event.preventDefault();
     arrangement.copySelected();
-    syncCueInspector(arrangement.selectedFixture, arrangement.selectedCues);
+    syncCueInspector(arrangement.selectedFixture, arrangement.selectedCues, arrangement.selectedSurface);
   } else if (event.key === 'v' || event.key === 'V') {
     event.preventDefault();
     // Shift pastes at the pointer instead of the playhead, so a copied block
@@ -2008,10 +2182,265 @@ ui.hueGrid.addEventListener('click', (event) => {
   ui.colorInput.value = hex;
   applyHex(hex);
 });
+// --- LED look editor -------------------------------------------------------
+
+/** A surface is the current target when its lane or one of its clips is selected. */
+const surfaceTargeted = (): boolean =>
+  arrangement.selectedSurface !== null || arrangement.selectedCue?.surfaceId !== undefined;
+
+const currentLook = (): LedLookState | null =>
+  surfaceTargeted() ? arrangement.selectedLook ?? arrangement.suggestedLook : null;
+
+const patchLook = (patch: Partial<LedLookState>): void => {
+  const look = currentLook();
+  if (look === null) return;
+  arrangement.setSelectedLook({ ...look, ...patch });
+  if (!ui.lookEditor.hidden) renderLookEditor();
+};
+
+/** Rebuild the popover from the current look and its generator's param list. */
+function renderLookEditor(): void {
+  const look = currentLook();
+  if (look === null) return;
+  const definition = lookDefinition(look.kind);
+  ui.lookGlyph.textContent = definition.glyph;
+  ui.lookTitle.textContent = definition.label;
+  ui.lookGrid.replaceChildren(...LOOK_DEFINITIONS.map((entry) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'le-tile';
+    button.setAttribute('aria-pressed', String(entry.kind === look.kind));
+    button.title = entry.hint;
+    button.innerHTML = `<b>${entry.glyph}</b><span>${entry.label}</span>`;
+    button.addEventListener('click', () => {
+      arrangement.setPendingLookKind(entry.kind);
+      arrangement.setSelectedLook({ ...defaultLedLook(entry.kind), colors: [...look.colors] });
+      renderLookEditor();
+    });
+    return button;
+  }));
+
+  const controls = definition.params.map((param) => {
+    if (param.kind === 'palette') {
+      const field = document.createElement('label');
+      field.className = 'le-field';
+      field.innerHTML = `<span>${param.label}</span>`;
+      const row = document.createElement('div');
+      row.className = 'le-colors';
+      for (const [index, css] of look.colors.entries()) {
+        const input = document.createElement('input');
+        input.type = 'color';
+        input.value = css;
+        input.setAttribute('aria-label', `Colour ${index + 1}`);
+        input.addEventListener('change', () => {
+          const colors = [...look.colors];
+          colors[index] = input.value;
+          patchLook({ colors });
+        });
+        row.appendChild(input);
+      }
+      const add = document.createElement('button');
+      add.type = 'button';
+      add.className = 'le-add';
+      add.textContent = '+';
+      add.title = 'Add a colour stop';
+      add.disabled = look.colors.length >= param.max;
+      add.addEventListener('click', () => {
+        patchLook({ colors: [...look.colors, look.colors.at(-1) ?? '#ffffff'] });
+      });
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'le-add';
+      remove.textContent = '−';
+      remove.title = 'Remove the last colour stop';
+      remove.disabled = look.colors.length <= param.min;
+      remove.addEventListener('click', () => {
+        patchLook({ colors: look.colors.slice(0, -1) });
+      });
+      row.append(add, remove);
+      field.appendChild(row);
+      return field;
+    }
+    if (param.kind === 'seed') {
+      const field = document.createElement('label');
+      field.className = 'le-field';
+      field.innerHTML = `<span>${param.label}</span>`;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'sp-btn';
+      button.textContent = `Randomise (${Math.round(look.seed)})`;
+      button.addEventListener('click', () => patchLook({ seed: Math.random() * 1000 }));
+      field.appendChild(button);
+      return field;
+    }
+    if (param.kind === 'select') {
+      const field = document.createElement('label');
+      field.className = 'le-field';
+      field.innerHTML = `<span>${param.label}</span>`;
+      const select = document.createElement('select');
+      select.className = 'le-select';
+      for (const option of param.options) {
+        const element = document.createElement('option');
+        element.value = option.value;
+        element.textContent = option.label;
+        select.appendChild(element);
+      }
+      select.value = look.sync;
+      select.addEventListener('change', () => patchLook({ sync: select.value as LedLookState['sync'] }));
+      field.appendChild(select);
+      return field;
+    }
+    const field = document.createElement('label');
+    field.className = 'le-field';
+    const value = look[param.key];
+    field.innerHTML = `<span>${param.label}</span><output>${formatParam(param.key, value, param.unit)}</output>`;
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.min = String(param.min);
+    input.max = String(param.max);
+    input.step = String(param.step);
+    input.value = String(value);
+    input.setAttribute('aria-label', param.label);
+    input.addEventListener('pointerdown', () => arrangement.beginLookEdit());
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight'
+        || event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        arrangement.beginLookEdit();
+      }
+    });
+    input.addEventListener('input', () => {
+      const numeric = Number(input.value);
+      field.querySelector('output')!.textContent = formatParam(param.key, numeric, param.unit);
+      const target = currentLook();
+      if (target === null) return;
+      arrangement.previewSelectedLook({ ...target, [param.key]: numeric });
+    });
+    input.addEventListener('change', () => arrangement.commitLookEdit());
+    field.appendChild(input);
+    return field;
+  });
+  ui.lookControls.replaceChildren(...controls);
+
+  ui.lookPresets.replaceChildren(...PALETTE_PRESETS.map((preset) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'le-preset';
+    button.title = preset.name;
+    button.style.background = `linear-gradient(90deg, ${preset.colors.join(', ')})`;
+    button.addEventListener('click', () => patchLook({ colors: [...preset.colors] }));
+    return button;
+  }));
+}
+
+const formatParam = (key: string, value: number, unit?: string): string => {
+  if (key === 'intensity' || key === 'softness') return `${Math.round(value * 100)}%`;
+  if (key === 'speed') {
+    const sync = currentLook()?.sync;
+    const unit = sync === 'beat' ? 'cycles/beat' : sync === 'bar' ? 'cycles/bar' : 'Hz';
+    return `${value.toFixed(2)} ${unit}`;
+  }
+  return `${value.toFixed(key === 'scale' ? 2 : 0)}${unit ?? ''}`;
+};
+
+function openLookEditor(): void {
+  if (!surfaceTargeted()) return;
+  renderLookEditor();
+  ui.lookEditor.hidden = false;
+  ui.lookEdit.setAttribute('aria-expanded', 'true');
+}
+
+function closeLookEditor(): void {
+  if (ui.lookEditor.hidden) return;
+  ui.lookEditor.hidden = true;
+  ui.lookEdit.removeAttribute('aria-expanded');
+}
+
+ui.lookEdit.addEventListener('click', () => {
+  if (ui.lookEditor.hidden) openLookEditor();
+  else closeLookEditor();
+});
+ui.lookClose.addEventListener('click', () => {
+  closeLookEditor();
+  ui.lookEdit.focus();
+});
+ui.lookEditor.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  event.preventDefault();
+  closeLookEditor();
+  ui.lookEdit.focus();
+});
+document.addEventListener('pointerdown', (event) => {
+  const target = event.target;
+  if (ui.lookEditor.hidden || !(target instanceof Node)) return;
+  if (ui.lookEditor.contains(target) || ui.lookEdit.contains(target)) return;
+  closeLookEditor();
+});
+
+// --- LED wall calibration (side panel) -------------------------------------
+
+const wallById = (id: string | null): LedSurface | null =>
+  id === null ? null : surfaces.find((surface) => surface.id === id) ?? null;
+
+const patchSurface = (patch: Partial<LedSurface>): void => {
+  const surface = wallById(sidePanelFixtureId);
+  if (surface === null) return;
+  const next = { ...surface, ...patch };
+  surfaces = surfaces.map((entry) => (entry.id === next.id ? next : entry));
+  arrangement.setSurfaces(surfaces);
+  stage.updateLedSurface(next);
+  syncSurfacePanel();
+};
+
+function syncSurfacePanel(): void {
+  const surface = wallById(sidePanelFixtureId);
+  if (surface === null) return;
+  ui.surfaceSummary.textContent =
+    `${surface.widthM.toFixed(1)} × ${surface.heightM.toFixed(1)} m · ${Math.round(surface.widthM / (surface.pitchMm / 1000))} × ${Math.round(surface.heightM / (surface.pitchMm / 1000))} LEDs`;
+  ui.surfaceWidth.value = String(surface.widthM);
+  ui.surfaceWidthValue.textContent = `${surface.widthM.toFixed(1)} m`;
+  ui.surfaceHeight.value = String(surface.heightM);
+  ui.surfaceHeightValue.textContent = `${surface.heightM.toFixed(1)} m`;
+  ui.surfacePitch.value = String(surface.pitchMm);
+  ui.surfacePitchValue.textContent = `${surface.pitchMm.toFixed(1)} mm`;
+  ui.surfaceGap.value = String(Math.round(surface.gap * 100));
+  ui.surfaceGapValue.textContent = `${Math.round(surface.gap * 100)}%`;
+  ui.surfaceBrightness.value = String(Math.round(surface.brightness * 100));
+  ui.surfaceBrightnessValue.textContent = `${Math.round(surface.brightness * 100)}%`;
+  ui.surfaceBlack.value = String(Math.round(surface.blackLevel * 100));
+  ui.surfaceBlackValue.textContent = `${Math.round(surface.blackLevel * 100)}%`;
+  ui.surfaceGamma.value = String(Math.round(surface.gamma * 10));
+  ui.surfaceGammaValue.textContent = surface.gamma.toFixed(1);
+  ui.surfaceEmit.value = String(Math.round(surface.emit * 100));
+  ui.surfaceEmitValue.textContent = `${Math.round(surface.emit * 100)}%`;
+
+  const wallCues = cuesByFixture.get(surface.id) ?? [];
+  const now = clock.time;
+  ui.panelSurfaceCount.textContent = String(wallCues.length);
+  ui.panelSurfaceActive.textContent = String(
+    wallCues.filter((cue) => now >= cue.startSec && now <= cue.endSec).length,
+  );
+  syncPanelHeader(arrangement.selectedFixture, surface);
+}
+
+const bindSurfaceSlider = (
+  input: HTMLInputElement,
+  apply: (value: number) => Partial<LedSurface>,
+): void => {
+  input.addEventListener('input', () => patchSurface(apply(Number(input.value))));
+};
+bindSurfaceSlider(ui.surfaceWidth, (value) => ({ widthM: value }));
+bindSurfaceSlider(ui.surfaceHeight, (value) => ({ heightM: value }));
+bindSurfaceSlider(ui.surfacePitch, (value) => ({ pitchMm: value }));
+bindSurfaceSlider(ui.surfaceGap, (value) => ({ gap: value / 100 }));
+bindSurfaceSlider(ui.surfaceBrightness, (value) => ({ brightness: value / 100 }));
+bindSurfaceSlider(ui.surfaceBlack, (value) => ({ blackLevel: value / 100 }));
+bindSurfaceSlider(ui.surfaceGamma, (value) => ({ gamma: value / 10 }));
+bindSurfaceSlider(ui.surfaceEmit, (value) => ({ emit: value / 100 }));
+
 ui.cueDelete.addEventListener('click', () => arrangement.deleteSelected());
 ui.cueCopy.addEventListener('click', () => {
   arrangement.copySelected();
-  syncCueInspector(arrangement.selectedFixture, arrangement.selectedCues);
+  syncCueInspector(arrangement.selectedFixture, arrangement.selectedCues, arrangement.selectedSurface);
 });
 ui.cuePaste.addEventListener('click', () => arrangement.paste());
 ui.trackFilter.addEventListener('change', () => {
@@ -2220,7 +2649,10 @@ const updateStats = (now: number, states: readonly FixtureState[], songTime: num
   const beatInBar = Math.floor(((beat % beatsPerBar) + beatsPerBar) % beatsPerBar) + 1;
   ui.time.textContent = `${bar}.${beatInBar}`;
   ui.transportTime.textContent = `${formatClock(songTime)} / ${formatClock(clock.duration)}`;
-  if (sidePanelOpen) refreshPanelClipStats();
+  if (sidePanelOpen) {
+    if (sidePanelMode === 'surface') syncSurfacePanel();
+    else refreshPanelClipStats();
+  }
 };
 
 const frame = (now: number): void => {
@@ -2249,6 +2681,7 @@ const frame = (now: number): void => {
   const showAt = showTime(songTime);
   const states = show.fixtures.map((fixture) => {
     const trackClips = (cuesByFixture.get(fixture.id) ?? [])
+      .filter((cue) => cue.surfaceId === undefined)
       .filter((cue) => songTime >= cue.startSec && songTime <= cue.endSec)
       .map((cue) => arrangement.toClip(cue));
     const state = evaluateFixture(fixture, trackClips, songTime);
@@ -2266,6 +2699,39 @@ const frame = (now: number): void => {
     return endSec;
   });
 
+  /**
+   * Resolve each wall's content: the active clip is the newest one, and a
+   * short crossfade hands over from the clip underneath. Two additive layers
+   * in `LedWall` do the blend, so this stays a pure function of song time.
+   */
+  const wallPlayback = new Map<string, LedPlaybackLayer[]>();
+  for (const surface of surfaces) {
+    const wallCues = (cuesByFixture.get(surface.id) ?? [])
+      .filter((cue) => cue.look !== undefined)
+      .slice()
+      .sort((a, b) => a.startSec - b.startSec);
+    const current = wallCues
+      .filter((cue) => songTime >= cue.startSec && songTime < cue.endSec)
+      .at(-1);
+    if (current === undefined) continue;
+    const earlier = wallCues.filter((cue) => cue.startSec < current.startSec).at(-1);
+    const previous = earlier !== undefined && earlier.endSec >= current.startSec - 0.001
+      ? earlier
+      : undefined;
+    // A crossfade needs something to fade *from*. With no adjacent earlier
+    // clip the wall cuts to this look, so pausing at its start is never blank.
+    const fade = Math.max(0.001, current.fadeInSec ?? 0.35);
+    const ramp = previous === undefined
+      ? 1
+      : Math.min(1, Math.max(0, (songTime - current.startSec) / fade));
+    const layers: LedPlaybackLayer[] = [];
+    if (previous?.look !== undefined && ramp < 1) {
+      layers.push({ look: previous.look, opacity: (1 - ramp) * (previous.opacity ?? 1) });
+    }
+    layers.push({ look: current.look!, opacity: ramp * (current.opacity ?? 1) });
+    wallPlayback.set(surface.id, layers);
+  }
+  stage.setLedPlayback(wallPlayback);
   stage.update(states, showAt, { volumetrics, playing: clock.playing });
   post.setTime(showAt);
   renderer.info.reset();
@@ -2381,7 +2847,13 @@ const applyProject = (project: ProjectFile, source: 'project' | 'default' = 'pro
   ui.transportTrack.textContent = describeAudio(project.audio, timeline.bpm);
   arrangement.setTimeline(timeline);
   applyProjectFixtureSetup(project, show.fixtures);
-  arrangement.setCues(project.arrangement.clips.map(projectClipToCue));
+  surfaces = surfacesFromProject(project, venueSurfaces(activeVenue));
+  arrangement.setSurfaces(surfaces);
+  stage.setLedSurfaces(surfaces);
+  arrangement.setCues([
+    ...project.arrangement.clips.map(projectClipToCue),
+    ...project.arrangement.surfaceClips.map(projectSurfaceClipToCue),
+  ]);
   clock.setLoopEnabled(project.settings.playback.loopEnabled);
   applyProjectSettings(project.settings, source);
   applyLoop();
@@ -2402,6 +2874,7 @@ const buildProject = (): ProjectFile | null => {
     timeline,
     loop: loopRegion,
     cues,
+    surfaces,
     render: {
       volumetrics,
       bloom: bloomOn,
@@ -2463,7 +2936,8 @@ try {
 
   if (bundledProject !== null) {
     applyProject(bundledProject, 'default');
-    setProjectStatus(`Bundled demo: ${bundledProject.name} · ${bundledProject.arrangement.clips.length} clips`);
+    const clipCount = bundledProject.arrangement.clips.length + bundledProject.arrangement.surfaceClips.length;
+    setProjectStatus(`Bundled demo: ${bundledProject.name} · ${clipCount} clips`);
   } else {
     clock.setLoop({ startSec: loopStartSec, endSec: loopEndSec }, true);
     clock.seek(loopStartSec);
@@ -2490,7 +2964,10 @@ try {
     enableTimelineControls();
     setZoom(PIXELS_PER_SECOND);
     applyLoop();
-    arrangement.setCues(createDemoCues(show.fixtures, timeline));
+    arrangement.setCues([
+      ...createDemoCues(show.fixtures, timeline),
+      ...createDemoSurfaceCues(timeline),
+    ]);
     ui.arrangementScroll.scrollLeft = Math.max(0, loopStartSec * PIXELS_PER_SECOND);
     ui.transportTime.textContent = `${formatClock(loopStartSec)} / ${formatClock(buffer.duration)}`;
   }

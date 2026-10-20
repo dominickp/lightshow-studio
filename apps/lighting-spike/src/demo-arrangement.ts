@@ -1,4 +1,9 @@
-import type { FixturePlacement } from '@dmxsim/show-model';
+import {
+  defaultLedLook,
+  type FixturePlacement,
+  type LedLookKind,
+  type LedLookState,
+} from '@dmxsim/show-model';
 import { CUE_COLORS, type Cue, type CueAction, type CueTimeline } from './arrangement';
 
 /**
@@ -215,4 +220,54 @@ export function createDemoCues(
   }
 
   return cues.sort((a, b) => a.startSec - b.startSec || a.fixtureId.localeCompare(b.fixtureId));
+}
+
+/**
+ * Wall content for the demo. Same loop-relative bar grid as the fixture cues,
+ * but these are media clips: a generator plus parameters, not DMX actions.
+ * A crossfade between consecutive clips is handled by the renderer.
+ */
+export function createDemoSurfaceCues(
+  timeline: CueTimeline,
+  surfaceId = 'led-main',
+): Cue[] {
+  const bpm = timeline.bpm !== null && timeline.bpm > 0 ? timeline.bpm : 130;
+  const beatsPerBar = Math.max(1, timeline.beatsPerBar);
+  const barSec = (60 / bpm) * beatsPerBar;
+  const startSec = timeline.loopStartSec ?? timeline.firstBeatSec;
+  const endSec = Math.max(startSec + barSec, timeline.loopEndSec ?? timeline.durationSec);
+  const at = (bar: number): number => Math.min(endSec, startSec + bar * barSec);
+
+  const look = (kind: LedLookKind, colors: string[], patch: Partial<LedLookState> = {}): LedLookState => ({
+    ...defaultLedLook(kind),
+    colors,
+    ...patch,
+  });
+
+  const sections: { fromBar: number; toBar: number; look: LedLookState }[] = [
+    { fromBar: 0, toBar: 4, look: look('gradient', ['#1b0b4d', '#ff2d95'], { speed: 0.08, softness: 0.6 }) },
+    { fromBar: 4, toBar: 6, look: look('wave', ['#04121f', '#16d9cc'], { speed: 0.5, scale: 1.8, sync: 'beat' }) },
+    { fromBar: 6, toBar: 8, look: look('gradient', ['#050a26', '#397cff'], { speed: 0.05, softness: 0.8 }) },
+    { fromBar: 8, toBar: 12, look: look('radial', ['#ff3d9a', '#12041f'], { speed: 0.5, scale: 1.4, sync: 'beat' }) },
+    { fromBar: 12, toBar: 14, look: look('grid', ['#02040a', '#c2a4ff'], { speed: 0.35, scale: 1.6, sync: 'bar' }) },
+    { fromBar: 14, toBar: 16, look: look('scan', ['#05060c', '#ffffff', '#397cff'], { speed: 0.3, sync: 'beat' }) },
+  ];
+
+  return sections
+    .filter((section) => section.toBar > section.fromBar)
+    .map((section, index) => ({
+      id: `demo-led-${index}`,
+      fixtureId: surfaceId,
+      surfaceId,
+      startSec: at(section.fromBar),
+      endSec: at(section.toBar),
+      action: 'hold' as const,
+      colorIndex: 0,
+      look: section.look,
+      opacity: 1,
+      // Adjacent cues crossfade; the loop-start cue cuts in because there is
+      // no earlier card to fade from.
+      fadeInSec: 0.35,
+    }))
+    .filter((cue) => cue.endSec > cue.startSec);
 }

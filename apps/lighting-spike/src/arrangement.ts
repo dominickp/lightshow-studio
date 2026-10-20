@@ -39,7 +39,6 @@ export type {
   CueTimeline,
   TimelineMode,
 } from './arrangement/types';
-export { isSurfaceCue } from './arrangement/types';
 
 export const PIXELS_PER_SECOND = 48;
 export const MIN_PIXELS_PER_SECOND = 0.25;

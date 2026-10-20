@@ -6,7 +6,7 @@ import {
   type LedSync,
 } from '@dmxsim/show-model';
 
-export type LookParamSpec =
+type LookParamSpec =
   | {
       kind: 'slider';
       key: 'speed' | 'scale' | 'angleDeg' | 'softness' | 'intensity';
@@ -93,7 +93,7 @@ const LEGACY_LOOKS: readonly LookDefinition[] = [
  * Media is not a generator: its picker lives in the media section, because a
  * bare `media` look with no source would render black.
  */
-export const MEDIA_LOOK: LookDefinition = definition(
+const MEDIA_LOOK: LookDefinition = definition(
   'media',
   'Media',
   '▶',
@@ -101,7 +101,7 @@ export const MEDIA_LOOK: LookDefinition = definition(
   [MOTION[4]!, SYNC],
 );
 
-export const LOOK_BY_KIND: ReadonlyMap<LedLookKind, LookDefinition> = new Map(
+const LOOK_BY_KIND: ReadonlyMap<LedLookKind, LookDefinition> = new Map(
   [...LOOK_DEFINITIONS, ...LEGACY_LOOKS, MEDIA_LOOK].map((look) => [look.kind, look]),
 );
 

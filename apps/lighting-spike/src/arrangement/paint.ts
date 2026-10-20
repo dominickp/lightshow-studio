@@ -3,9 +3,9 @@ import { lookSummary } from '../led/look-definitions';
 import { resolveCueColor, textOnColor, toneClipColor, truncateLabel } from './colors';
 import type { Cue, TimelineMode } from './types';
 
-export const HIDDEN_ROW_OPACITY = 0.32;
+const HIDDEN_ROW_OPACITY = 0.32;
 
-export interface PastePlacementView {
+interface PastePlacementView {
   fixtureId: string;
   startSec: number;
   endSec: number;

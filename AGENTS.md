@@ -4,6 +4,20 @@
 ## Agent docs
 `./docs/agent_docs` is where agents may document things. Do not use this as a messy dumping ground.
 
+## Quality gates
+Run `npm run check` before reporting a task complete. It runs, in order:
+
+- `npm run typecheck` — `tsc -b`
+- `npm run lint` — ESLint (flat config in `eslint.config.js`); warnings are
+  visible but do not fail the run, errors do
+- `npm run knip` — unused files, exports, and dependencies (config in `knip.json`)
+- `npm test` — Vitest
+
+When ESLint flags a `prefer-const` forward declaration that a closure needs,
+add a short `// eslint-disable-next-line prefer-const` with the reason rather
+than restructuring the code. Keep `packages/show-model` free of `three`
+imports; the lint config enforces it with `no-restricted-imports`.
+
 ## Testing hook (lighting spike)
 `window.__dmxsim` in `apps/lighting-spike` drives playback programmatically via Playwright: `seek(sec)`, `play()`, `pause()`, `toggle()`, plus `time`, `playing`, `duration` (null until audio loads) and `fixtureCount`. Use it to scrub the playhead instead of clicking the ruler.
 

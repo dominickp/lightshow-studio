@@ -7,7 +7,7 @@ export type CueAction = 'hold' | 'fade' | 'pulse' | 'sweep' | 'strobe' | 'fire';
  * painting stay one path. For a surface cue `fixtureId` holds the surface id
  * (the lane key) and `surfaceId` marks which lane kind it belongs to.
  */
-export interface SurfaceCueFields {
+interface SurfaceCueFields {
   surfaceId?: string;
   look?: LedLookState;
   opacity?: number;

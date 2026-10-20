@@ -18,7 +18,7 @@ export const capabilitySummary = (fixture: FixturePlacement): string => {
   ].filter((value) => value !== null).join(' · ');
 };
 
-export const trackColor = (fixture: FixturePlacement): string => {
+const trackColor = (fixture: FixturePlacement): string => {
   if (fixture.profile.kind === 'cryo-jet') return '#b6f2ff';
   if (fixture.profile.capabilities.panTilt) return '#41a8ff';
   if (fixture.profile.capabilities.strobe) return '#ff7e53';
@@ -47,7 +47,7 @@ export function gridModeFor(
   return barWidth >= 12 ? 'bars' : 'none';
 }
 
-export function gridStyleFor(timeline: CueTimeline, pixelsPerSecond: number): string {
+function gridStyleFor(timeline: CueTimeline, pixelsPerSecond: number): string {
   const beatWidth = beatWidthFor(timeline, pixelsPerSecond);
   if (beatWidth === null) return '';
   return `--sixteenth-width:${beatWidth / 4}px;--beat-width:${beatWidth}px;--bar-width:${beatWidth * timeline.beatsPerBar}px;--grid-offset-x:${timeline.firstBeatSec * pixelsPerSecond}px;`;

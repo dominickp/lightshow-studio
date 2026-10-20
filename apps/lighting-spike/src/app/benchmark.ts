@@ -96,7 +96,7 @@ export function machineInfo(input: {
   return info;
 }
 
-export interface Bucket {
+interface Bucket {
   p50: number;
   p95: number;
   p99: number;

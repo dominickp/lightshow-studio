@@ -3191,6 +3191,32 @@ window.addEventListener(
   true,
 );
 
+/* Delete/Backspace remove the selected clips the same way: capture phase, so a
+ * focused slider, button or `<select>` does not swallow the key. Real text
+ * entry still keeps Backspace for editing, and the key is only claimed when
+ * there is actually a clip selection (Backspace may otherwise mean "back"). */
+const isTypingTarget = (target: EventTarget | null): boolean => {
+  if (target instanceof HTMLTextAreaElement) return true;
+  if (target instanceof HTMLInputElement) {
+    return !['range', 'checkbox', 'radio', 'button', 'submit', 'reset', 'color', 'file'].includes(target.type);
+  }
+  return target instanceof HTMLElement && target.isContentEditable;
+};
+
+window.addEventListener(
+  'keydown',
+  (event) => {
+    if (event.key !== 'Backspace' && event.key !== 'Delete') return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (isTypingTarget(event.target)) return;
+    if (!arrangement.hasSelection) return;
+    event.preventDefault();
+    event.stopPropagation();
+    arrangement.deleteSelected();
+  },
+  true,
+);
+
 window.addEventListener('keydown', (event) => {
   if (isTextEntry(event.target)) return;
   // Bare-letter shortcuts must not fire as Ctrl/Cmd combos: Ctrl+C copies
@@ -3199,12 +3225,6 @@ window.addEventListener('keydown', (event) => {
   if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
     event.preventDefault();
     seekBy(event.key === 'ArrowRight' ? 1 : -1, event.shiftKey);
-  } else if (event.key === 'Backspace' || event.key === 'Delete') {
-    // Backspace is also the browser's "back" shortcut; only intercept it when
-    // there is actually a clip to delete.
-    if (!arrangement.hasSelection) return;
-    event.preventDefault();
-    arrangement.deleteSelected();
   } else if (event.key === 'd' || event.key === 'D') {
     applyTimelineMode('drop');
   } else if (event.key === 's' || event.key === 'S') {
@@ -3793,6 +3813,14 @@ const openProject = async (file: File): Promise<void> => {
 };
 
 ui.projectSave.addEventListener('click', saveProject);
+// Browsers map Ctrl+S/Cmd+S to "save page"; take it over so the app saves the
+// project instead, including while a text field has focus.
+window.addEventListener('keydown', (event) => {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+  if (event.key !== 's' && event.key !== 'S') return;
+  event.preventDefault();
+  if (!event.repeat) saveProject();
+});
 ui.projectOpen.addEventListener('click', () => ui.projectFile.click());
 ui.projectFile.addEventListener('change', () => {
   const file = ui.projectFile.files?.[0];

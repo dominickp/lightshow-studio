@@ -2121,8 +2121,8 @@ window.addEventListener('keydown', (event) => {
     syncCueInspector(arrangement.selectedFixture, arrangement.selectedCues, arrangement.selectedSurface);
   } else if (event.key === 'v' || event.key === 'V') {
     event.preventDefault();
-    // Shift pastes at the pointer instead of the playhead, so a copied block
-    // can be dropped exactly where the user is looking.
+    // Shift pastes at the pointer instead of after the selection, so a copied
+    // block can be dropped exactly where the user is looking.
     if (event.shiftKey) arrangement.pasteAtPointer();
     else arrangement.paste();
   } else if (event.key === 'a' || event.key === 'A') {

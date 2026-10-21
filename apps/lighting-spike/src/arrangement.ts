@@ -1,9 +1,11 @@
 import type { Clip, FixturePlacement, LedLookState, LedSurface } from '@dmxsim/show-model';
 import { actionsFor } from './arrangement/capabilities';
 import {
+  canMoveCueToLane,
   canPasteOn,
   clipboardAnchor,
   copySelection,
+  laneOrder,
   pastePlacements as resolvePastePlacements,
 } from './arrangement/clipboard';
 import { CUE_COLORS, resolveCueColor } from './arrangement/colors';
@@ -58,7 +60,9 @@ type Gesture =
   | {
       type: 'move-many';
       anchorSec: number;
-      items: { cueId: string; startSec: number; durationSec: number }[];
+      /** Lane the grabbed cue started on; cross-track drags shift relative to it. */
+      anchorLaneId: string;
+      items: { cueId: string; startSec: number; durationSec: number; fixtureId: string }[];
     }
   | { type: 'resize'; cueId: string; edge: 'start' | 'end' }
   /** Rubber-band selection. Coordinates are client-space so scrolling during
@@ -647,11 +651,24 @@ export class Arrangement {
   }
 
   /**
-   * Paste the copied clips so the block starts at `atSec` (the playhead by
-   * default). Pass `targetFixtureId` to land the block on another row; clips
-   * whose action/color the mapped track cannot perform are skipped.
+   * Where a plain paste starts: immediately after the current selection, so
+   * pasted clips follow what is selected instead of jumping to the playhead.
+   * With nothing selected it falls back to the playhead. Repeated pastes chain
+   * because the paste itself becomes the new selection.
    */
-  paste(atSec: number = this.songTime, targetFixtureId: string | null = null): number {
+  private pasteStartSec(): number {
+    const selected = this.selectedCues;
+    if (selected.length === 0) return this.songTime;
+    return Math.max(...selected.map((cue) => cue.endSec));
+  }
+
+  /**
+   * Paste the copied clips so the block starts at `atSec` (just after the
+   * current selection by default). Pass `targetFixtureId` to land the block on
+   * another row; clips whose action/color the mapped track cannot perform are
+   * skipped.
+   */
+  paste(atSec: number = this.pasteStartSec(), targetFixtureId: string | null = null): number {
     if (this.clipboard.length === 0 || this.timeline === null) return 0;
     const placements = this.pastePlacements(atSec, targetFixtureId);
     const pasted: Cue[] = placements.map((placement) => ({
@@ -772,10 +789,12 @@ export class Arrangement {
         this.gesture = {
           type: 'move-many',
           anchorSec: this.xToTime(event.clientX, lane),
+          anchorLaneId: cue.fixtureId,
           items: this.selectedCues.map((selected) => ({
             cueId: selected.id,
             startSec: selected.startSec,
             durationSec: selected.endSec - selected.startSec,
+            fixtureId: selected.fixtureId,
           })),
         };
         this.gestureSnapshot = this.snapshot();
@@ -1035,6 +1054,43 @@ export class Arrangement {
     return selected;
   }
 
+  /** Lane under the pointer, or `null` when the pointer is off the lanes. */
+  private laneIdAt(target: EventTarget | null): string | null {
+    if (!(target instanceof HTMLElement)) return null;
+    const lane = target.closest<HTMLElement>('.fixture-lane');
+    return lane?.closest<HTMLElement>('.fixture-row')?.dataset.fixtureId ?? null;
+  }
+
+  /**
+   * Target lane for each dragged cue when the pointer is over `hoveredLaneId`.
+   * The grabbed cue lands on that row and the rest keep their relative track
+   * offsets. If any cue cannot fit its shifted row (say a batch spanning two
+   * fixture kinds), every cue stays on its original row so the batch is never
+   * split across incompatible tracks.
+   */
+  private moveManyLaneTargets(
+    gesture: Extract<Gesture, { type: 'move-many' }>,
+    hoveredLaneId: string,
+  ): Map<string, string> {
+    const lanes = laneOrder(this.visibleFixtures(), this.visibleSurfaces());
+    const anchorIndex = lanes.indexOf(gesture.anchorLaneId);
+    const targetIndex = lanes.indexOf(hoveredLaneId);
+    const shift = anchorIndex < 0 || targetIndex < 0 ? 0 : targetIndex - anchorIndex;
+    const originals = new Map(gesture.items.map((item) => [item.cueId, item.fixtureId]));
+    const targets = new Map<string, string>();
+    for (const item of gesture.items) {
+      const sourceIndex = lanes.indexOf(item.fixtureId);
+      const targetId = shift === 0 ? item.fixtureId : lanes[sourceIndex + shift];
+      const cue = this.cues.find((entry) => entry.id === item.cueId);
+      if (targetId === undefined || cue === undefined
+        || !canMoveCueToLane(cue, targetId, this.fixtures, this.surfaces)) {
+        return originals;
+      }
+      targets.set(item.cueId, targetId);
+    }
+    return targets;
+  }
+
   private pointerMove(event: PointerEvent): void {
     const gesture = this.gesture;
     if (gesture === null || this.timeline === null) return;
@@ -1060,6 +1116,12 @@ export class Arrangement {
       const lane = (target instanceof HTMLElement ? target.closest<HTMLElement>('.fixture-lane') : null)
         ?? this.root.querySelector<HTMLElement>('.fixture-lane');
       if (lane === null) return;
+      // Dragging over another row retargets the batch; the grabbed cue lands
+      // on that row and the rest keep their relative track offsets.
+      const hoveredLaneId = this.laneIdAt(target);
+      const laneTargets = hoveredLaneId === null
+        ? null
+        : this.moveManyLaneTargets(gesture, hoveredLaneId);
       const rawDelta = this.xToTime(event.clientX, lane) - gesture.anchorSec;
       const minStart = Math.min(...gesture.items.map((item) => item.startSec));
       const maxEnd = Math.max(...gesture.items.map((item) => item.startSec + item.durationSec));
@@ -1074,7 +1136,14 @@ export class Arrangement {
         const item = moving.get(cue.id);
         if (item === undefined) return cue;
         const startSec = item.startSec + delta;
-        return { ...cue, startSec, endSec: startSec + item.durationSec };
+        const fixtureId = laneTargets?.get(cue.id) ?? cue.fixtureId;
+        return {
+          ...cue,
+          fixtureId,
+          ...(cue.surfaceId === undefined ? {} : { surfaceId: fixtureId }),
+          startSec,
+          endSec: startSec + item.durationSec,
+        };
       });
       this.scheduleDraw();
       return;
@@ -1101,6 +1170,20 @@ export class Arrangement {
     if (lane === null) return;
     const time = this.snap(this.xToTime(event.clientX, lane));
     if (gesture.type === 'move') {
+      // Cross-track drag: move the clip onto the row under the pointer when
+      // that row can perform the clip's controls. Incompatible rows are
+      // ignored, so the clip stays on its last valid track.
+      const hoveredLaneId = this.laneIdAt(event.target);
+      if (hoveredLaneId !== null && hoveredLaneId !== cue.fixtureId
+        && canMoveCueToLane(cue, hoveredLaneId, this.fixtures, this.surfaces)) {
+        this.cues = this.cues.map((item) => item.id === cue.id
+          ? {
+              ...item,
+              fixtureId: hoveredLaneId,
+              ...(item.surfaceId === undefined ? {} : { surfaceId: hoveredLaneId }),
+            }
+          : item);
+      }
       const delta = time - gesture.startSec;
       const startSec = this.snap(clamp(
         gesture.initialStartSec + delta,

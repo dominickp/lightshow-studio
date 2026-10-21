@@ -30,12 +30,13 @@ export function copySelection(selected: readonly Cue[]): ClipClipboardItem[] {
 }
 
 /** Lane ids in display order: surfaces first, then fixtures. */
-function laneIds(
+export function laneOrder(
   fixtures: readonly FixturePlacement[],
-  surfaces: readonly LedSurface[],
+  surfaces: readonly LedSurface[] = [],
 ): string[] {
   return [...surfaces.map((surface) => surface.id), ...fixtures.map((fixture) => fixture.id)];
 }
+const laneIds = laneOrder;
 
 /**
  * The topmost, earliest copied clip: it anchors the block when pasting onto
@@ -78,6 +79,25 @@ export function isCompatible(item: ClipClipboardItem, fixture: FixturePlacement)
 /** A surface lane accepts only surface clips, and needs no capability check. */
 function isSurfaceCompatible(item: ClipClipboardItem): boolean {
   return item.surfaceId !== undefined && item.look !== undefined;
+}
+
+/**
+ * Whether an existing cue can be dragged onto another lane. This mirrors the
+ * paste compatibility rules: a surface clip only fits a surface lane, and a
+ * fixture clip needs the target fixture to support its action and color.
+ */
+export function canMoveCueToLane(
+  cue: Cue,
+  laneId: string,
+  fixtures: readonly FixturePlacement[],
+  surfaces: readonly LedSurface[] = [],
+): boolean {
+  const surface = surfaces.find((entry) => entry.id === laneId);
+  if (surface !== undefined) return isSurfaceCompatible(cue);
+  const fixture = fixtures.find((entry) => entry.id === laneId);
+  if (fixture === undefined) return false;
+  if (cue.surfaceId !== undefined) return false;
+  return isCompatible(cue, fixture);
 }
 
 export interface PasteContext {

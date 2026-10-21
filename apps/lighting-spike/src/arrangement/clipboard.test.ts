@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { MOVING_HEAD, STROBE, WASH } from '@dmxsim/fixtures';
 import type { FixturePlacement } from '@dmxsim/show-model';
+import { defaultLedLook } from '@dmxsim/show-model';
 import {
+  canMoveCueToLane,
   canPasteOn,
   clipboardAnchor,
   copySelection,
@@ -154,5 +156,39 @@ describe('canPasteOn / isCompatible', () => {
       item({ colorOverride: { kind: 'rgb', r: 1, g: 0, b: 0 } }),
       fixture('w', WASH),
     )).toBe(true);
+  });
+});
+
+describe('canMoveCueToLane', () => {
+  const fixtureRows = [fixture('a'), fixture('b'), fixture('strobe', STROBE)];
+  const wall = {
+    id: 'wall-1',
+    name: 'Wall',
+    widthM: 3,
+    heightM: 2,
+    y: 2,
+    z: -4,
+    pitchMm: 3.9,
+    gap: 0.1,
+    brightness: 1,
+    blackLevel: 0.02,
+    gamma: 2.2,
+    emit: 0.5,
+  };
+
+  it('allows a clip onto a fixture that supports its action', () => {
+    expect(canMoveCueToLane(cue({ action: 'sweep' }), 'b', fixtureRows)).toBe(true);
+    expect(canMoveCueToLane(cue({ action: 'sweep' }), 'strobe', fixtureRows)).toBe(false);
+  });
+
+  it('does not let a surface clip land on a fixture or vice versa', () => {
+    const surfaceCue = cue({
+      fixtureId: 'wall-1',
+      surfaceId: 'wall-1',
+      look: defaultLedLook('solid'),
+    });
+    expect(canMoveCueToLane(surfaceCue, 'a', fixtureRows, [wall])).toBe(false);
+    expect(canMoveCueToLane(cue(), 'wall-1', fixtureRows, [wall])).toBe(false);
+    expect(canMoveCueToLane(surfaceCue, 'wall-1', fixtureRows, [wall])).toBe(true);
   });
 });

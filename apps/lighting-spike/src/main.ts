@@ -99,6 +99,7 @@ import {
   readPreference,
   writePreference,
 } from './ui/preferences';
+import { enhanceSlider, parseNumericText } from './ui/slider';
 import { Stage } from './stage';
 import { Post } from './post';
 
@@ -159,17 +160,6 @@ let projectAudio: ProjectFile['audio'] = bundledProject?.audio ?? {
 let projectAudioFile: ProjectMediaFile | null = null;
 /** Digest of the embedded track currently in the clock, to skip re-decoding it. */
 let loadedAudioSha: string | null = null;
-/**
- * Fixture-count stops for the debug render budget. The rig is editable now, so
- * the list is derived from the current rig and always ends at "all fixtures".
- */
-const countPresets = (): number[] => {
-  const total = show.fixtures.length;
-  const stops = [10, 16, 22, 26, 32].filter((n) => n < total);
-  stops.push(total);
-  return stops;
-};
-const counts = countPresets();
 
 const container = document.getElementById('app');
 if (container === null) throw new Error('missing #app element');
@@ -213,19 +203,10 @@ clock.setLoop({ startSec: loopStartSec, endSec: loopEndSec }, true);
 
 let volumetrics = true;
 let bloomOn = true;
-let shadowsOn = true;
 let strobesOn = true;
-let countIndex = counts.length - 1;
-let activeCount = counts[countIndex] ?? show.fixtures.length;
-
-/** Keep the render budget valid after a rig edit. */
-const clampActiveCount = (): void => {
-  const presets = countPresets();
-  countIndex = Math.min(countIndex, presets.length - 1);
-  const next = presets[countIndex] ?? show.fixtures.length;
-  if (next !== activeCount) setActiveCount(next);
-  else syncButtons();
-};
+/** Fixtures rendered from the top of the rig. No UI sets this any more; it is
+ * always the whole rig, and only the benchmark rewinds it temporarily. */
+let activeCount = show.fixtures.length;
 
 stage.setActiveCount(activeCount);
 
@@ -262,16 +243,13 @@ const ui = {
   volume: element<HTMLInputElement>('volume'),
   vol: element<HTMLButtonElement>('btn-vol'),
   bloom: element<HTMLButtonElement>('btn-bloom'),
-  shadow: element<HTMLButtonElement>('btn-shadow'),
   strobe: element<HTMLButtonElement>('btn-strobe'),
   strobeStatus: element('strobe-status'),
   haze: element<HTMLInputElement>('haze'),
   hazeValue: element('haze-value'),
   view: element<HTMLButtonElement>('btn-view'),
-  orbit: element<HTMLButtonElement>('btn-orbit'),
   orbitPill: element<HTMLElement>('orbit-pill'),
   orbitPillLabel: element('orbit-pill-label'),
-  count: element<HTMLButtonElement>('btn-count'),
     stats: element<HTMLButtonElement>('btn-stats'),
     dock: element('timeline-dock'),
     dockResizer: element('dock-resizer'),
@@ -1066,7 +1044,8 @@ const applyRig = (fixtures: FixturePlacement[], rebuildRigs: boolean): void => {
   arrangement.setFixtures(fixtures);
   rebuildTrackFilter();
   ui.trackFilter.disabled = fixtures.length === 0;
-  clampActiveCount();
+  /* The rig shrank: never leave fixtures hidden that no longer exist. */
+  if (activeCount > show.fixtures.length) setActiveCount(show.fixtures.length);
   renderRigList();
 };
 
@@ -1385,9 +1364,7 @@ const RENDER_KEY = STORAGE_KEYS.render;
 interface StoredRenderSettings {
   volumetrics?: boolean;
   bloom?: boolean;
-  shadows?: boolean;
   strobes?: boolean;
-  activeFixtureCount?: number;
   cameraView?: number;
   /** Slow automatic camera sweep across the front of the stage. */
   orbit?: boolean;
@@ -1410,9 +1387,7 @@ const readStoredRender = (): StoredRenderSettings => {
 const snapshotRender = (): StoredRenderSettings => ({
   volumetrics,
   bloom: bloomOn,
-  shadows: shadowsOn,
   strobes: strobesOn,
-  activeFixtureCount: activeCount,
   cameraView: stage.view,
   orbit: stage.orbitEnabled,
   haze: stage.hazeLevel,
@@ -1447,27 +1422,12 @@ const syncButtons = (): void => {
   ui.loop.textContent = clock.loopEnabled ? 'on' : 'off';
   ui.vol.classList.toggle('on', volumetrics);
   ui.bloom.classList.toggle('on', bloomOn);
-  ui.shadow.classList.toggle('on', shadowsOn);
   ui.strobe.classList.toggle('on', strobesOn);
   ui.strobeStatus.textContent = strobesOn ? 'on' : 'off';
   ui.haze.value = String(Math.round(stage.hazeLevel * 100));
   ui.hazeValue.textContent = String(Math.round(stage.hazeLevel * 100));
-  ui.count.querySelector('em')!.textContent = String(activeCount);
-  ui.orbit.classList.toggle('on', stage.orbitEnabled);
-  ui.orbit.setAttribute('aria-pressed', String(stage.orbitEnabled));
   updateOrbitPill();
   persistRender();
-};
-
-const applyShadows = (): void => {
-  stage.setShadows(shadowsOn);
-  renderer.shadowMap.enabled = shadowsOn;
-  stage.scene.traverse((object) => {
-    const mesh = object as THREE.Mesh;
-    if (mesh.material === undefined) return;
-    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-    for (const material of materials) material.needsUpdate = true;
-  });
 };
 
 const setActiveCount = (count: number): void => {
@@ -2797,25 +2757,26 @@ document.addEventListener('pointerdown', (event) => {
   closeTimingEditor();
 });
 
-for (const slider of [
-  ui.seRate,
-  ui.seAttack,
-  ui.seRelease,
-  ui.seDepth,
-  ui.seMoveRate,
-  ui.seMovePhase,
-  ui.sePanCenter,
-  ui.sePanRange,
-  ui.seTiltCenter,
-  ui.seTiltRange,
-  ui.seAimPan,
-  ui.seAimTilt,
-  ui.seAimPanTo,
-  ui.seAimTiltTo,
-  ui.seAimTravel,
-  ui.seFadeIn,
-  ui.seFadeOut,
-]) {
+for (const [slider, readout] of [
+  [ui.seRate, ui.seRateValue],
+  [ui.seAttack, ui.seAttackValue],
+  [ui.seRelease, ui.seReleaseValue],
+  [ui.seDepth, ui.seDepthValue],
+  [ui.seMoveRate, ui.seMoveRateValue],
+  [ui.seMovePhase, ui.seMovePhaseValue],
+  [ui.sePanCenter, ui.sePanCenterValue],
+  [ui.sePanRange, ui.sePanRangeValue],
+  [ui.seTiltCenter, ui.seTiltCenterValue],
+  [ui.seTiltRange, ui.seTiltRangeValue],
+  [ui.seAimPan, ui.seAimPanValue],
+  [ui.seAimTilt, ui.seAimTiltValue],
+  [ui.seAimPanTo, ui.seAimPanToValue],
+  [ui.seAimTiltTo, ui.seAimTiltToValue],
+  [ui.seAimTravel, ui.seAimTravelValue],
+  [ui.seFadeIn, ui.seFadeInValue],
+  [ui.seFadeOut, ui.seFadeOutValue],
+] as Array<[HTMLInputElement, HTMLElement]>) {
+  enhanceSlider(slider, readout, { beforeEdit: beginTimingEdit });
   slider.addEventListener('pointerdown', beginTimingEdit);
   slider.addEventListener('pointerup', endTimingEdit);
   slider.addEventListener('keydown', (event) => {
@@ -3087,6 +3048,20 @@ function renderLookEditor(): void {
     input.step = String(param.step);
     input.value = String(value);
     input.setAttribute('aria-label', param.label);
+    const readout = field.querySelector<HTMLElement>('output')!;
+    // Intensity and softness are 0..1 numbers shown as percentages.
+    const percentParam = param.key === 'intensity' || param.key === 'softness';
+    enhanceSlider(input, readout, {
+      beforeEdit: () => arrangement.beginLookEdit(),
+      ...(percentParam
+        ? {
+            parse: (text) => {
+              const value = parseNumericText(text);
+              return value === null ? null : value / 100;
+            },
+          }
+        : {}),
+    });
     input.addEventListener('pointerdown', () => arrangement.beginLookEdit());
     input.addEventListener('keydown', (event) => {
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight'
@@ -3400,6 +3375,49 @@ bindSurfaceSlider(ui.surfaceBlack, (value) => ({ blackLevel: value / 100 }));
 bindSurfaceSlider(ui.surfaceGamma, (value) => ({ gamma: value / 10 }));
 bindSurfaceSlider(ui.surfaceEmit, (value) => ({ emit: value / 100 }));
 
+// --- Slider ergonomics -----------------------------------------------------
+// Drags snap to ~5% of the track and the readout next to each slider accepts a
+// typed exact value (Enter commits, Escape cancels). Arrow keys keep their
+// native fine step, so nothing extra is needed for precision.
+
+/** Readout shows beam degrees while the slider stores 0..1 zoom. */
+const parseSpreadText = (text: string): number | null => {
+  const fixture = arrangement.selectedFixture;
+  const degrees = parseNumericText(text);
+  if (fixture === null || degrees === null) return null;
+  const [spreadMin, spreadMax] = fixture.profile.beam.spreadDeg;
+  return spreadMax === spreadMin ? null : ((degrees - spreadMin) / (spreadMax - spreadMin)) * 100;
+};
+
+for (const [input, output] of [
+  [ui.haze, ui.hazeValue],
+  [ui.setupPosition, ui.setupPositionValue],
+  [ui.setupYaw, ui.setupYawValue],
+  [ui.setupPitch, ui.setupPitchValue],
+  [ui.setupDimmer, ui.setupDimmerValue],
+  [ui.setupSpread, ui.setupSpreadValue],
+  [ui.setupLaserFan, ui.setupLaserFanValue],
+  [ui.surfaceWidth, ui.surfaceWidthValue],
+  [ui.surfaceHeight, ui.surfaceHeightValue],
+  [ui.surfacePitch, ui.surfacePitchValue],
+  [ui.surfaceGap, ui.surfaceGapValue],
+  [ui.surfaceBrightness, ui.surfaceBrightnessValue],
+  [ui.surfaceBlack, ui.surfaceBlackValue],
+  [ui.surfaceEmit, ui.surfaceEmitValue],
+] as Array<[HTMLInputElement, HTMLElement]>) {
+  enhanceSlider(input, output, input === ui.setupSpread ? { parse: parseSpreadText } : {});
+}
+enhanceSlider(ui.setupLaserBeams, ui.setupLaserBeamsValue, { snap: 1 });
+enhanceSlider(ui.surfaceGamma, ui.surfaceGammaValue, {
+  snap: 1,
+  parse: (text) => {
+    const value = parseNumericText(text);
+    return value === null ? null : value * 10;
+  },
+});
+// Volume has no numeric readout; snapping alone is enough there.
+enhanceSlider(ui.volume);
+
 ui.cueDelete.addEventListener('click', () => arrangement.deleteSelected());
 ui.cueCopy.addEventListener('click', () => {
   arrangement.copySelected();
@@ -3485,11 +3503,6 @@ ui.bloom.addEventListener('click', () => {
   post.setBloom(bloomOn);
   syncButtons();
 });
-ui.shadow.addEventListener('click', () => {
-  shadowsOn = !shadowsOn;
-  applyShadows();
-  syncButtons();
-});
 ui.strobe.addEventListener('click', () => {
   strobesOn = !strobesOn;
   syncButtons();
@@ -3502,15 +3515,6 @@ ui.haze.addEventListener('input', () => {
 ui.view.addEventListener('click', () => {
   stage.nextView();
   persistRender();
-});
-ui.orbit.addEventListener('click', () => {
-  stage.toggleOrbit();
-  syncButtons();
-});
-ui.count.addEventListener('click', () => {
-  const presets = countPresets();
-  countIndex = (countIndex + 1) % presets.length;
-  setActiveCount(presets[countIndex] ?? show.fixtures.length);
 });
 
 /* Spaces must always play/pause, whatever control a previous click left
@@ -3577,16 +3581,6 @@ window.addEventListener('keydown', (event) => {
   } else if (event.key === 'm' || event.key === 'M') {
     muted = !muted;
     applyVolume(false);
-  } else if (event.key === '1') {
-    volumetrics = !volumetrics;
-  } else if (event.key === '2') {
-    bloomOn = !bloomOn;
-    post.setBloom(bloomOn);
-  } else if (event.key === '3') {
-    shadowsOn = !shadowsOn;
-    applyShadows();
-  } else if (event.key === '4') {
-    strobesOn = !strobesOn;
   } else if (event.key === 'x' || event.key === 'X') {
     toggleStats();
   } else if (event.key === '`' || event.key === '~') {
@@ -3603,11 +3597,6 @@ window.addEventListener('keydown', (event) => {
     const next = [0, 0.3, 0.65, 1].find((value) => value > stage.hazeLevel + 0.01) ?? 0;
     stage.setHaze(next);
     syncButtons();
-  } else if (event.key === '[' || event.key === ']') {
-    const step = event.key === ']' ? 1 : -1;
-    const presets = countPresets();
-    countIndex = (countIndex + step + presets.length) % presets.length;
-    setActiveCount(presets[countIndex] ?? show.fixtures.length);
   }
   syncButtons();
 });
@@ -3993,20 +3982,14 @@ const applyProjectSettings = (settings: ProjectSettings, source: 'project' | 'de
 
   volumetrics = local.volumetrics ?? settings.render.volumetrics;
   bloomOn = local.bloom ?? settings.render.bloom;
-  shadowsOn = local.shadows ?? settings.render.shadows;
   strobesOn = local.strobes ?? settings.render.strobes;
   post.setBloom(bloomOn);
-  applyShadows();
 
-  const requested = (local.activeFixtureCount ?? settings.render.activeFixtureCount) > 0
-    ? Math.min(local.activeFixtureCount ?? settings.render.activeFixtureCount, show.fixtures.length)
-    : show.fixtures.length;
-  setActiveCount(requested);
+  /* The fixture-count budget has no UI: the whole rig is always rendered, so
+   * `render.activeFixtureCount` is accepted but not applied. */
+  setActiveCount(show.fixtures.length);
   /* Local haze wins; otherwise start from the venue's own atmosphere. */
   stage.setHaze(local.haze ?? stage.hazeLevel);
-  const presets = countPresets();
-  const presetIndex = presets.indexOf(requested);
-  countIndex = presetIndex >= 0 ? presetIndex : presets.length - 1;
   stage.setView(local.cameraView ?? settings.render.cameraView, true);
   stage.setOrbit(local.orbit ?? true);
 
@@ -4081,8 +4064,10 @@ const buildProject = (): ProjectFile | null => {
     render: {
       volumetrics,
       bloom: bloomOn,
-      shadows: shadowsOn,
+      /* Shadows always render; the toggle was removed as visually inert. */
+      shadows: true,
       strobes: strobesOn,
+      /* No fixture-count control: saved projects always carry the full rig. */
       activeFixtureCount: activeCount,
       cameraView: stage.view,
     },

@@ -164,13 +164,21 @@ Known gaps visible in the spike after Tier 0:
   through the riser and the crowd; real shadows on more than one light would
   need a bigger budget (Tier 2.14);
 - no colour bounce, so the air away from a beam stays black — Tier 1.10.
+- **shadows are visually inert, so the Shadows toggle was removed
+  (verified 2026-10-21).** The key light's shadow map does render, but nothing
+  occludes that spot's cone in the sample show: canvas captures were
+  pixel-identical with shadows on and off at 7 song times and all 4 camera
+  presets. Beams and floor pools are additive decals, so they cannot receive
+  shadows either. The key light now always casts (no runtime toggle, no
+  `setShadows`). Making shadows read means an occluder in the key light's beam
+  (crowd/riser) or promoting a second key light.
 ### Tier 1 session log (2026-10-18, first pass)
 
 - `rig.ts` publishes `beamInfo` per fixture per frame; lasers are excluded
   from room lighting (`level = 0`) until `LaserRig` decides otherwise.
 - `stage.ts` owns `LIGHT_POOL_SIZE = 4` spotlights, `BOUNCE_LIGHTS = 2` point
-  fills, one ambient. `setShadows` toggles the key light only; the shadows
-  toggle and `shadowCasting` getter keep their meaning.
+  fills, one ambient. The key light always casts shadows (the runtime toggle
+  was removed in 2026-10-21; `castShadow` is set once at construction).
 - Verified in-browser: floor washes and crowd silhouettes appear, walls pick
   up colour spill, the LED wall and stage edge remain emissive, and dark cues
   now leave the room genuinely dark (the old hardcoded lights never turned
@@ -219,8 +227,8 @@ crowd instances, fixture bodies), which is a synchronous recompile.
 
 Reproduced locally with a `longtask` observer: 8 long tasks of 1017–1105 ms
 per 30 s of playback. Fix: all pool lights are added visible once and idle at
-`intensity = 0`, and `castShadow` is only assigned from `setShadows()` (never
-per frame). Same measurement after the fix: 199 / 74 / 68 ms, 60 fps.
+`intensity = 0`, and `castShadow` is assigned once at construction (never per
+frame; the runtime shadows toggle was removed in 2026-10-21). Same measurement after the fix: 199 / 74 / 68 ms, 60 fps.
 
 Rule to keep: the number of scene lights is part of the shader program key.
 Never add, remove, hide or un-hide a light while a cue can be changing.

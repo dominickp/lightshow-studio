@@ -100,7 +100,6 @@ export class Stage {
   private activeCount = Number.POSITIVE_INFINITY;
   private readonly poolLights: PoolLight[] = [];
   private readonly ambient: THREE.AmbientLight;
-  private shadowsEnabled = true;
   private readonly edgeUniforms = { color: uniform(new THREE.Color(0xffffff)), energy: uniform(0.5) };
   /** LED walls by surface id. Geometry is static; content is clip playback. */
   private readonly ledWalls = new Map<string, LedWall>();
@@ -178,7 +177,7 @@ export class Stage {
        * slots keep intensity 0 instead. */
       light.visible = true;
       if (i === 0) {
-        light.castShadow = this.shadowsEnabled;
+        light.castShadow = true;
         light.shadow.mapSize.set(1024, 1024);
         light.shadow.camera.near = 0.5;
         light.shadow.camera.far = 40;
@@ -733,11 +732,5 @@ export class Stage {
       slot.light.position.copy(info.origin);
       slot.target.position.copy(info.origin).addScaledVector(info.direction, Math.max(0.5, info.length));
     });
-  }
-
-  setShadows(enabled: boolean): void {
-    this.shadowsEnabled = enabled;
-    const key = this.poolLights[0];
-    if (key !== undefined) key.light.castShadow = enabled;
   }
 }

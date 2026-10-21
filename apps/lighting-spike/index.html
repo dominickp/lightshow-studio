@@ -31,15 +31,11 @@
 
       <div class="panel" id="controls" hidden>
         <span class="controls-group">Render</span>
-        <button id="btn-vol" class="on">Beam cones <em>1</em></button>
-        <button id="btn-bloom" class="on">Bloom <em>2</em></button>
-        <button id="btn-shadow" class="on">Shadows <em>3</em></button>
-        <button id="btn-strobe">Strobes <em id="strobe-status">off</em><em>4</em></button>
+        <button id="btn-vol" class="on">Beam cones</button>
+        <button id="btn-bloom" class="on">Bloom</button>
+        <button id="btn-strobe">Strobes <em id="strobe-status">off</em></button>
         <span class="controls-group">View</span>
         <button id="btn-view">Camera <em>c</em></button>
-        <button id="btn-orbit" aria-pressed="false"><u>O</u>rbit <em>o</em></button>
-        <span class="controls-group">Scene</span>
-        <button id="btn-count">Fixture count <em>[ ]</em></button>
         <span class="controls-group">Diagnostics</span>
         <button id="btn-stats" class="on">Stats <em>x</em></button>
       </div>
@@ -49,8 +45,7 @@
         <div>
           <b>Space</b> play/pause · <b>← →</b> seek 1/16 (Shift = measure) · <b>M</b> mute ·
           drag the ruler or waveform to scrub · <b>Shift + drag</b> draws a loop · <b>L</b> removes it ·
-          <b>1</b> beams <b>2</b> bloom <b>3</b> shadows <b>4</b> strobes ·
-          <b>C</b> camera · <b>O</b> orbit · <b>[ ]</b> fixture count · <b>X</b> stats · <b>`</b> controls panel · <b>H</b> haze<br />
+          <b>C</b> camera · <b>O</b> orbit · <b>X</b> stats · <b>`</b> controls panel · <b>H</b> haze<br />
           <b>Ctrl/⌘ + wheel</b> zoom at pointer · <b>Ctrl/⌘ +/-</b> zoom · <b>Ctrl/⌘ 0</b> fit ·
           <b>Middle-drag</b> the timeline or waveform to pan ·
           <b>S</b> select mode · <b>D</b> drop mode · <b>Backspace</b> deletes the selection<br />
@@ -419,7 +414,7 @@
             <label id="setup-mount-row"><span>Mount</span>
               <select id="setup-mount" aria-label="Fixture mount anchor" disabled></select>
             </label>
-            <label id="setup-position-row"><span>Position on mount</span><output id="setup-position-value">50%</output>
+            <label id="setup-position-row"><span>Position</span><output id="setup-position-value">50%</output>
               <input id="setup-position" type="range" min="0" max="100" step="1" value="50" aria-label="Position along the mount" disabled />
             </label>
             <p class="subhead">Mounting</p>

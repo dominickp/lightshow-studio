@@ -184,6 +184,18 @@ export const strobeSettingsSchema = z.object({
   depth: normalizedSchema.optional(),
 });
 
+/** Pan/tilt movement shaping for a sweep clip. Centres and ranges are normalized. */
+export const sweepSettingsSchema = z.object({
+  /** Movement cycles per second. Omitted keeps one cycle across the clip. */
+  hz: z.number().nonnegative().optional(),
+  /** Starting point in the cycle, 0..1. Offsets grouped heads. */
+  phase: normalizedSchema.optional(),
+  panCenter: normalizedSchema.optional(),
+  panRange: normalizedSchema.optional(),
+  tiltCenter: normalizedSchema.optional(),
+  tiltRange: normalizedSchema.optional(),
+});
+
 export const clipSchema = z.object({
   id: z.string().min(1),
   startSec: z.number().nonnegative(),
@@ -194,6 +206,7 @@ export const clipSchema = z.object({
   easing: z.enum(EASINGS).optional(),
   strobe: strobeSettingsSchema.optional(),
   pulseHz: z.number().nonnegative().optional(),
+  sweep: sweepSettingsSchema.optional(),
 });
 
 export const trackSchema = z.object({
@@ -239,6 +252,8 @@ export const projectClipSchema = z
     strobe: strobeSettingsSchema.optional(),
     /** Pulse speed for `pulse` clips, in Hz. */
     pulseHz: z.number().nonnegative().optional(),
+    /** Movement shaping for `sweep` clips. */
+    sweep: sweepSettingsSchema.optional(),
   })
   .refine((clip) => clip.endSec > clip.startSec, {
     message: 'endSec must be greater than startSec',

@@ -263,6 +263,7 @@ preset action plus a palette colour.
 | `fadeOutSec` | Optional non-negative override for the clip's fade-out. |
 | `strobe` | Optional pulse shaping for `strobe` clips; see below. |
 | `pulseHz` | Optional pulse speed for `pulse` clips. Without it the legacy four-pulse shape is used. |
+| `sweep` | Optional movement shaping for `sweep` clips; see below. |
 
 Fades are independent of clip length: a long clip can still snap on over
 40 ms, and a short strobe hit can fade out over several beats.
@@ -290,6 +291,39 @@ The lamp is lit for the first half of each cycle. The evaluator resolves this
 into `FixtureState.strobeLevel`, so playback, scrubbing and offline export all
 show the same flash. Shorter ramps read as a hard strobe; longer ones read as
 a pulsing dimmer.
+
+### Sweep shaping
+
+`sweep` clips move pan and tilt along one cycling wave. The rate is stored in
+Hz instead of being implied by the clip length, and `phase` lets grouped heads
+stay deliberately out of step:
+
+```json
+{
+  "action": "sweep",
+  "sweep": {
+    "hz": 0.4,
+    "phase": 0.25,
+    "panCenter": 0.5,
+    "panRange": 0.35,
+    "tiltCenter": 0.54,
+    "tiltRange": 0.12
+  }
+}
+```
+
+| Field | Rules |
+|---|---|
+| `hz` | Optional cycles per second. Omitted keeps the legacy one cycle across the clip, so a clip's look still depends on its length. |
+| `phase` | Starting point in the cycle, `0..1`. `0` puts every clip at the same angle; `0.5` mirrors a pair. |
+| `panCenter`, `tiltCenter` | Normalized centres, `0..1`, mapped through the profile's limits. Defaults: pan `0.5`, tilt `0.54`. |
+| `panRange`, `tiltRange` | Normalized half-swings, `0..1`. Defaults: pan `0.35`, tilt `0.12`. |
+
+The wave is sampled from song time, not baked into keyframes, so two clips with
+the same `hz` and different `phase` never drift apart and a clip resized on the
+timeline does not change the movement speed. `sweep` replaces any authored
+`attributes.pan`/`attributes.tilt` envelope. A sweep without a `sweep` object
+falls back to the original hand-written keyframes.
 
 Cues are evaluated against the loop only when they fall inside the loop
 region; clips outside it are authored but cannot play. The demo generator

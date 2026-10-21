@@ -68,10 +68,35 @@ export function loopMarkup(
   return `${before}${after}<span class="lane-loop" style="left:${left}px;width:${Math.max(0, right - left)}px"></span>`;
 }
 
+/**
+ * Rate without the unit, for the compact card label: `0.1`, `0.35`, `2`.
+ * Two decimals keep a slow sweep distinguishable; trailing zeros are dropped.
+ */
+const compactRate = (hz: number): string =>
+  String(Math.round(hz * 100) / 100);
+
+/**
+ * Text drawn on a clip card and used as its hover title.
+ *
+ * Sweeps carry their speed and start-angle offset because two clips that look
+ * identical on the timeline can still move out of step. The format is compact
+ * (`sweep 0.1/25%`) so the card text fits in the same space as before. Other
+ * actions stay as the bare action name. A sweep without an explicit rate
+ * reports the legacy one-cycle-across-the-clip speed.
+ */
+export function cueCardLabel(cue: Cue): string {
+  if (cue.action !== 'sweep') return cue.action;
+  const length = Math.max(0.001, cue.endSec - cue.startSec);
+  const hz = cue.sweep?.hz ?? 1 / length;
+  const offset = Math.round((cue.sweep?.phase ?? 0) * 100);
+  const rate = compactRate(hz);
+  return offset > 0 ? `sweep ${rate}/${offset}%` : `sweep ${rate}`;
+}
+
 function clipMarkup(cue: Cue, pixelsPerSecond: number): string {
   const left = cue.startSec * pixelsPerSecond;
   const width = (cue.endSec - cue.startSec) * pixelsPerSecond;
-  const title = cue.look === undefined ? cue.action : lookSummary(cue.look);
+  const title = cue.look === undefined ? cueCardLabel(cue) : lookSummary(cue.look);
   return `<div class="arrangement-clip" data-cue-id="${cue.id}" data-start-px="${left}" data-end-px="${left + width}" style="left:${left}px;width:${width}px" title="${escapeHtml(title)}">
             <span class="clip-resize start"></span><span class="clip-resize end"></span>
           </div>`;

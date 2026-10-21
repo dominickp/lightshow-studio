@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { STROBE } from '@dmxsim/fixtures';
+import { MOVING_HEAD, STROBE } from '@dmxsim/fixtures';
 import type { FixturePlacement } from '@dmxsim/show-model';
 import { cueToClip, reserveCueIds, type Cue } from './arrangement';
 
@@ -16,6 +16,13 @@ const strobeFixture: FixturePlacement = {
   id: 'strobe-0',
   profile: STROBE,
   position: { x: 0, y: 3, z: 0 },
+  yawDeg: 0,
+};
+
+const movingHeadFixture: FixturePlacement = {
+  id: 'mh-0',
+  profile: MOVING_HEAD,
+  position: { x: 0, y: 5, z: 0 },
   yawDeg: 0,
 };
 
@@ -75,5 +82,29 @@ describe('cueToClip', () => {
     expect(clip.attributes.dimmer).toHaveLength(9);
     expect(clip.attributes.dimmer?.[0]?.value).toBeCloseTo(0.9);
     expect(clip.attributes.dimmer?.at(-1)?.value).toBeCloseTo(0.9);
+  });
+
+  it('passes sweep settings through instead of baking pan/tilt keyframes', () => {
+    const sweep = { hz: 0.4, phase: 0.25, panCenter: 0.5, panRange: 0.2 };
+    const clip = cueToClip(movingHeadFixture, {
+      ...cue('cue-1'),
+      fixtureId: 'mh-0',
+      action: 'sweep',
+      sweep,
+    });
+    expect(clip.sweep).toEqual(sweep);
+    // The evaluator derives pan/tilt from the sweep, so no envelopes compete.
+    expect(clip.attributes.pan).toBeUndefined();
+    expect(clip.attributes.tilt).toBeUndefined();
+  });
+
+  it('keeps the legacy keyframes for a sweep clip with no settings', () => {
+    const clip = cueToClip(movingHeadFixture, {
+      ...cue('cue-1'),
+      fixtureId: 'mh-0',
+      action: 'sweep',
+    });
+    expect(clip.sweep).toBeUndefined();
+    expect(clip.attributes.pan?.[1]?.value).toBeCloseTo(0.85);
   });
 });

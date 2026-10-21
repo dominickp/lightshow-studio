@@ -549,7 +549,17 @@ export class Arrangement {
     );
     if (targets.size === 0) return;
     this.pushHistory();
-    this.cues = this.cues.map((item) => targets.has(item.id) ? { ...item, action } : item);
+    this.cues = this.cues.map((item) => targets.has(item.id)
+      ? {
+          ...item,
+          action,
+          // Pin the movement speed when a clip becomes a sweep, so resizing
+          // the clip later does not slow it down.
+          ...(action === 'sweep' && item.sweep === undefined
+            ? { sweep: { hz: sweepRateForLength(item.endSec - item.startSec) } }
+            : {}),
+        }
+      : item);
     this.renderRows();
     this.notifyChange();
     this.notifySelection();
@@ -581,7 +591,7 @@ export class Arrangement {
    * gesture is one undo step instead of one per pointer move.
    */
   setSelectedClipSettings(
-    patch: Partial<Pick<Cue, 'fadeInSec' | 'fadeOutSec' | 'pulseHz' | 'strobe'>>,
+    patch: Partial<Pick<Cue, 'fadeInSec' | 'fadeOutSec' | 'pulseHz' | 'strobe' | 'sweep'>>,
     options: { history?: boolean } = {},
   ): void {
     if (this.selectedCueIds.size === 0) return;
@@ -598,6 +608,34 @@ export class Arrangement {
   beginClipEdit(): void {
     if (this.selectedCueIds.size === 0) return;
     this.pushHistory();
+  }
+
+  /**
+   * Evenly offset the selected sweep clips around the movement cycle.
+   *
+   * Heads are ordered by lane so the spread reads left to right across the
+   * rig. The anchor clip's rate is written to every clip as an explicit Hz;
+   * without that, clips of different lengths would move at different speeds
+   * and the phase offset would not hold.
+   */
+  spreadSelectedSweepPhase(): void {
+    const targets = this.selectedCues.filter((cue) => cue.action === 'sweep');
+    if (targets.length < 2) return;
+    this.pushHistory();
+    const laneIndex = new Map(laneOrder(this.fixtures, this.surfaces).map((id, index) => [id, index]));
+    const sorted = [...targets].sort((a, b) =>
+      (laneIndex.get(a.fixtureId) ?? 0) - (laneIndex.get(b.fixtureId) ?? 0)
+      || a.startSec - b.startSec);
+    const anchor = sorted[0]!;
+    const hz = anchor.sweep?.hz ?? 1 / Math.max(0.001, anchor.endSec - anchor.startSec);
+    const phases = new Map(sorted.map((cue, index) => [cue.id, index / sorted.length]));
+    this.cues = this.cues.map((cue) => {
+      const phase = phases.get(cue.id);
+      return phase === undefined ? cue : { ...cue, sweep: { ...cue.sweep, hz, phase } };
+    });
+    this.renderRows();
+    this.notifyChange();
+    this.notifySelection();
   }
 
   /** The action used for the next clip when nothing is selected. */
@@ -1308,6 +1346,7 @@ export class Arrangement {
           endSec,
           colorIndex: this.suggestedColorIndex,
           action,
+          ...(action === 'sweep' ? { sweep: { hz: sweepRateForLength(endSec - startSec) } } : {}),
           ...(this.pendingColorOverride === null ? {} : { colorOverride: this.pendingColorOverride }),
         }
       : {
@@ -1640,6 +1679,14 @@ export function reserveCueIds(cues: readonly Cue[]): { cues: Cue[]; nextId: numb
 }
 
 /**
+ * Default movement rate for a new sweep clip: one cycle across the clip.
+ * Stored explicitly so a later resize keeps the same speed.
+ */
+function sweepRateForLength(durationSec: number): number {
+  return Math.round((1 / Math.max(0.001, durationSec)) * 1000) / 1000;
+}
+
+/**
  * Dimmer keyframes for a `pulse` cue.
  *
  * Without a rate the legacy shape is kept (four pulses across the clip). With
@@ -1707,8 +1754,11 @@ export function cueToClip(fixture: FixturePlacement | undefined, cue: Cue): Clip
     }
   }
   if (cue.action === 'sweep' && caps?.panTilt) {
-    attrs.pan = [{ at: 0, value: 0.15 }, { at: 0.5, value: 0.85 }, { at: 1, value: 0.15 }];
-    attrs.tilt = [{ at: 0, value: 0.42 }, { at: 0.5, value: 0.66 }, { at: 1, value: 0.42 }];
+    if (cue.sweep === undefined) {
+      // Legacy shape for clips authored before `sweep` existed.
+      attrs.pan = [{ at: 0, value: 0.15 }, { at: 0.5, value: 0.85 }, { at: 1, value: 0.15 }];
+      attrs.tilt = [{ at: 0, value: 0.42 }, { at: 0.5, value: 0.66 }, { at: 1, value: 0.42 }];
+    }
   }
   if (cue.action === 'strobe' && caps?.strobe) {
     /* Keep the channel value as a fallback rate; `strobe.hz` overrides it so
@@ -1725,6 +1775,7 @@ export function cueToClip(fixture: FixturePlacement | undefined, cue: Cue): Clip
     easing: cue.action === 'sweep' ? 'sine' : cue.action === 'pulse' ? 'step' : 'linear',
     attributes: attrs,
     ...(cue.action === 'strobe' && cue.strobe !== undefined ? { strobe: cue.strobe } : {}),
+    ...(cue.action === 'sweep' && cue.sweep !== undefined ? { sweep: cue.sweep } : {}),
   };
 }
 
@@ -1843,6 +1894,7 @@ function sameCues(a: readonly Cue[], b: readonly Cue[]): boolean {
       || left.pulseHz !== right.pulseHz
       || left.surfaceId !== right.surfaceId
       || JSON.stringify(left.strobe ?? null) !== JSON.stringify(right.strobe ?? null)
+      || JSON.stringify(left.sweep ?? null) !== JSON.stringify(right.sweep ?? null)
       || JSON.stringify(left.look ?? null) !== JSON.stringify(right.look ?? null)
       || JSON.stringify(left.colorOverride ?? null) !== JSON.stringify(right.colorOverride ?? null)) return false;
   }

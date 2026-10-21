@@ -1504,7 +1504,7 @@
         width: min(290px, 92vw);
         /* Never taller than the room above the tools bar, so it cannot run off
            the top of a short window. */
-        max-height: min(76vh, 380px);
+        max-height: min(76vh, 460px);
         overflow-y: auto;
         scrollbar-width: none;
         padding: 6px 10px 8px;
@@ -1612,6 +1612,7 @@
         cursor: pointer;
       }
       #strobe-editor #se-pulse-section[hidden],
+      #strobe-editor #se-move-section[hidden],
       #strobe-editor #se-fade-section[hidden] { display: none; }
 
       #strobe-editor .se-chips { display: flex; gap: 4px; margin-top: 4px; }

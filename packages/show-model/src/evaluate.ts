@@ -11,6 +11,7 @@ import type {
   LaserState,
   Show,
   StrobeSettings,
+  SweepSettings,
 } from './types';
 
 const DEFAULTS: Record<ControllableAttribute, number> = {
@@ -67,7 +68,6 @@ const DEFAULT_STROBE: Required<Omit<StrobeSettings, 'hz'>> = {
 
 /** Share of one cycle the lamp is lit. The rest is the off gap. */
 export const STROBE_DUTY = 0.5;
-
 /**
  * Normalized strobe gate at `phase` (0..1 through one cycle).
  *
@@ -95,6 +95,29 @@ export function strobeGate(
   }
 
   return clamp01(depth + (1 - depth) * shape);
+}
+
+/**
+ * Default pan/tilt sweep. These match the original hand-written sweep
+ * keyframes (pan 0.15..0.85, tilt 0.42..0.66), so clips authored before
+ * `sweep` existed keep their look.
+ */
+export const DEFAULT_SWEEP: Required<Omit<SweepSettings, 'hz'>> = {
+  phase: 0,
+  panCenter: 0.5,
+  panRange: 0.35,
+  tiltCenter: 0.54,
+  tiltRange: 0.12,
+};
+
+/**
+ * One sample of the movement wave, -1..1.
+ *
+ * The cycle starts at the trough rather than the centre so a sweep with no
+ * phase offset and no explicit rate reproduces the legacy keyframes exactly.
+ */
+export function sweepWave(cycles: number): number {
+  return -Math.cos(TWO_PI * cycles);
 }
 
 /** Resolved laser setup plus the scanner phase at `timeSec`. */
@@ -194,6 +217,20 @@ function resolveAttributes(
     for (const [attribute, keyframes] of Object.entries(clip.attributes)) {
       if (keyframes === undefined || keyframes.length === 0) continue;
       values[attribute as ControllableAttribute] = clamp01(sampleKeyframes(keyframes, t01, ease));
+    }
+
+    /* A sweep is evaluated from song time rather than baked keyframes, so its
+     * rate is independent of the clip length and its phase can offset grouped
+     * fixtures. It wins over any authored pan/tilt envelope. */
+    if (clip.sweep !== undefined) {
+      const sweep = clip.sweep;
+      const hz = sweep.hz !== undefined && sweep.hz > 0 ? sweep.hz : 1 / span;
+      const cycles = (timeSec - clip.startSec) * hz + (sweep.phase ?? 0);
+      const wave = sweepWave(cycles);
+      values.pan = clamp01((sweep.panCenter ?? DEFAULT_SWEEP.panCenter)
+        + (sweep.panRange ?? DEFAULT_SWEEP.panRange) * wave);
+      values.tilt = clamp01((sweep.tiltCenter ?? DEFAULT_SWEEP.tiltCenter)
+        + (sweep.tiltRange ?? DEFAULT_SWEEP.tiltRange) * wave);
     }
 
     if (dimmerEnvelope !== undefined && dimmerEnvelope.length > 0) {

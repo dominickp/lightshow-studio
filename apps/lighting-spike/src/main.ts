@@ -2,6 +2,7 @@ import * as THREE from 'three/webgpu';
 import {
   CLUB_STAGE,
   DEFAULT_LASER_SETUP,
+  DEFAULT_SWEEP,
   DEFAULT_VENUE_ID,
   defaultLedLook,
   evaluateFixture,
@@ -11,7 +12,7 @@ import {
   readProjectBundle,
   resolveMount,
   strobeGate,
-  STROBE_DUTY,
+  sweepWave,
   timeToBeat,
   venueById,
   type FixtureDefaults,
@@ -26,6 +27,7 @@ import {
   type ProjectFile,
   type ProjectMediaFile,
   type ProjectSettings,
+  type SweepSettings,
 } from '@dmxsim/show-model';
 import type { LedPlaybackLayer } from './led/led-wall';
 import {
@@ -352,6 +354,21 @@ const ui = {
   seReleaseValue: element('se-release-value'),
   seDepth: element<HTMLInputElement>('se-depth'),
   seDepthValue: element('se-depth-value'),
+  seMoveSection: element('se-move-section'),
+  seMoveRate: element<HTMLInputElement>('se-move-rate'),
+  seMoveRateValue: element('se-move-rate-value'),
+  seMoveChips: element('se-move-chips'),
+  seMovePhase: element<HTMLInputElement>('se-move-phase'),
+  seMovePhaseValue: element('se-move-phase-value'),
+  seMovePhaseChips: element('se-move-phase-chips'),
+  sePanCenter: element<HTMLInputElement>('se-pan-center'),
+  sePanCenterValue: element('se-pan-center-value'),
+  sePanRange: element<HTMLInputElement>('se-pan-range'),
+  sePanRangeValue: element('se-pan-range-value'),
+  seTiltCenter: element<HTMLInputElement>('se-tilt-center'),
+  seTiltCenterValue: element('se-tilt-center-value'),
+  seTiltRange: element<HTMLInputElement>('se-tilt-range'),
+  seTiltRangeValue: element('se-tilt-range-value'),
   seFadeIn: element<HTMLInputElement>('se-fadein'),
   seFadeInValue: element('se-fadein-value'),
   seFadeOut: element<HTMLInputElement>('se-fadeout'),
@@ -2254,14 +2271,37 @@ const strobeRateFor = (cue: Cue, fixture: FixturePlacement | null): number => {
 
 const cueLength = (cue: Cue): number => Math.max(0.001, cue.endSec - cue.startSec);
 
+/** Normalized 0..1 <-> degrees within a profile's physical limits. */
+const normFromDeg = (deg: number, range: readonly [number, number]): number =>
+  clamp((deg - range[0]) / Math.max(1e-9, range[1] - range[0]), 0, 1);
+const degFromNorm = (norm: number, range: readonly [number, number]): number =>
+  range[0] + clamp(norm, 0, 1) * (range[1] - range[0]);
+
+/** Pan/tilt limits used when no fixture is selected. */
+const FALLBACK_PAN_TILT = { panDeg: [-270, 270], tiltDeg: [-135, 135] } as const;
+
+/** Fully resolved sweep settings for a cue; absent fields use the defaults. */
+const sweepFor = (cue: Cue): Required<Omit<SweepSettings, 'hz'>> & { hz?: number } =>
+  ({ ...DEFAULT_SWEEP, ...(cue.sweep ?? {}) });
+
+/** Movement rate: explicit Hz, else the legacy one cycle across the clip. */
+const sweepRateFor = (cue: Cue): number => cue.sweep?.hz ?? 1 / cueLength(cue);
+
 /** Rate range: strobes follow the profile; a pulse is just a dimmer pattern. */
 const rateBounds = (cue: Cue, fixture: FixturePlacement | null): [number, number] =>
   cue.action === 'strobe' ? fixture?.profile.limits.strobeHz ?? [1, 30] : [0.5, 20];
+
+/** Sweep rate bounds, in cycles per second. */
+const SWEEP_RATE_BOUNDS: [number, number] = [0.05, 4];
 
 /** Summary shown on the single toolbar button. */
 const timingSummary = (cue: Cue, fixture: FixturePlacement | null): string => {
   if (cue.action === 'strobe') return `Strobe ${formatHz(strobeRateFor(cue, fixture))} ▾`;
   if (cue.action === 'pulse') return `Pulse ${formatHz(cue.pulseHz ?? 4 / cueLength(cue))} ▾`;
+  if (cue.action === 'sweep') {
+    const phase = Math.round((cue.sweep?.phase ?? 0) * 100);
+    return `Sweep ${formatHz(sweepRateFor(cue))}${phase > 0 ? ` · ${phase}%` : ''} ▾`;
+  }
   return 'Fades ▾';
 };
 
@@ -2271,54 +2311,104 @@ const setSliderValue = (input: HTMLInputElement, value: number): void => {
   input.value = String(value);
 };
 
-/** Draw two cycles of the actual gate, so the numbers have a shape. */
-function drawTimingPreview(cue: Cue): void {
+/**
+ * Draw the clip's actual dimmer output across its full duration.
+ *
+ * The x axis is the clip, so the fade ramps are visible where they really
+ * happen. Pulse/strobe cycles are capped to keep a dense clip readable; the
+ * caption reports the true count.
+ */
+function drawTimingPreview(cue: Cue, fixture: FixturePlacement | null): void {
   const ctx = ui.sePreview.getContext('2d');
   if (ctx === null) return;
   const width = ui.sePreview.width;
   const height = ui.sePreview.height;
   ctx.clearRect(0, 0, width, height);
 
+  const len = cueLength(cue);
   const isStrobe = cue.action === 'strobe';
-  const settings = isStrobe ? cue.strobe ?? {} : { attack: 0, release: 0, depth: 0.08 };
-  const cycles = 2;
-  const steps = 260;
+  const isPulse = cue.action === 'pulse';
+  const isSweep = cue.action === 'sweep';
+  const rate = isStrobe
+    ? strobeRateFor(cue, fixture)
+    : isPulse
+      ? cue.pulseHz ?? 4 / len
+      : isSweep
+        ? sweepRateFor(cue)
+        : 0;
+  const trueCycles = rate > 0 ? len * rate : 0;
+  // A sweep is about movement, not light: keep a few cycles readable.
+  const cycles = clamp(trueCycles, 1, isSweep ? 4 : 6);
+  const phase = isSweep ? cue.sweep?.phase ?? 0 : 0;
+
+  const fadeInSec = clamp(cue.fadeInSec ?? (cue.action === 'fade' ? 0 : 0.04), 0, len);
+  const fadeOutSec = clamp(cue.fadeOutSec ?? 0.08, 0, len);
+
+  const shapeAt = (u: number): number => {
+    if (isStrobe) return strobeGate(u * cycles, cue.strobe);
+    if (isPulse) return (u * cycles) % 1 < 0.5 ? 0.9 : 0.08;
+    // Pan position across the movement cycle, so rate and offset are visible.
+    if (isSweep) return 0.5 + 0.5 * sweepWave(u * cycles + phase);
+    if (cue.action === 'fade') return u;
+    if (cue.action === 'fire') {
+      if (u < 0.04) return 0.15 + (u / 0.04) * 0.85;
+      if (u < 0.6) return 0.9;
+      return 0.9 * (1 - (u - 0.6) / 0.4);
+    }
+    return 0.9;
+  };
+  const envelopeAt = (u: number): number => {
+    const sec = u * len;
+    let env = 1;
+    if (fadeInSec > 0) env = Math.min(env, sec / fadeInSec);
+    if (fadeOutSec > 0) env = Math.min(env, (len - sec) / fadeOutSec);
+    return clamp(env, 0, 1);
+  };
+  // Movement is geometric, not a dimmer level, so fades do not scale it.
+  const levelAt = (u: number): number => isSweep
+    ? shapeAt(u)
+    : clamp(shapeAt(u) * envelopeAt(u), 0, 1);
+
+  const steps = 300;
   const top = 6;
   const bottom = height - 6;
-  const levelAt = (phase: number): number => isStrobe
-    ? strobeGate(phase, settings)
-    : (phase % 1) < 0.5 ? 0.9 : (settings.depth ?? 0.08);
-
-  ctx.beginPath();
+  const path = new Path2D();
   for (let index = 0; index <= steps; index += 1) {
-    const t = index / steps;
-    const x = t * width;
-    const y = bottom - levelAt(t * cycles) * (bottom - top);
-    if (index === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+    const u = index / steps;
+    const x = u * width;
+    const y = bottom - levelAt(u) * (bottom - top);
+    if (index === 0) path.moveTo(x, y);
+    else path.lineTo(x, y);
   }
-  ctx.lineTo(width, bottom);
-  ctx.lineTo(0, bottom);
-  ctx.closePath();
+
+  const fill = new Path2D(path);
+  fill.lineTo(width, bottom);
+  fill.lineTo(0, bottom);
+  fill.closePath();
   ctx.fillStyle = 'rgba(255, 138, 92, 0.16)';
-  ctx.fill();
+  ctx.fill(fill);
 
-  ctx.beginPath();
-  for (let index = 0; index <= steps; index += 1) {
-    const t = index / steps;
-    const x = t * width;
-    const y = bottom - levelAt(t * cycles) * (bottom - top);
-    if (index === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
   ctx.strokeStyle = '#ff8a5c';
   ctx.lineWidth = 3;
   ctx.lineJoin = 'round';
-  ctx.stroke();
+  ctx.stroke(path);
 
-  ui.sePreviewCaption.textContent = isStrobe
-    ? `two cycles · lit ${Math.round(STROBE_DUTY * 100)}% of each`
-    : 'two cycles · square pulses';
+  if (!isSweep && fadeInSec > 0) {
+    ctx.fillStyle = 'rgba(122, 209, 255, 0.55)';
+    ctx.fillRect(0, 0, (fadeInSec / len) * width, 2);
+  }
+  if (!isSweep && fadeOutSec > 0) {
+    ctx.fillStyle = 'rgba(122, 209, 255, 0.55)';
+    ctx.fillRect(width - (fadeOutSec / len) * width, 0, (fadeOutSec / len) * width, 2);
+  }
+
+  const parts = [`${len.toFixed(2)} s clip`];
+  if (trueCycles > 0) {
+    parts.push(`${formatHz(rate)} · ${Math.max(1, Math.round(trueCycles))} cycle${Math.round(trueCycles) === 1 ? '' : 's'}`);
+  }
+  if (cue.action === 'sweep') parts.push(`offset ${Math.round(phase * 100)}%`);
+  if (!isSweep && (fadeInSec > 0 || fadeOutSec > 0)) parts.push('fades shown');
+  ui.sePreviewCaption.textContent = parts.join(' · ');
 }
 
 /** Musical rate chips: one, two or four hits per beat. */
@@ -2345,6 +2435,68 @@ function renderRateChips(rate: number, cue: Cue, fixture: FixturePlacement | nul
   }
 }
 
+/**
+ * Movement-period chips. Unlike strobes, a sweep is slow enough to talk bars:
+ * one full pan/tilt cycle per 1, 2 or 4 bars keeps groups in step with the song.
+ */
+function renderSweepChips(rate: number): void {
+  ui.seMoveChips.replaceChildren();
+  const bpm = currentTimeline?.bpm ?? null;
+  if (bpm === null || bpm <= 0) return;
+  const barSec = (60 / bpm) * Math.max(1, currentTimeline?.beatsPerBar ?? 4);
+  for (const [label, bars] of [['1 bar', 1], ['2 bars', 2], ['4 bars', 4]] as const) {
+    const hz = Math.round(clamp(1 / (barSec * bars), SWEEP_RATE_BOUNDS[0], SWEEP_RATE_BOUNDS[1]) * 100) / 100;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    button.title = `${formatHz(hz)} · one cycle every ${bars} bar${bars === 1 ? '' : 's'}`;
+    button.setAttribute('aria-pressed', String(Math.abs(hz - rate) < 0.005));
+    button.addEventListener('click', () => {
+      beginTimingEdit();
+      ensureTimingHistory();
+      applyTimingPatch({ rate: hz });
+      endTimingEdit();
+    });
+    ui.seMoveChips.append(button);
+  }
+}
+
+/** Start-angle presets: aligned, or deliberately out of step with each other. */
+function renderPhaseChips(phase: number): void {
+  ui.seMovePhaseChips.replaceChildren();
+  for (const [label, value, hint] of [
+    ['0%', 0, 'All heads start together'],
+    ['25%', 0.25, 'Quarter-cycle offset'],
+    ['50%', 0.5, 'Half-cycle offset — mirrored'],
+    ['75%', 0.75, 'Three-quarter offset'],
+  ] as const) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    button.title = hint;
+    button.setAttribute('aria-pressed', String(Math.abs(value - phase) < 0.005));
+    button.addEventListener('click', () => {
+      beginTimingEdit();
+      ensureTimingHistory();
+      applyTimingPatch({ phase: value });
+      endTimingEdit();
+    });
+    ui.seMovePhaseChips.append(button);
+  }
+
+  // Selecting several clips and spreading them is the fast way to stop a row
+  // of identical heads from moving in lockstep.
+  const spread = document.createElement('button');
+  spread.type = 'button';
+  spread.textContent = 'Spread';
+  spread.title = `Offset the ${arrangement.selectionCount} selected sweep clips evenly across the cycle`;
+  spread.disabled = arrangement.selectionCount < 2;
+  spread.addEventListener('click', () => {
+    arrangement.spreadSelectedSweepPhase();
+  });
+  ui.seMovePhaseChips.append(spread);
+}
+
 /** Refresh the button and popover from the current selection. */
 function syncTimingEditor(cue: Cue | null, fixture: FixturePlacement | null): void {
   ui.clipTiming.hidden = cue === null;
@@ -2355,21 +2507,26 @@ function syncTimingEditor(cue: Cue | null, fixture: FixturePlacement | null): vo
 
   const isStrobe = cue.action === 'strobe';
   const isPulse = cue.action === 'pulse';
+  const isSweep = cue.action === 'sweep';
+  const len = cueLength(cue);
   ui.clipTiming.textContent = timingSummary(cue, fixture);
   ui.clipTiming.title = isStrobe || isPulse
     ? 'Strobe / pulse rate and shape, plus clip fades'
-    : 'Clip fades';
+    : isSweep
+      ? 'Movement speed, start angle and pan/tilt range, plus clip fades'
+      : 'Clip fades';
 
   ui.sePulseSection.hidden = !(isStrobe || isPulse);
   ui.seShapeSection.hidden = !isStrobe;
-  ui.seGlyph.textContent = isStrobe ? '⚡' : isPulse ? '≈' : '⏱';
-  ui.seTitle.textContent = isStrobe ? 'Strobe' : isPulse ? 'Pulse' : 'Clip timing';
-  ui.seRateLabel.textContent = isStrobe ? 'Strobe rate' : isPulse ? 'Pulse rate' : 'Rate';
+  ui.seMoveSection.hidden = !isSweep;
+  ui.seGlyph.textContent = isStrobe ? '⚡' : isPulse ? '≈' : isSweep ? '↔' : '⏱';
+  ui.seTitle.textContent = isStrobe ? 'Strobe' : isPulse ? 'Pulse' : isSweep ? 'Sweep' : 'Clip timing';
+  ui.seRateLabel.textContent = isStrobe ? 'Strobe rate' : 'Pulse rate';
 
   const [rateMin, rateMax] = rateBounds(cue, fixture);
   ui.seRate.min = String(rateMin);
   ui.seRate.max = String(rateMax);
-  const rate = isStrobe ? strobeRateFor(cue, fixture) : cue.pulseHz ?? 4 / cueLength(cue);
+  const rate = isStrobe ? strobeRateFor(cue, fixture) : cue.pulseHz ?? 4 / len;
   setSliderValue(ui.seRate, rate);
   ui.seRateValue.textContent = formatHz(rate);
   renderRateChips(rate, cue, fixture);
@@ -2384,14 +2541,53 @@ function syncTimingEditor(cue: Cue | null, fixture: FixturePlacement | null): vo
   ui.seReleaseValue.textContent = `${releasePct}%`;
   ui.seDepthValue.textContent = `${depthPct}%`;
 
+  if (isSweep) {
+    const sweep = sweepFor(cue);
+    const limits = fixture?.profile.limits ?? FALLBACK_PAN_TILT;
+    const sweepRate = sweepRateFor(cue);
+    setSliderValue(ui.seMoveRate, sweepRate);
+    ui.seMoveRateValue.textContent = formatHz(sweepRate);
+    renderSweepChips(sweepRate);
+
+    const phasePct = Math.round(sweep.phase * 100);
+    setSliderValue(ui.seMovePhase, phasePct);
+    ui.seMovePhaseValue.textContent = `${phasePct}%`;
+    renderPhaseChips(sweep.phase);
+
+    const panSpan = limits.panDeg[1] - limits.panDeg[0];
+    const tiltSpan = limits.tiltDeg[1] - limits.tiltDeg[0];
+    ui.sePanCenter.min = String(limits.panDeg[0]);
+    ui.sePanCenter.max = String(limits.panDeg[1]);
+    ui.sePanRange.max = String(Math.round(panSpan / 2));
+    ui.seTiltCenter.min = String(limits.tiltDeg[0]);
+    ui.seTiltCenter.max = String(limits.tiltDeg[1]);
+    ui.seTiltRange.max = String(Math.round(tiltSpan / 2));
+
+    const panCenterDeg = Math.round(degFromNorm(sweep.panCenter, limits.panDeg));
+    const panRangeDeg = Math.round(sweep.panRange * panSpan);
+    const tiltCenterDeg = Math.round(degFromNorm(sweep.tiltCenter, limits.tiltDeg));
+    const tiltRangeDeg = Math.round(sweep.tiltRange * tiltSpan);
+    setSliderValue(ui.sePanCenter, panCenterDeg);
+    setSliderValue(ui.sePanRange, panRangeDeg);
+    setSliderValue(ui.seTiltCenter, tiltCenterDeg);
+    setSliderValue(ui.seTiltRange, tiltRangeDeg);
+    ui.sePanCenterValue.textContent = `${panCenterDeg}°`;
+    ui.sePanRangeValue.textContent = `±${panRangeDeg}°`;
+    ui.seTiltCenterValue.textContent = `${tiltCenterDeg}°`;
+    ui.seTiltRangeValue.textContent = `±${tiltRangeDeg}°`;
+  }
+
   const fadeInSec = cue.fadeInSec ?? (cue.action === 'fade' ? 0 : 0.04);
   const fadeOutSec = cue.fadeOutSec ?? 0.08;
-  setSliderValue(ui.seFadeIn, fadeInSec);
-  setSliderValue(ui.seFadeOut, fadeOutSec);
-  ui.seFadeInValue.textContent = `${fadeInSec.toFixed(2)} s`;
-  ui.seFadeOutValue.textContent = `${fadeOutSec.toFixed(2)} s`;
+  // Fades cannot be longer than the clip they belong to.
+  ui.seFadeIn.max = String(Math.max(0.02, len));
+  ui.seFadeOut.max = String(Math.max(0.02, len));
+  setSliderValue(ui.seFadeIn, Math.min(fadeInSec, len));
+  setSliderValue(ui.seFadeOut, Math.min(fadeOutSec, len));
+  ui.seFadeInValue.textContent = `${Math.min(fadeInSec, len).toFixed(2)} s`;
+  ui.seFadeOutValue.textContent = `${Math.min(fadeOutSec, len).toFixed(2)} s`;
 
-  if (!ui.strobeEditor.hidden) drawTimingPreview(cue);
+  if (!ui.strobeEditor.hidden) drawTimingPreview(cue, fixture);
 }
 
 /**
@@ -2400,16 +2596,28 @@ function syncTimingEditor(cue: Cue | null, fixture: FixturePlacement | null): vo
  * `history: false` is used during a drag; the matching undo step is opened by
  * `beginTimingEdit` on pointer-down (and on arrow-key nudges).
  */
-function applyTimingPatch(overrides: { rate?: number } = {}): void {
+function applyTimingPatch(overrides: { rate?: number; phase?: number } = {}): void {
   const cue = arrangement.selectedCue;
   if (cue === null) return;
-  const [rateMin, rateMax] = rateBounds(cue, arrangement.selectedFixture);
+  const fixture = arrangement.selectedFixture;
+  const len = cueLength(cue);
+  const [rateMin, rateMax] = rateBounds(cue, fixture);
   const rate = clamp(overrides.rate ?? Number(ui.seRate.value), rateMin, rateMax);
   const attack = clamp(Number(ui.seAttack.value) / 100, 0, 0.5);
   const release = clamp(Number(ui.seRelease.value) / 100, 0, 0.5);
   const depth = clamp(Number(ui.seDepth.value) / 100, 0, 1);
-  const fadeInSec = clamp(Number(ui.seFadeIn.value), 0, 4);
-  const fadeOutSec = clamp(Number(ui.seFadeOut.value), 0, 4);
+  const fadeInSec = clamp(Number(ui.seFadeIn.value), 0, len);
+  const fadeOutSec = clamp(Number(ui.seFadeOut.value), 0, len);
+
+  const sweepRate = clamp(
+    overrides.rate ?? Number(ui.seMoveRate.value),
+    SWEEP_RATE_BOUNDS[0],
+    SWEEP_RATE_BOUNDS[1],
+  );
+  const phase = clamp(overrides.phase ?? Number(ui.seMovePhase.value) / 100, 0, 1);
+  const limits = fixture?.profile.limits ?? FALLBACK_PAN_TILT;
+  const panSpan = limits.panDeg[1] - limits.panDeg[0];
+  const tiltSpan = limits.tiltDeg[1] - limits.tiltDeg[0];
 
   arrangement.setSelectedClipSettings({
     fadeInSec,
@@ -2419,6 +2627,19 @@ function applyTimingPatch(overrides: { rate?: number } = {}): void {
       : cue.action === 'pulse'
         ? { pulseHz: rate }
         : {}),
+    ...(cue.action === 'sweep'
+      ? {
+          sweep: {
+            ...cue.sweep,
+            hz: sweepRate,
+            phase,
+            panCenter: normFromDeg(Number(ui.sePanCenter.value), limits.panDeg),
+            panRange: clamp(Number(ui.sePanRange.value) / panSpan, 0, 0.5),
+            tiltCenter: normFromDeg(Number(ui.seTiltCenter.value), limits.tiltDeg),
+            tiltRange: clamp(Number(ui.seTiltRange.value) / tiltSpan, 0, 0.5),
+          },
+        }
+      : {}),
   }, { history: false });
 }
 
@@ -2442,7 +2663,7 @@ function openTimingEditor(): void {
   syncTimingEditor(cue, arrangement.selectedFixture);
   ui.strobeEditor.hidden = false;
   ui.clipTiming.setAttribute('aria-expanded', 'true');
-  drawTimingPreview(cue);
+  drawTimingPreview(cue, arrangement.selectedFixture);
 }
 
 function closeTimingEditor(): void {
@@ -2472,7 +2693,20 @@ document.addEventListener('pointerdown', (event) => {
   closeTimingEditor();
 });
 
-for (const slider of [ui.seRate, ui.seAttack, ui.seRelease, ui.seDepth, ui.seFadeIn, ui.seFadeOut]) {
+for (const slider of [
+  ui.seRate,
+  ui.seAttack,
+  ui.seRelease,
+  ui.seDepth,
+  ui.seMoveRate,
+  ui.seMovePhase,
+  ui.sePanCenter,
+  ui.sePanRange,
+  ui.seTiltCenter,
+  ui.seTiltRange,
+  ui.seFadeIn,
+  ui.seFadeOut,
+]) {
   slider.addEventListener('pointerdown', beginTimingEdit);
   slider.addEventListener('pointerup', endTimingEdit);
   slider.addEventListener('keydown', (event) => {

@@ -217,6 +217,53 @@
             </div>
           </div>
 
+          <div id="se-move-section" hidden>
+            <div class="se-row">
+              <span id="se-move-rate-label">Movement speed</span>
+              <output id="se-move-rate-value">0.5 Hz</output>
+            </div>
+            <input id="se-move-rate" type="range" min="0.05" max="4" step="0.01" value="0.5"
+              aria-labelledby="se-move-rate-label" />
+            <div class="se-chips" id="se-move-chips" role="group" aria-label="Movement period"></div>
+
+            <p class="se-subhead">Start angle</p>
+            <div class="se-row">
+              <span id="se-move-phase-label">Offset</span>
+              <output id="se-move-phase-value">0%</output>
+            </div>
+            <input id="se-move-phase" type="range" min="0" max="100" step="1" value="0"
+              aria-labelledby="se-move-phase-label" />
+            <div class="se-chips" id="se-move-phase-chips" role="group" aria-label="Start angle offset"></div>
+
+            <p class="se-subhead">Pan</p>
+            <label class="se-control">
+              <span class="se-name">Centre</span>
+              <input id="se-pan-center" type="range" min="-270" max="270" step="1" value="0"
+                aria-label="Pan centre, degrees" />
+              <output id="se-pan-center-value">0°</output>
+            </label>
+            <label class="se-control">
+              <span class="se-name">Swing</span>
+              <input id="se-pan-range" type="range" min="0" max="270" step="1" value="189"
+                aria-label="Pan swing, degrees each side" />
+              <output id="se-pan-range-value">189°</output>
+            </label>
+
+            <p class="se-subhead">Tilt</p>
+            <label class="se-control">
+              <span class="se-name">Centre</span>
+              <input id="se-tilt-center" type="range" min="-135" max="135" step="1" value="11"
+                aria-label="Tilt centre, degrees" />
+              <output id="se-tilt-center-value">11°</output>
+            </label>
+            <label class="se-control">
+              <span class="se-name">Swing</span>
+              <input id="se-tilt-range" type="range" min="0" max="135" step="1" value="32"
+                aria-label="Tilt swing, degrees each side" />
+              <output id="se-tilt-range-value">32°</output>
+            </label>
+          </div>
+
           <p class="se-subhead">Clip fades</p>
           <div id="se-fade-section">
             <label class="se-control">

@@ -596,6 +596,70 @@
                         "easeInOut",
                         "step"
                       ]
+                    },
+                    "strobe": {
+                      "type": "object",
+                      "properties": {
+                        "hz": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "attack": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "release": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "depth": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "pulseHz": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "sweep": {
+                      "type": "object",
+                      "properties": {
+                        "hz": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "phase": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "panCenter": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "panRange": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "tiltCenter": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "tiltRange": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -791,6 +855,74 @@
               "fadeInSec": {
                 "type": "number",
                 "minimum": 0
+              },
+              "fadeOutSec": {
+                "type": "number",
+                "minimum": 0
+              },
+              "strobe": {
+                "type": "object",
+                "properties": {
+                  "hz": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "attack": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "release": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "depth": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                },
+                "additionalProperties": false
+              },
+              "pulseHz": {
+                "type": "number",
+                "minimum": 0
+              },
+              "sweep": {
+                "type": "object",
+                "properties": {
+                  "hz": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "phase": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "panCenter": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "panRange": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "tiltCenter": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "tiltRange": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "required": [
@@ -1015,6 +1147,10 @@
                 "maximum": 1
               },
               "fadeInSec": {
+                "type": "number",
+                "minimum": 0
+              },
+              "fadeOutSec": {
                 "type": "number",
                 "minimum": 0
               }

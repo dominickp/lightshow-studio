@@ -118,6 +118,43 @@ describe('evaluateFixture', () => {
     expect(strobeGate(0.45, { attack: 0, release: 0.2 })).toBeCloseTo(0.25);
   });
 
+  it('moves pan on a sweep wave and honours an explicit rate', () => {
+    // hz: 1 means a full cycle per second regardless of the 10 s clip length.
+    const sweeping = clip({ sweep: { hz: 1 } });
+    // The cycle starts at the trough (centre - range), like the legacy shape.
+    expect(evaluateFixture(fixture, [sweeping], 10).panDeg).toBeCloseTo(-270 + 0.15 * 540, 5);
+    // A quarter cycle later it is at the centre.
+    expect(evaluateFixture(fixture, [sweeping], 10.25).panDeg).toBeCloseTo(0, 5);
+    // Half a cycle later it is at the peak.
+    expect(evaluateFixture(fixture, [sweeping], 10.5).panDeg).toBeCloseTo(0.85 * 540 - 270, 5);
+  });
+
+  it('offsets grouped heads with a phase instead of letting them align', () => {
+    const aligned = clip({ sweep: { hz: 1, phase: 0 } });
+    const offset = clip({ id: 'clip-2', sweep: { hz: 1, phase: 0.5 } });
+    const at = evaluateFixture(fixture, [aligned], 10).panDeg;
+    const against = evaluateFixture(fixture, [offset], 10).panDeg;
+    // A half-cycle phase puts one head at the opposite end of the swing.
+    expect(Math.abs(at - against)).toBeGreaterThan(300);
+    // Both clips stay on the same wave: the offset one reaches the same value
+    // half a cycle later.
+    expect(evaluateFixture(fixture, [offset], 10.5).panDeg).toBeCloseTo(at, 5);
+  });
+
+  it('keeps the sweep speed when the clip length changes', () => {
+    const short = clip({ endSec: 11, sweep: { hz: 0.5 } });
+    const long = clip({ endSec: 19, sweep: { hz: 0.5 } });
+    expect(evaluateFixture(fixture, [short], 10.5).panDeg)
+      .toBeCloseTo(evaluateFixture(fixture, [long], 10.5).panDeg, 5);
+  });
+
+  it('falls back to one cycle across the clip when no rate is given', () => {
+    const legacy = clip({ sweep: {} });
+    const state = evaluateFixture(fixture, [legacy], 15);
+    // Halfway through a 10 s clip is the peak of the single cycle.
+    expect(state.panDeg).toBeCloseTo(0.85 * 540 - 270, 5);
+  });
+
   it('keeps a level between flashes when a depth is set', () => {
     expect(strobeGate(0.8, { depth: 0.3 })).toBeCloseTo(0.3);
     expect(strobeGate(0.2, { depth: 0.3 })).toBeCloseTo(1);

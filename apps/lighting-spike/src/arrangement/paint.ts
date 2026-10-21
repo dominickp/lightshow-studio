@@ -1,6 +1,7 @@
 import type { FixturePlacement, LedLookState, LedSurface } from '@dmxsim/show-model';
 import { lookSummary } from '../led/look-definitions';
 import { resolveCueColor, textOnColor, toneClipColor, truncateLabel } from './colors';
+import { cueCardLabel } from './markup';
 import type { Cue, TimelineMode } from './types';
 
 const HIDDEN_ROW_OPACITY = 0.32;
@@ -166,8 +167,9 @@ export function paintClipOverlay(ctx: CanvasRenderingContext2D, state: ClipOverl
       // readable.
       if (w >= 20) {
         ctx.fillStyle = textOnColor(color.rgb);
+        // The full label is always attempted; a narrow card truncates it.
         ctx.fillText(
-          truncateLabel(cue.action, w - 12),
+          truncateLabel(cueCardLabel(cue), Math.max(1, w - 12)),
           x + 6,
           y + rowH / 2,
           Math.max(1, w - 12),

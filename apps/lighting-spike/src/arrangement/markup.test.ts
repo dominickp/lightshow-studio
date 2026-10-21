@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MOVING_HEAD, WASH } from '@dmxsim/fixtures';
 import type { FixturePlacement } from '@dmxsim/show-model';
-import { buildRowsMarkup, gridModeFor, loopMarkup } from './markup';
+import { buildRowsMarkup, cueCardLabel, gridModeFor, loopMarkup } from './markup';
 import type { Cue, CueTimeline } from './types';
 
 const fixture = (id: string, name?: string, profile = MOVING_HEAD): FixturePlacement => ({
@@ -41,6 +41,22 @@ describe('gridModeFor', () => {
 
   it('is none without a tempo', () => {
     expect(gridModeFor({ ...timeline, bpm: null }, 100)).toBe('none');
+  });
+});
+
+describe('cueCardLabel', () => {
+  it('adds the rate and offset to a sweep card, lowercase and compact', () => {
+    expect(cueCardLabel(cue({ action: 'sweep', sweep: { hz: 0.1, phase: 0.25 } })))
+      .toBe('sweep 0.1/25%');
+  });
+
+  it('omits a zero offset and leaves other actions alone', () => {
+    expect(cueCardLabel(cue({ action: 'sweep', sweep: { hz: 1 } }))).toBe('sweep 1');
+    expect(cueCardLabel(cue({ action: 'hold' }))).toBe('hold');
+  });
+
+  it('reports the legacy per-clip rate when no hz is stored', () => {
+    expect(cueCardLabel(cue({ action: 'sweep', startSec: 0, endSec: 4 }))).toBe('sweep 0.25');
   });
 });
 

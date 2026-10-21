@@ -202,6 +202,33 @@ export interface StrobeSettings {
   depth?: number;
 }
 
+/**
+ * Movement shaping for a pan/tilt sweep.
+ *
+ * Like `StrobeSettings` this is evaluated against song time instead of being
+ * baked into keyframes, so the movement rate is independent of how long the
+ * clip is. Centres and ranges are normalized 0..1 like every other attribute,
+ * so the profile's physical limits still apply.
+ */
+export interface SweepSettings {
+  /** Movement cycles per second. Omitted keeps the legacy one cycle per clip. */
+  hz?: number;
+  /**
+   * Starting point in the cycle, 0..1. Two clips with the same rate and
+   * different phase stay deliberately out of step, which is how grouped heads
+   * are offset from each other.
+   */
+  phase?: number;
+  /** Pan centre, normalized 0..1. Defaults to 0.5. */
+  panCenter?: number;
+  /** Pan half-swing, normalized 0..1. Defaults to 0.35. */
+  panRange?: number;
+  /** Tilt centre, normalized 0..1. Defaults to 0.54. */
+  tiltCenter?: number;
+  /** Tilt half-swing, normalized 0..1. Defaults to 0.12. */
+  tiltRange?: number;
+}
+
 export interface Clip {
   id: string;
   startSec: number;
@@ -216,6 +243,8 @@ export interface Clip {
   strobe?: StrobeSettings;
   /** Explicit pulse rate for a `pulse`-style dimmer envelope, in Hz. */
   pulseHz?: number;
+  /** Pan/tilt movement shaping. Overrides `attributes.pan`/`tilt` when present. */
+  sweep?: SweepSettings;
 }
 
 export interface Track {

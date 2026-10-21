@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MOVING_HEAD, STROBE } from '@dmxsim/fixtures';
 import type { FixturePlacement } from '@dmxsim/show-model';
-import { cueToClip, reserveCueIds, type Cue } from './arrangement';
+import { cueToClip, reserveCueIds, withCueColor, type Cue } from './arrangement';
 
 const cue = (id: string, startSec = 0): Cue => ({
   id,
@@ -50,6 +50,34 @@ describe('reserveCueIds', () => {
     const input = [cue('cue-1', 0), cue('cue-1', 10)];
     reserveCueIds(input);
     expect(input.map((item) => item.id)).toEqual(['cue-1', 'cue-1']);
+  });
+});
+
+describe('withCueColor', () => {
+  const custom = { kind: 'rgb', r: 0.2, g: 0.4, b: 0.6 } as const;
+
+  it('keeps a custom override when a custom color is passed', () => {
+    const next = withCueColor(cue('cue-1'), 3, custom);
+    expect(next.colorIndex).toBe(3);
+    expect(next.colorOverride).toEqual(custom);
+  });
+
+  it('drops the override when a palette entry is chosen', () => {
+    // Regression: a clip that already carried a custom override kept it after
+    // a palette click, so `resolveCueColor` still rendered the custom color and
+    // the palette swatch looked dead. Going from "recent" back to "palette"
+    // must clear it.
+    const withCustom = { ...cue('cue-1'), colorOverride: custom };
+    const next = withCueColor(withCustom, 2);
+    expect(next.colorIndex).toBe(2);
+    expect('colorOverride' in next).toBe(false);
+    expect(next).not.toBe(withCustom);
+  });
+
+  it('does not mutate the input cue', () => {
+    const withCustom = { ...cue('cue-1'), colorOverride: custom };
+    withCueColor(withCustom, 5);
+    expect(withCustom.colorOverride).toEqual(custom);
   });
 });
 

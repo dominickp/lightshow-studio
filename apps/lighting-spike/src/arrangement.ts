@@ -65,6 +65,15 @@ type Gesture =
       items: { cueId: string; startSec: number; durationSec: number; fixtureId: string }[];
     }
   | { type: 'resize'; cueId: string; edge: 'start' | 'end' }
+  | {
+      type: 'resize-many';
+      edge: 'start' | 'end';
+      /** Cue whose edge the pointer grabbed; it maps pointer x to song time. */
+      anchorCueId: string;
+      /** Anchor's original edge time, so the drag delta is measured from it. */
+      anchorSec: number;
+      items: { cueId: string; startSec: number; endSec: number }[];
+    }
   /** Rubber-band selection. Coordinates are client-space so scrolling during
    * the drag does not shift the rectangle. */
   | { type: 'marquee'; startX: number; startY: number; base: ReadonlySet<string> };
@@ -574,9 +583,8 @@ export class Arrangement {
     );
     if (targets.size === 0) return;
     this.pushHistory();
-    this.cues = this.cues.map((item) => targets.has(item.id)
-      ? { ...item, colorIndex, ...(colorOverride === undefined ? {} : { colorOverride }) }
-      : item);
+    this.cues = this.cues.map((item) =>
+      targets.has(item.id) ? withCueColor(item, colorIndex, colorOverride) : item);
     this.renderRows();
     this.notifyChange();
     this.notifySelection();
@@ -837,9 +845,27 @@ export class Arrangement {
         if (startHandle || (!endHandle && nearStart)) edge = 'start';
         else if (endHandle || nearEnd) edge = 'end';
         if (edge !== null) {
-          this.selectedCueIds.clear();
-          this.selectedCueIds.add(cue.id);
-          this.gesture = { type: 'resize', cueId: cue.id, edge };
+          // Dragging the edge of a card that is part of a multi-clip selection
+          // resizes the whole batch. The grabbed clip is the anchor: every
+          // other selected clip's matching edge moves by the same delta.
+          const resizeMany = this.selectedCueIds.size > 1 && this.selectedCueIds.has(cue.id);
+          if (resizeMany) {
+            this.gesture = {
+              type: 'resize-many',
+              edge,
+              anchorCueId: cue.id,
+              anchorSec: edge === 'start' ? cue.startSec : cue.endSec,
+              items: this.selectedCues.map((selected) => ({
+                cueId: selected.id,
+                startSec: selected.startSec,
+                endSec: selected.endSec,
+              })),
+            };
+          } else {
+            this.selectedCueIds.clear();
+            this.selectedCueIds.add(cue.id);
+            this.gesture = { type: 'resize', cueId: cue.id, edge };
+          }
           this.gestureSnapshot = this.snapshot();
           this.renderRows();
           this.notifySelection();
@@ -1226,6 +1252,37 @@ export class Arrangement {
       );
       this.selectedCueIds.clear();
       for (const id of ids) this.selectedCueIds.add(id);
+      this.scheduleDraw();
+      return;
+    }
+
+    if (gesture.type === 'resize-many') {
+      // The anchor's lane maps pointer x to song time. Its edge is snapped,
+      // then that delta is applied to the matching edge of every clip in the
+      // selection. Clips whose edge would cross their other end (or run past
+      // the song bounds) are clamped individually.
+      const anchor = this.cues.find((item) => item.id === gesture.anchorCueId);
+      if (anchor === undefined) return;
+      const anchorLane = this.root.querySelector<HTMLElement>(
+        `[data-fixture-id="${CSS.escape(anchor.fixtureId)}"] .fixture-lane`,
+      );
+      if (anchorLane === null) return;
+      const delta = this.snap(this.xToTime(event.clientX, anchorLane)) - gesture.anchorSec;
+      const moving = new Map(gesture.items.map((item) => [item.cueId, item]));
+      this.cues = this.cues.map((cue) => {
+        const item = moving.get(cue.id);
+        if (item === undefined) return cue;
+        if (gesture.edge === 'start') {
+          const startSec = clamp(item.startSec + delta, 0, item.endSec - MIN_CLIP_SEC);
+          return { ...cue, startSec };
+        }
+        const endSec = clamp(
+          item.endSec + delta,
+          item.startSec + MIN_CLIP_SEC,
+          this.timeline?.durationSec ?? item.endSec,
+        );
+        return { ...cue, endSec };
+      });
       this.scheduleDraw();
       return;
     }
@@ -1684,6 +1741,23 @@ export function reserveCueIds(cues: readonly Cue[]): { cues: Cue[]; nextId: numb
  */
 function sweepRateForLength(durationSec: number): number {
   return Math.round((1 / Math.max(0.001, durationSec)) * 1000) / 1000;
+}
+
+/**
+ * Give a cue a color, dropping any custom override when a palette entry is
+ * chosen. Keeping the stale override would leave it winning in
+ * `resolveCueColor`, so the palette click would look ignored.
+ */
+export function withCueColor(
+  cue: Cue,
+  colorIndex: number,
+  colorOverride?: CueColorOverride,
+): Cue {
+  if (colorOverride !== undefined) return { ...cue, colorIndex, colorOverride };
+  if (cue.colorOverride === undefined) return { ...cue, colorIndex };
+  const next = { ...cue, colorIndex };
+  delete next.colorOverride;
+  return next;
 }
 
 /**

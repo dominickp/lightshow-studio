@@ -21,6 +21,11 @@ describe('snapTime', () => {
     expect(snapTime(timeline, 500)).toBe(100);
   });
 
+  it('keeps the song start as a snap position before the first beat', () => {
+    expect(snapTime(timeline, 0)).toBe(0);
+    expect(snapTime(timeline, 0.1)).toBe(0);
+  });
+
   it('clamps without snapping when there is no tempo', () => {
     expect(snapTime({ ...timeline, bpm: null }, 3.333)).toBe(3.333);
     expect(snapTime(null, 3.333)).toBe(0);

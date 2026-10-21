@@ -9,8 +9,14 @@ export function snapTime(timeline: CueTimeline | null, timeSec: number): number 
   if (timeline === null) return clamp(timeSec, 0, 0);
   const divisionSec = gridDivisionSec(timeline);
   if (divisionSec === null) return clamp(timeSec, 0, timeline.durationSec);
+  // The transport rests at 0 before the first beat, so the song start is an
+  // edit position in its own right. Snapping a clip dropped there to the first
+  // beat would put it just after the resting playhead, leaving the stage (and
+  // LED wall) dark until playback crossed that beat.
+  if (timeSec <= timeline.firstBeatSec) return 0;
   return clamp(
-    timeline.firstBeatSec + Math.round((timeSec - timeline.firstBeatSec) / divisionSec) * divisionSec,
+    timeline.firstBeatSec
+      + Math.round((timeSec - timeline.firstBeatSec) / divisionSec) * divisionSec,
     0,
     timeline.durationSec,
   );

@@ -4043,7 +4043,10 @@ const applyProject = (project: ProjectFile, source: 'project' | 'default' = 'pro
   clock.setLoopEnabled(project.settings.playback.loopEnabled);
   applyProjectSettings(project.settings, source);
   applyLoop();
-  clock.seek(loopRegion.startSec);
+  // Park on the first beat rather than a hair before it. Clips authored at the
+  // start of the timeline snap to the beat grid, so resting at raw 0 would sit
+  // in a dead gap and show an empty stage until the user pressed play.
+  clock.seek(Math.max(loopRegion.startSec, timeline.firstBeatSec));
   ui.transportTime.textContent = `${formatClock(loopRegion.startSec)} / ${formatClock(clock.duration)}`;
   ui.arrangementScroll.scrollLeft = Math.max(0, loopRegion.startSec * arrangement.zoomLevel);
   enableTimelineControls();

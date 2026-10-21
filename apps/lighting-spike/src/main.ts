@@ -27,6 +27,7 @@ import type { LedPlaybackLayer } from './led/led-wall';
 import {
   BUNDLED_MEDIA,
   LedMediaLibrary,
+  mediaPoster,
   mediaRef,
   type LedMediaAsset,
 } from './led/media';
@@ -271,11 +272,23 @@ const ui = {
     lookTitle: element('le-title'),
     lookGrid: element('le-grid'),
     lookControls: element('le-controls'),
-    lookMedia: element<HTMLElement>('le-media'),
+    lookChooseGrid: element<HTMLElement>('le-choose-grid'),
+    lookUploadGrid: element<HTMLElement>('le-upload-grid'),
+    lookUploadEmpty: element<HTMLElement>('le-upload-empty'),
+    lookMediaFooter: element<HTMLElement>('le-media-footer'),
+    lookMediaCurrent: element<HTMLElement>('le-media-current'),
+    lookMediaFit: element<HTMLSelectElement>('le-media-fit'),
+    lookMediaRemove: element<HTMLButtonElement>('le-media-remove'),
     lookUpload: element<HTMLButtonElement>('le-upload'),
     lookFile: element<HTMLInputElement>('le-file'),
     lookPresets: element('le-presets'),
     lookClose: element<HTMLButtonElement>('le-close'),
+    lookTabLook: element<HTMLButtonElement>('le-tab-look'),
+    lookTabChoose: element<HTMLButtonElement>('le-tab-choose'),
+    lookTabUpload: element<HTMLButtonElement>('le-tab-upload'),
+    lookPanelLook: element<HTMLElement>('le-panel-look'),
+    lookPanelChoose: element<HTMLElement>('le-panel-choose'),
+    lookPanelUpload: element<HTMLElement>('le-panel-upload'),
     surfacePane: element('surface-pane'),
     surfaceSummary: element('surface-summary'),
     surfaceWidth: element<HTMLInputElement>('surface-width'),
@@ -2242,10 +2255,31 @@ const patchLook = (patch: Partial<LedLookState>): void => {
   if (!ui.lookEditor.hidden) renderLookEditor();
 };
 
+/** The popover shows one section at a time so it never needs a scrollbar. */
+type LookEditorTab = 'look' | 'choose' | 'upload';
+let lookEditorTab: LookEditorTab = 'look';
+
+const setLookEditorTab = (tab: LookEditorTab): void => {
+  lookEditorTab = tab;
+  ui.lookTabLook.setAttribute('aria-selected', String(tab === 'look'));
+  ui.lookTabChoose.setAttribute('aria-selected', String(tab === 'choose'));
+  ui.lookTabUpload.setAttribute('aria-selected', String(tab === 'upload'));
+  ui.lookPanelLook.hidden = tab !== 'look';
+  ui.lookPanelChoose.hidden = tab !== 'choose';
+  ui.lookPanelUpload.hidden = tab !== 'upload';
+  // The footer belongs to the media tabs, and only once a clip is selected.
+  ui.lookMediaFooter.hidden = tab === 'look' || currentLook()?.media === undefined;
+};
+
+ui.lookTabLook.addEventListener('click', () => setLookEditorTab('look'));
+ui.lookTabChoose.addEventListener('click', () => setLookEditorTab('choose'));
+ui.lookTabUpload.addEventListener('click', () => setLookEditorTab('upload'));
+
 /** Rebuild the popover from the current look and its generator's param list. */
 function renderLookEditor(): void {
   const look = currentLook();
   if (look === null) return;
+  setLookEditorTab(lookEditorTab);
   const definition = lookDefinition(look.kind);
   ui.lookGlyph.textContent = definition.glyph;
   ui.lookTitle.textContent = definition.label;
@@ -2375,7 +2409,7 @@ function renderLookEditor(): void {
     return button;
   }));
 
-  renderMediaPicker(look);
+  renderMediaTabs(look);
 }
 
 /** Uploaded assets are read from IndexedDB once per session. */
@@ -2389,7 +2423,7 @@ const ensureLocalMedia = (): void => {
     localMediaAssets = assets;
     if (!ui.lookEditor.hidden) {
       const look = currentLook();
-      if (look !== null) renderMediaPicker(look);
+      if (look !== null) renderMediaTabs(look);
     }
   }).catch((error: unknown) => {
     console.warn('could not list uploaded wall media', error);
@@ -2400,96 +2434,153 @@ const ensureLocalMedia = (): void => {
 const applyMediaLook = (asset: LedMediaAsset): void => {
   const look = currentLook();
   const fit = look?.media?.fit ?? 'cover';
+  mediaNotice = '';
   arrangement.setSelectedLook({ ...defaultLedLook('media'), media: mediaRef(asset, fit) });
+  setLookEditorTab(asset.source.startsWith('local:') ? 'upload' : 'choose');
   renderLookEditor();
 };
 
-/**
- * Media picker. The source list is shown for every look kind so switching to
- * footage is one click; picking a clip converts the current look.
- */
-function renderMediaPicker(look: LedLookState): void {
-  ensureLocalMedia();
-  const mediaSelected = look.kind === 'media' ? look.media : undefined;
-  const nodes: HTMLElement[] = [];
+/** Shown in the Upload tab when a dropped file is not image or video. */
+let mediaNotice = '';
 
-  const hint = document.createElement('p');
-  hint.className = 'le-media-hint';
-  hint.textContent = mediaSelected === undefined
-    ? 'Pick a clip or upload a video/image to replace the generator.'
-    : `Playing ${mediaSelected.label ?? mediaSelected.source}`;
-  nodes.push(hint);
+const mediaKindLabel = (kind: LedMediaAsset['kind']): string =>
+  kind === 'video' ? 'Video' : 'Image';
 
-  if (mediaSelected !== undefined) {
-    const fitField = document.createElement('label');
-    fitField.className = 'le-field';
-    fitField.innerHTML = '<span>Fit</span>';
-    const select = document.createElement('select');
-    select.className = 'le-select';
-    for (const [value, label] of [['cover', 'Cover (crop)'], ['contain', 'Contain (letterbox)']] as const) {
-      const option = document.createElement('option');
-      option.value = value;
-      option.textContent = label;
-      select.appendChild(option);
-    }
-    select.value = mediaSelected.fit;
-    select.addEventListener('change', () => {
-      patchLook({ media: { ...mediaSelected, fit: select.value as LedMediaRef['fit'] } });
-    });
-    fitField.appendChild(select);
-    nodes.push(fitField);
-  }
+/** One gallery tile: a cached poster frame plus the asset label. */
+function mediaTile(
+  asset: LedMediaAsset,
+  selectedSource: string | undefined,
+  onPick: (asset: LedMediaAsset) => void,
+): HTMLElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'le-media-tile';
+  button.title = `${asset.label} · ${mediaKindLabel(asset.kind)}`;
+  button.setAttribute('aria-pressed', String(selectedSource === asset.source));
 
-  const tile = (asset: LedMediaAsset): HTMLElement => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'le-media-tile';
-    button.title = `${asset.label} · ${asset.kind === 'video' ? 'Video' : 'Image'}`;
-    button.setAttribute('aria-pressed', String(mediaSelected?.source === asset.source));
+  const frame = document.createElement('span');
+  frame.className = 'le-media-frame';
+  frame.textContent = asset.kind === 'video' ? '▶' : '▣';
+  void mediaPoster(asset).then((src) => {
+    if (src === '' || !button.isConnected) return;
+    const image = document.createElement('img');
+    image.src = src;
+    image.alt = '';
+    image.draggable = false;
+    frame.replaceChildren(image);
     if (asset.kind === 'video') {
-      const video = document.createElement('video');
-      video.src = `${asset.url}#t=0.5`;
-      video.muted = true;
-      video.playsInline = true;
-      video.preload = 'metadata';
-      video.setAttribute('aria-hidden', 'true');
-      button.appendChild(video);
-    } else {
-      const image = document.createElement('img');
-      image.src = asset.url;
-      image.loading = 'lazy';
-      image.alt = '';
-      button.appendChild(image);
+      const badge = document.createElement('b');
+      badge.textContent = '▶';
+      frame.appendChild(badge);
     }
-    const name = document.createElement('span');
-    name.textContent = asset.label;
-    button.appendChild(name);
-    button.addEventListener('click', () => applyMediaLook(asset));
-    return button;
-  };
+  });
 
-  const grid = document.createElement('div');
-  grid.className = 'le-media-grid';
-  grid.replaceChildren(...[...BUNDLED_MEDIA, ...localMediaAssets].map(tile));
-  nodes.push(grid);
-  ui.lookMedia.replaceChildren(...nodes);
+  const label = document.createElement('span');
+  // Every bundled clip is a Mantissa loop, so the prefix is noise in a narrow
+  // tile. Keep the full name in the tooltip.
+  label.textContent = asset.source.startsWith('bundled:')
+    ? asset.label.replace(/^Mantissa\s+/i, 'Loop ')
+    : asset.label;
+  button.append(frame, label);
+  button.addEventListener('click', () => onPick(asset));
+  return button;
 }
+
+/**
+ * Gallery + current-selection footer for the Choose and Upload tabs.
+ *
+ * Thumbnails are cached poster frames rather than live `<video>` tiles: ten
+ * decoders (and a new burst on every re-render) made the popover stutter and
+ * filled the console with aborted requests.
+ */
+function renderMediaTabs(look: LedLookState): void {
+  ensureLocalMedia();
+  const selected = look.kind === 'media' ? look.media : undefined;
+  const selectedSource = selected?.source;
+  const pick = (asset: LedMediaAsset): void => applyMediaLook(asset);
+
+  ui.lookChooseGrid.replaceChildren(...BUNDLED_MEDIA.map((asset) => mediaTile(asset, selectedSource, pick)));
+  ui.lookUploadGrid.replaceChildren(...localMediaAssets.map((asset) => mediaTile(asset, selectedSource, pick)));
+  ui.lookUploadEmpty.hidden = localMediaAssets.length > 0 || mediaNotice === '';
+  ui.lookUploadEmpty.textContent = mediaNotice !== ''
+    ? mediaNotice
+    : 'Nothing uploaded yet.';
+
+  const isMedia = selected !== undefined;
+  ui.lookMediaFooter.hidden = !isMedia || lookEditorTab === 'look';
+  if (!isMedia) return;
+  const local = selected.source.startsWith('local:');
+  ui.lookMediaCurrent.replaceChildren();
+  const name = document.createElement('b');
+  name.textContent = selected.label ?? selected.source;
+  const origin = document.createElement('em');
+  origin.textContent = ` · ${mediaKindLabel(selected.kind)} · ${local ? 'upload' : 'bundled'}`;
+  ui.lookMediaCurrent.append(name, origin);
+  ui.lookMediaFit.value = selected.fit;
+  ui.lookMediaRemove.hidden = !local;
+}
+
+/** Import files from the upload button or a drop and select the first one. */
+function importWallMedia(files: File[]): void {
+  if (files.length === 0) return;
+  void media.importFiles(files).then((refs) => {
+    const first = refs[0];
+    if (first === undefined) {
+      mediaNotice = 'Only image and video files can be used on the wall.';
+      setLookEditorTab('upload');
+      renderLookEditor();
+      return;
+    }
+    mediaNotice = '';
+    // Force the library to re-list so the new uploads appear in the gallery.
+    localMediaAssets = [];
+    localMediaRequested = false;
+    arrangement.setSelectedLook({ ...defaultLedLook('media'), media: first });
+    setLookEditorTab('upload');
+    renderLookEditor();
+  }).catch((error: unknown) => {
+    console.warn('could not import wall media', error);
+  });
+}
+
+ui.lookMediaFit.addEventListener('change', () => {
+  const look = currentLook();
+  if (look?.media === undefined) return;
+  patchLook({ media: { ...look.media, fit: ui.lookMediaFit.value as LedMediaRef['fit'] } });
+});
+
+ui.lookMediaRemove.addEventListener('click', () => {
+  const look = currentLook();
+  if (look?.media === undefined) return;
+  const source = look.media.source;
+  void media.removeAsset(source).then(() => {
+    localMediaAssets = [];
+    localMediaRequested = false;
+    const current = currentLook();
+    if (current?.kind === 'media' && current.media?.source === source) {
+      arrangement.setSelectedLook({ ...defaultLedLook('gradient'), colors: [...current.colors] });
+    }
+    renderLookEditor();
+  });
+});
 
 ui.lookUpload.addEventListener('click', () => ui.lookFile.click());
 ui.lookFile.addEventListener('change', () => {
   const files = [...(ui.lookFile.files ?? [])];
   ui.lookFile.value = '';
-  if (files.length === 0) return;
-  void media.importFiles(files).then((refs) => {
-    const first = refs[0];
-    if (first === undefined) return;
-    localMediaAssets = [];
-    localMediaRequested = false;
-    arrangement.setSelectedLook({ ...defaultLedLook('media'), media: first });
-    renderLookEditor();
-  }).catch((error: unknown) => {
-    console.warn('could not import wall media', error);
-  });
+  importWallMedia(files);
+});
+ui.lookPanelUpload.addEventListener('dragover', (event) => {
+  event.preventDefault();
+  ui.lookPanelUpload.classList.add('dragging');
+});
+ui.lookPanelUpload.addEventListener('dragleave', () => {
+  ui.lookPanelUpload.classList.remove('dragging');
+});
+ui.lookPanelUpload.addEventListener('drop', (event) => {
+  event.preventDefault();
+  ui.lookPanelUpload.classList.remove('dragging');
+  importWallMedia([...(event.dataTransfer?.files ?? [])]);
 });
 
 const formatParam = (key: string, value: number, unit?: string): string => {
@@ -2504,6 +2595,10 @@ const formatParam = (key: string, value: number, unit?: string): string => {
 
 function openLookEditor(): void {
   if (!surfaceTargeted()) return;
+  const look = currentLook();
+  lookEditorTab = look?.kind !== 'media'
+    ? 'look'
+    : look.media?.source.startsWith('local:') ? 'upload' : 'choose';
   renderLookEditor();
   ui.lookEditor.hidden = false;
   ui.lookEdit.setAttribute('aria-expanded', 'true');

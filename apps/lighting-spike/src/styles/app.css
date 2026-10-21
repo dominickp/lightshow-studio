@@ -2,6 +2,10 @@
         color-scheme: dark;
         --ink: #cfd6e6;
         --dim: #7a8399;
+        /* Referenced by the LED look editor; without these the `border:
+           1px solid var(--line)` declarations resolve to no border at all. */
+        --line: rgba(255, 255, 255, 0.12);
+        --txt: #d7e2f4;
         --accent: #7ad1ff;
         --panel: rgba(10, 13, 20, 0.76);
         --edge: rgba(122, 209, 255, 0.22);
@@ -1238,58 +1242,235 @@
         z-index: 40;
         left: 8px;
         bottom: calc(100% - 4px);
-        width: min(360px, 92vw);
-        max-height: 62vh;
-        overflow: auto;
-        padding: 10px;
+        width: min(340px, 92vw);
+        max-height: min(62vh, 520px);
+        overflow-y: auto;
+        overflow-x: hidden;
+        /* The content is sized to fit; hiding the scrollbar keeps the popover
+           clean when a viewer's viewport is unusually short. */
+        scrollbar-width: none;
+        padding: 6px 10px 6px;
         border: 1px solid var(--line);
         border-radius: 10px;
         background: #10161f;
         box-shadow: 0 18px 42px rgba(0, 0, 0, 0.55);
       }
+      #look-editor::-webkit-scrollbar { display: none; }
       #look-editor[hidden] { display: none; }
 
-      .le-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 8px 0; }
-      .le-tile {
-        display: flex; flex-direction: column; align-items: center; gap: 1px;
-        padding: 5px 3px;
+      /* `#clip-inspector button` is ID-scoped, so every rule here needs at
+         least the editor id in front of it to win the specificity contest. */
+      #look-editor .le-head { display: flex; align-items: center; gap: 7px; }
+      #look-editor .le-title { color: #7f8ca1; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; }
+      #look-editor #le-close {
+        display: grid;
+        place-items: center;
+        margin-left: auto;
+        width: 18px; height: 18px;
+        padding: 0;
+        border: none;
+        border-radius: 4px;
+        background: transparent;
+        color: var(--dim);
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+      }
+      #look-editor #le-close:hover { background: rgba(255, 255, 255, 0.07); color: var(--accent); }
+
+      /* A tab strip, deliberately unlike the bordered tiles below: no boxes,
+         a quiet label, and an accent underline on the active section. */
+      #look-editor .le-tabs {
+        display: flex;
+        gap: 2px;
+        margin: 4px 0 7px;
+        border-bottom: 1px solid var(--line);
+      }
+      #look-editor .le-tabs button {
+        flex: 1 1 0;
+        padding: 4px 6px 5px;
+        border: none;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        background: transparent;
+        color: var(--dim);
+        font: inherit;
+        font-size: 10px;
+        letter-spacing: 0.04em;
+        cursor: pointer;
+      }
+      #look-editor .le-tabs button:hover { color: var(--txt); }
+      #look-editor .le-tabs button[aria-selected="true"] {
+        border-bottom-color: #a06bff;
+        background: transparent;
+        color: #fff;
+      }
+      .le-panel[hidden] { display: none; }
+
+      #look-editor .le-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin: 0 0 3px; }
+      #look-editor .le-tile {
+        display: flex; align-items: center; gap: 4px; min-width: 0;
+        padding: 3px 5px;
         border: 1px solid var(--line);
         border-radius: 6px;
         background: #0b1119;
         color: var(--txt);
         font: inherit; font-size: 9px; line-height: 1.15;
+        text-align: left;
         cursor: pointer;
       }
-      .le-tile b { font-size: 14px; line-height: 1; }
-      .le-tile[aria-pressed="true"] { border-color: #a06bff; background: #1a1230; color: #fff; }
+      #look-editor .le-tile b { flex: 0 0 auto; font-size: 11px; line-height: 1; }
+      #look-editor .le-tile span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #look-editor .le-tile[aria-pressed="true"] { border-color: #a06bff; background: #1a1230; color: #fff; }
 
-      .le-field { display: grid; grid-template-columns: 78px 1fr; gap: 2px 8px; align-items: center; margin: 5px 0; }
-      .le-field > span { color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
-      .le-field > output { justify-self: end; font-size: 10px; color: var(--txt); }
-      .le-field > input[type="range"] { grid-column: 2; width: 100%; }
-      .le-field > select { grid-column: 2; }
-      .le-colors { display: flex; gap: 4px; align-items: center; }
-      .le-colors input[type="color"] { width: 26px; height: 22px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: none; }
+      .le-field { display: grid; grid-template-columns: 58px 1fr 40px; gap: 2px 8px; align-items: center; margin: 1px 0; }
+      .le-field > span { grid-column: 1; grid-row: 1; color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+      .le-field > output { grid-column: 3; grid-row: 1; justify-self: end; font-size: 10px; color: var(--txt); white-space: nowrap; }
+      .le-field > input[type="range"] { grid-column: 2; grid-row: 1; width: 100%; height: 14px; }
+      .le-field > select { grid-column: 2 / span 2; grid-row: 1; min-width: 0; height: 28px; padding: 0 4px; }
+      .le-colors { grid-column: 2 / span 2; grid-row: 1; display: flex; gap: 4px; align-items: center; }
+      .le-colors input[type="color"] { width: 26px; height: 20px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: none; }
       .le-add { width: 20px; height: 20px; padding: 0; border-radius: 4px; }
-      .le-presets { display: flex; flex-wrap: wrap; gap: 5px; }
-      .le-preset { width: 54px; height: 16px; border: 1px solid var(--line); border-radius: 4px; cursor: pointer; }
-
-      .le-media-hint { margin: 4px 0 6px; color: var(--dim); font-size: 10px; line-height: 1.35; }
-      .le-media-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
-      .le-media-tile {
-        display: flex; flex-direction: column; gap: 2px;
-        padding: 3px; overflow: hidden;
-        border: 1px solid var(--line); border-radius: 6px;
-        background: #0b1119; color: var(--txt);
-        font: inherit; font-size: 9px; text-align: left;
+      #look-editor .le-add {
+        display: grid;
+        place-items: center;
+        width: 20px; height: 20px;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--txt);
+        font-size: 12px;
+        line-height: 1;
         cursor: pointer;
       }
-      .le-media-tile video,
-      .le-media-tile img {
-        display: block; width: 100%; aspect-ratio: 16 / 9;
-        object-fit: cover; border-radius: 4px; background: #05070c;
+      #look-editor .le-add:hover { border-color: var(--edge); background: rgba(255, 255, 255, 0.08); }
+      #look-editor .le-add:disabled { opacity: 0.4; cursor: not-allowed; }
+      .le-presets-row {
+        display: flex; align-items: center; gap: 8px;
+        margin-top: 3px; padding-top: 3px;
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
       }
-      .le-media-tile span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .le-media-tile[aria-pressed="true"] { border-color: #a06bff; background: #1a1230; color: #fff; }
+      .le-presets-row > span { color: var(--dim); font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; }
+      .le-presets { display: flex; flex: 1 1 auto; gap: 4px; }
+      #look-editor .le-preset {
+        flex: 1 1 0;
+        width: auto; height: 14px;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      #look-editor .le-preset:hover { border-color: #f3fbff; }
+
+      #look-editor select { width: 100%; max-width: none; }
+
+      /* --- Media gallery (Choose / Upload tabs) --------------------------- */
+      .le-media-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
+        /* Safety net for very short viewports: scroll inside the gallery
+           instead of growing the popover. */
+        max-height: 46vh;
+        overflow-y: auto;
+        scrollbar-width: none;
+      }
+      .le-media-grid::-webkit-scrollbar { display: none; }
+      #look-editor .le-media-tile {
+        display: flex; flex-direction: column; gap: 1px; min-width: 0;
+        padding: 2px;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        background: #0b1119;
+        color: var(--txt);
+        font: inherit; font-size: 8px; line-height: 1.2; text-align: left;
+        cursor: pointer;
+      }
+      #look-editor .le-media-tile:hover { border-color: var(--edge); }
+      #look-editor .le-media-tile[aria-pressed="true"] { border-color: #a06bff; background: #1a1230; color: #fff; }
+      .le-media-frame {
+        position: relative;
+        display: grid; place-items: center;
+        width: 100%; aspect-ratio: 16 / 9;
+        overflow: hidden;
+        border-radius: 4px;
+        background: #05070c;
+        color: #4b5668;
+        font-size: 13px;
+      }
+      .le-media-frame img { width: 100%; height: 100%; object-fit: cover; }
+      .le-media-frame b {
+        position: absolute; right: 2px; bottom: 2px;
+        padding: 0 3px;
+        border-radius: 3px;
+        background: rgba(4, 6, 10, 0.72);
+        color: #cdb2ff;
+        font-size: 8px; font-weight: 400; line-height: 1.5;
+      }
+      .le-media-tile > span:last-child {
+        overflow: hidden;
+        padding: 0 1px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .le-media-empty { margin: 6px 0 0; color: var(--dim); font-size: 10px; line-height: 1.35; }
+      .le-media-empty[hidden] { display: none; }
+      .le-upload-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+      #look-editor #le-upload {
+        flex: 1 1 auto;
+        padding: 6px 8px;
+        border: 1px dashed rgba(160, 107, 255, 0.5);
+        border-radius: 6px;
+        background: rgba(160, 107, 255, 0.08);
+        color: #cdb2ff;
+        font: inherit; font-size: 10px;
+        text-align: center;
+        cursor: pointer;
+      }
+      #look-editor #le-upload:hover { border-color: #a06bff; background: rgba(160, 107, 255, 0.16); }
+      .le-upload-hint { color: var(--dim); font-size: 9px; }
+      #le-panel-upload.dragging { outline: 1px dashed #a06bff; outline-offset: 3px; border-radius: 6px; }
+
+      /* Footer: what is playing, and how it is mapped. Only useful once a
+         media look exists, so it stays hidden for generators. */
+      .le-media-footer {
+        display: flex; align-items: center; gap: 8px;
+        margin-top: 6px; padding-top: 5px;
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
+      }
+      .le-media-footer[hidden] { display: none; }
+      .le-media-current {
+        flex: 1 1 auto; min-width: 0;
+        overflow: hidden;
+        color: var(--txt); font-size: 9px;
+        text-overflow: ellipsis; white-space: nowrap;
+      }
+      .le-media-current em { color: var(--dim); font-style: normal; }
+      .le-media-fit { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; }
+      .le-media-fit > span { color: var(--dim); font-size: 9px; text-transform: uppercase; }
+      #look-editor .le-media-fit select { width: 132px; height: 24px; padding: 0 4px; }
+      .le-media-remove {
+        padding: 0 4px;
+        border: 1px solid rgba(255, 155, 155, 0.28);
+        border-radius: 4px;
+        background: transparent;
+        color: #ff9b9b;
+        font: inherit; font-size: 9px;
+        cursor: pointer;
+      }
+      #look-editor .le-media-remove {
+        height: 20px;
+        padding: 0 6px;
+        border: 1px solid rgba(255, 155, 155, 0.28);
+        border-radius: 4px;
+        background: transparent;
+        color: #ff9b9b;
+        font: inherit; font-size: 9px;
+        line-height: 1;
+        cursor: pointer;
+      }
+      #look-editor .le-media-remove:hover { background: rgba(255, 90, 90, 0.12); border-color: rgba(255, 155, 155, 0.6); }
 
       .le-glyph { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 5px; background: #1a1230; color: #cdb2ff; }

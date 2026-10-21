@@ -42,6 +42,79 @@ export function mediaRef(asset: LedMediaAsset, fit: LedMediaFit = 'cover'): LedM
   return { source: asset.source, kind: asset.kind, fit, label: asset.label };
 }
 
+/* --- Thumbnails ----------------------------------------------------------- */
+
+const posterCache = new Map<string, Promise<string>>();
+
+/**
+ * A still frame for a library asset, for the picker gallery.
+ *
+ * Videos are decoded once, mid-clip, into an off-screen canvas and cached as a
+ * data URL. Rendering `<video>` elements per tile meant a dozen decoders and a
+ * burst of aborted requests every time the popover re-rendered. Resolves to an
+ * empty string when a frame cannot be read.
+ */
+export function mediaPoster(asset: LedMediaAsset): Promise<string> {
+  const cached = posterCache.get(asset.url);
+  if (cached !== undefined) return cached;
+  const poster = asset.kind === 'image' ? Promise.resolve(asset.url) : capturePoster(asset.url);
+  posterCache.set(asset.url, poster);
+  return poster;
+}
+
+function capturePoster(url: string): Promise<string> {
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    let settled = false;
+    const finish = (result: string): void => {
+      if (settled) return;
+      settled = true;
+      video.removeAttribute('src');
+      video.load();
+      resolve(result);
+    };
+    const draw = (): void => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 320;
+        canvas.height = 180;
+        const context = canvas.getContext('2d');
+        if (context === null || video.videoWidth === 0) {
+          finish('');
+          return;
+        }
+        // Cover-crop so a poster matches how the clip sits on the wall.
+        const scale = Math.max(canvas.width / video.videoWidth, canvas.height / video.videoHeight);
+        const width = video.videoWidth * scale;
+        const height = video.videoHeight * scale;
+        context.drawImage(video, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
+        finish(canvas.toDataURL('image/jpeg', 0.72));
+      } catch {
+        finish('');
+      }
+    };
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+    video.addEventListener('loadeddata', () => {
+      const target = Number.isFinite(video.duration) && video.duration > 0.6 ? 0.4 : 0;
+      if (target === 0) {
+        draw();
+        return;
+      }
+      try {
+        video.currentTime = target;
+      } catch {
+        draw();
+      }
+    });
+    video.addEventListener('seeked', draw);
+    video.addEventListener('error', () => finish(''));
+    window.setTimeout(() => finish(''), 5000);
+    video.src = url;
+  });
+}
+
 interface MediaEntry {
   asset: LedMediaAsset;
   texture: THREE.Texture;
@@ -124,6 +197,21 @@ async function listAssets(): Promise<StoredAsset[]> {
   }
 }
 
+async function deleteAsset(id: string): Promise<void> {
+  if (!hasIndexedDb()) return;
+  const db = await openDb();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction(STORE, 'readwrite');
+      transaction.objectStore(STORE).delete(id);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error ?? new Error('media delete failed'));
+    });
+  } finally {
+    db.close();
+  }
+}
+
 /* --- Library -------------------------------------------------------------- */
 
 /**
@@ -197,7 +285,7 @@ export class LedMediaLibrary implements LedMediaRuntime {
       await saveAsset(id, file);
       const asset: LedMediaAsset = {
         source: `local:${id}`,
-        label: file.name,
+        label: this.uniqueLabel(file.name),
         kind,
         url: URL.createObjectURL(file),
       };
@@ -228,6 +316,31 @@ export class LedMediaLibrary implements LedMediaRuntime {
       left.label.localeCompare(right.label, undefined, { numeric: true }));
   }
 
+  /** Delete an uploaded asset from memory and persistent storage. */
+  async removeAsset(source: string): Promise<void> {
+    if (!source.startsWith('local:')) return;
+    const entry = this.entries.get(source);
+    if (entry !== undefined) {
+      entry.video?.pause();
+      entry.video?.removeAttribute('src');
+      entry.video?.load();
+      entry.texture.dispose();
+      this.entries.delete(source);
+    }
+    const asset = this.localAssets.get(source);
+    if (asset !== undefined) {
+      URL.revokeObjectURL(asset.url);
+      posterCache.delete(asset.url);
+      this.localAssets.delete(source);
+    }
+    try {
+      await deleteAsset(source.slice('local:'.length));
+    } catch (error) {
+      console.warn(`could not delete uploaded media ${source}`, error);
+    }
+    this.notify();
+  }
+
   dispose(): void {
     for (const entry of this.entries.values()) {
       entry.video?.pause();
@@ -243,6 +356,22 @@ export class LedMediaLibrary implements LedMediaRuntime {
 
   private notify(): void {
     for (const listener of this.listeners) listener();
+  }
+
+  /**
+   * `clip.mp4`, then `clip (2).mp4`. Uploads are keyed by UUID, so the same
+   * file can be imported twice; numbering keeps the gallery readable.
+   */
+  private uniqueLabel(name: string): string {
+    const taken = new Set([...this.localAssets.values()].map((asset) => asset.label));
+    if (!taken.has(name)) return name;
+    const dot = name.lastIndexOf('.');
+    const stem = dot > 0 ? name.slice(0, dot) : name;
+    const extension = dot > 0 ? name.slice(dot) : '';
+    for (let index = 2; ; index += 1) {
+      const candidate = `${stem} (${index})${extension}`;
+      if (!taken.has(candidate)) return candidate;
+    }
   }
 
   private async hydrate(source: string): Promise<void> {

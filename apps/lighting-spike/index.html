@@ -123,24 +123,49 @@
           <button id="btn-cue-delete" type="button" title="Delete the selected clips (Backspace)" hidden>Delete clip</button>
         </span>
         <div id="look-editor" role="dialog" aria-label="LED look editor" hidden>
-          <div class="cp-head">
+          <div class="le-head">
             <span class="le-glyph" id="le-glyph" aria-hidden="true">▤</span>
-            <span class="cp-title" id="le-title">Look</span>
+            <span class="le-title" id="le-title">Look</span>
             <button id="le-close" type="button" title="Close look editor (Esc)" aria-label="Close look editor">×</button>
           </div>
-          <div class="le-grid" id="le-grid" role="group" aria-label="Look generator"></div>
-          <div id="le-controls"></div>
-          <div class="cp-section">
-            <div class="cp-row">
-              <span>Media</span>
-              <button id="le-upload" type="button" title="Upload a video or image for the wall">Upload…</button>
+          <div class="le-tabs" role="tablist" aria-label="Look editor sections">
+            <button id="le-tab-look" type="button" role="tab" aria-selected="true"
+              aria-controls="le-panel-look">Generate</button>
+            <button id="le-tab-choose" type="button" role="tab" aria-selected="false"
+              aria-controls="le-panel-choose">Choose</button>
+            <button id="le-tab-upload" type="button" role="tab" aria-selected="false"
+              aria-controls="le-panel-upload">Upload</button>
+          </div>
+          <div class="le-panel" id="le-panel-look" role="tabpanel" aria-labelledby="le-tab-look">
+            <div class="le-grid" id="le-grid" role="group" aria-label="Look generator"></div>
+            <div id="le-controls"></div>
+            <div class="le-presets-row">
+              <span>Presets</span>
+              <div id="le-presets" class="le-presets"></div>
             </div>
-            <div id="le-media"></div>
+          </div>
+          <div class="le-panel" id="le-panel-choose" role="tabpanel" aria-labelledby="le-tab-choose" hidden>
+            <div id="le-choose-grid" class="le-media-grid" role="group" aria-label="Bundled wall loops"></div>
+          </div>
+          <div class="le-panel" id="le-panel-upload" role="tabpanel" aria-labelledby="le-tab-upload" hidden>
+            <div id="le-upload-grid" class="le-media-grid" role="group" aria-label="Uploaded wall media"></div>
+            <p id="le-upload-empty" class="le-media-empty" hidden>Nothing uploaded yet.</p>
+            <div class="le-upload-row">
+              <button id="le-upload" type="button" title="Upload videos or images for the wall">＋ Upload video or image</button>
+              <span class="le-upload-hint">or drop files here</span>
+            </div>
             <input id="le-file" type="file" accept="video/*,image/*" multiple hidden />
           </div>
-          <div class="cp-section">
-            <div class="cp-row"><span>Presets</span></div>
-            <div id="le-presets" class="le-presets"></div>
+          <div class="le-media-footer" id="le-media-footer" hidden>
+            <span id="le-media-current" class="le-media-current"></span>
+            <button id="le-media-remove" type="button" class="le-media-remove" title="Delete this uploaded file" hidden>Remove</button>
+            <label class="le-media-fit">
+              <span>Fit</span>
+              <select id="le-media-fit" aria-label="Media fit">
+                <option value="cover">Cover (crop)</option>
+                <option value="contain">Contain (letterbox)</option>
+              </select>
+            </label>
           </div>
         </div>
         <div id="color-picker" role="dialog" aria-label="Custom clip color" hidden>

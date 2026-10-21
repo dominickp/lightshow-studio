@@ -62,9 +62,9 @@
         user-select: none;
       }
 
-      /* Always-visible camera-mode badge: reads "Orbit" while the auto-orbit
-         follows playback and "Static" when it is off. It keeps the same grey
-         styling in both states — only the label changes. */
+      /* Always-visible camera-mode badge: reads "Orbit on" while the auto-orbit
+         follows playback and "Orbit off" when it is off. It keeps the same
+         grey styling in both states — only the last word changes. */
       #orbit-pill {
         position: absolute;
         right: 12px;
@@ -91,14 +91,6 @@
         height: 6px;
         border-radius: 50%;
         background: currentColor;
-      }
-      #orbit-pill kbd {
-        padding: 0 4px;
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        border-radius: 3px;
-        color: var(--dim);
-        font: inherit;
-        text-transform: none;
       }
 
       #stats { top: 12px; left: 12px; min-width: 172px; }
@@ -567,6 +559,13 @@
         background: rgba(122, 209, 255, 0.16);
         border-color: rgba(122, 209, 255, 0.55);
         color: var(--accent);
+      }
+      /* Underlined shortcut letter inside a label (e.g. <u>S</u>elect). */
+      button u,
+      #orbit-pill u {
+        text-decoration: underline;
+        text-underline-offset: 2px;
+        text-decoration-thickness: 1px;
       }
       #clip-inspector .clip-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
       #clip-inspector button {

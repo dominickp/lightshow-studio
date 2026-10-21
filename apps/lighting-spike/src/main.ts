@@ -1396,8 +1396,9 @@ const persistRender = (): void => {
 };
 
 /**
- * The camera-mode pill always sits on the viewport: "Orbit" while the auto-orbit
- * follows playback, "Static" when it is off. The `o` hotkey hint stays visible.
+ * The camera-mode pill always sits on the viewport: "Orbit on" while the
+ * auto-orbit follows playback, "Orbit off" when it is off. The underlined `O`
+ * doubles as the hotkey hint, so no separate key badge is needed.
  */
 let orbitPillState = '';
 const updateOrbitPill = (): void => {
@@ -1405,7 +1406,7 @@ const updateOrbitPill = (): void => {
   if (state === orbitPillState) return;
   orbitPillState = state;
   ui.orbitPill.dataset.state = state;
-  ui.orbitPillLabel.textContent = state === 'orbit' ? 'Orbit' : 'Static';
+  ui.orbitPillLabel.innerHTML = `<u>O</u>rbit ${state === 'orbit' ? 'on' : 'off'}`;
 };
 
 const syncButtons = (): void => {

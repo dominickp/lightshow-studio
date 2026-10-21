@@ -43,26 +43,64 @@
       </div>
 
       <details id="hint">
-        <summary>Controls &amp; shortcuts</summary>
-        <div>
-          <b>Space</b> play/pause · <b>← →</b> seek 1/16 (Shift = measure) · <b>M</b> mute ·
-          drag the ruler or waveform to scrub · <b>Shift + drag</b> draws a loop · <b>L</b> removes it ·
-          <b>C</b> camera · <b>O</b> orbit · <b>X</b> stats · <b>`</b> controls panel · <b>H</b> haze · <b>G</b> film grain · <b>A</b> audience<br />
-          <b>Ctrl/⌘ + wheel</b> zoom at pointer · <b>Ctrl/⌘ +/-</b> zoom · <b>Ctrl/⌘ 0</b> fit ·
-          <b>Middle-drag</b> the timeline or waveform to pan ·
-          <b>S</b> select mode · <b>D</b> drop mode · <b>Backspace</b> deletes the selection<br />
-          Drop mode: drag a lane to draw a clip, drag a clip to move, drag its edge to resize ·
-          Select mode: click or marquee cards, drag a selected card to move the selection,
-          drag a card edge to resize it, <b>Shift/Ctrl + click</b> adds, <b>Ctrl/⌘ A</b> selects all,
-          <b>Ctrl/⌘ C</b> copies, <b>Ctrl/⌘ V</b> pastes right after the selection,
-          <b>Ctrl/⌘ Shift V</b> pastes at the pointer and hovered track;
-          right-click a lane and choose <b>Paste here</b> for the same spot;
-          right-click a clip for Copy/Delete. A dashed line and row tint show
-          where <b>here</b> is whenever the clipboard has clips<br />
-          <b>Shift + drag</b> the ruler, waveform, or a lane to draw a loop on measure boundaries · drag the cyan loop edges to adjust it ·
-          <b>L</b> removes the loop · the Loop button toggles looping · Fit loop zooms to it<br />
-          <b>Click a fixture name</b> to open its side panel (click again to close) ·
-          Playback loops measures 41–56 (1 measure = 1 bar of 4 beats); scrubbing before the loop plays the intro through to the loop end.
+        <summary aria-label="Show keyboard shortcuts">
+          <span>Shortcuts</span>
+          <kbd>?</kbd>
+        </summary>
+        <div class="hint-body">
+          <section class="hint-section">
+            <h3>Playback</h3>
+            <dl>
+              <dt><kbd>Space</kbd></dt><dd>Play / pause</dd>
+              <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Seek 1/16 · <kbd>Shift</kbd> = measure</dd>
+              <dt><kbd>M</kbd></dt><dd>Mute</dd>
+            </dl>
+          </section>
+
+          <section class="hint-section">
+            <h3>Loop</h3>
+            <dl>
+              <dt><kbd>Shift</kbd> + drag</dt><dd>Draw a loop on the ruler, waveform or lane</dd>
+              <dt><kbd>L</kbd></dt><dd>Remove the loop</dd>
+            </dl>
+          </section>
+
+          <section class="hint-section">
+            <h3>Timeline editing</h3>
+            <dl>
+              <dt><kbd>S</kbd> <kbd>D</kbd></dt><dd>Select · Drop mode</dd>
+              <dt><kbd>Backspace</kbd></dt><dd>Delete selection</dd>
+              <dt><kbd>Ctrl/⌘</kbd> <kbd>A</kbd></dt><dd>Select all</dd>
+              <dt><kbd>Ctrl/⌘</kbd> <kbd>C</kbd></dt><dd>Copy</dd>
+              <dt><kbd>Ctrl/⌘</kbd> <kbd>V</kbd></dt><dd>Paste after selection</dd>
+              <dt><kbd>Ctrl/⌘</kbd> <kbd>Shift</kbd> <kbd>V</kbd></dt><dd>Paste at pointer</dd>
+              <dt><kbd>Shift</kbd>/<kbd>Ctrl</kbd> + click</dt><dd>Add to selection</dd>
+            </dl>
+          </section>
+
+          <section class="hint-section">
+            <h3>Mouse</h3>
+            <dl>
+              <dt>Drop mode</dt><dd>Drag a lane to draw, a clip to move, an edge to resize</dd>
+              <dt>Select mode</dt><dd>Click or marquee, drag to move or resize</dd>
+              <dt>Right-click</dt><dd>Lane: paste here · clip: copy/delete</dd>
+              <dt>Middle-drag</dt><dd>Pan timeline or waveform</dd>
+              <dt><kbd>Ctrl/⌘</kbd> + wheel</dt><dd>Zoom at pointer</dd>
+              <dt><kbd>Ctrl/⌘</kbd> <kbd>+</kbd> <kbd>−</kbd> <kbd>0</kbd></dt><dd>Zoom in / out / fit</dd>
+            </dl>
+          </section>
+
+          <section class="hint-section">
+            <h3>View &amp; render</h3>
+            <dl>
+              <dt><kbd>C</kbd></dt><dd>Next camera</dd>
+              <dt><kbd>O</kbd></dt><dd>Auto-orbit</dd>
+              <dt><kbd>X</kbd></dt><dd>Stats panel</dd>
+              <dt><kbd>`</kbd></dt><dd>Render controls</dd>
+              <dt><kbd>H</kbd> <kbd>G</kbd> <kbd>A</kbd></dt><dd>Haze · grain · audience</dd>
+              <dt>Fixture name</dt><dd>Open its side panel</dd>
+            </dl>
+          </section>
         </div>
       </details>
     </section>

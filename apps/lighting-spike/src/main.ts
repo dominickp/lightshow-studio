@@ -225,6 +225,7 @@ const ui = {
   statsPanel: element('stats'),
   controlsPanel: element('controls'),
   controlsToggle: element<HTMLButtonElement>('controls-toggle'),
+  hint: element<HTMLDetailsElement>('hint'),
   fps: element('stat-fps'),
   ms: element('stat-ms'),
   calls: element('stat-calls'),
@@ -3598,7 +3599,10 @@ window.addEventListener('keydown', (event) => {
   } else if (event.key === 's' || event.key === 'S') {
     applyTimelineMode('select');
   } else if (event.key === 'Escape') {
-    arrangement.clearSelection();
+    if (ui.hint.open) ui.hint.open = false;
+    else arrangement.clearSelection();
+  } else if (event.key === '?') {
+    ui.hint.open = !ui.hint.open;
   } else if (event.key === 'm' || event.key === 'M') {
     muted = !muted;
     applyVolume(false);

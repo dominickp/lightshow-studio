@@ -10,6 +10,7 @@ import {
   serializeProject,
   type ProjectFile,
 } from './project';
+import { readProjectBundle } from './bundle';
 
 const profile = {
   id: 'test-head',
@@ -193,11 +194,16 @@ describe('project file schema', () => {
     expect(schema.title ?? schema.type).toBeDefined();
   });
 
-  it('ships a valid koto-chill demo project', () => {
+  it('ships a valid koto-chill demo bundle', async () => {
     const url = new URL('../../../resources/sample_projects/koto-chill/koto-chill.dmxsim', import.meta.url);
-    const project = parseProject(JSON.parse(readFileSync(url, 'utf8')));
+    const bundle = await readProjectBundle(new Uint8Array(readFileSync(url)));
+    const { project } = bundle;
     expect(project.show.fixtures.length).toBeGreaterThan(0);
     expect(project.arrangement.clips.length).toBeGreaterThan(0);
+    expect(project.audio.source).toBe('embedded');
+    expect(project.audio.sha256).toBeDefined();
+    expect(bundle.media.get(project.audio.sha256!)).toBeDefined();
+    expect(bundle.warnings).toEqual([]);
     const fixtureIds = new Set(project.show.fixtures.map((fixture) => fixture.id));
     for (const clip of project.arrangement.clips) {
       expect(fixtureIds.has(clip.fixtureId), clip.fixtureId).toBe(true);
@@ -213,53 +219,7 @@ const laserProfile = {
   laser: { maxBeams: 16, patterns: ['fan', 'tunnel'] as const, fanDeg: [0, 90] as [number, number] },
 };
 
-/** A project as version 1 wrote it: no venue section, show pinned to v1. */
-function legacyV1Project(): Record<string, unknown> {
-  return {
-    format: PROJECT_FORMAT,
-    version: 1,
-    name: 'Legacy project',
-    show: {
-      version: 1,
-      name: 'Legacy rig',
-      fixtures: [
-        { id: 'mh-0', profile, position: { x: 0, y: 6, z: 0 }, yawDeg: 15, pitchOffsetDeg: -3 },
-      ],
-    },
-    timeline: {
-      durationSec: 60,
-      beatGrid: { bpm: 120, offsetSec: 0, beatsPerBar: 4 },
-      loop: { startSec: 0, endSec: 30 },
-    },
-  };
-}
-
-describe('project migration and rig placement', () => {
-  it('upgrades a v1 file onto the club stage and leaves fixtures intact', () => {
-    const project = parseProject(legacyV1Project());
-    expect(project.version).toBe(PROJECT_VERSION);
-    expect(project.venue).toEqual({ id: 'club-stage', name: 'Club Stage' });
-    expect(project.show.version).toBe(2);
-    expect(project.show.fixtures[0]).toMatchObject({
-      id: 'mh-0',
-      yawDeg: 15,
-      pitchOffsetDeg: -3,
-    });
-    // Unanchored until the user re-mounts it.
-    expect(project.show.fixtures[0]?.mount).toBeUndefined();
-  });
-
-  it('upgrades a v2 file and defaults the LED collections', () => {
-    const project = parseProject({
-      ...minimalProject(),
-      version: 2,
-      arrangement: { clips: [] },
-    });
-    expect(project.version).toBe(PROJECT_VERSION);
-    expect(project.arrangement.surfaces).toEqual([]);
-    expect(project.arrangement.surfaceClips).toEqual([]);
-  });
-
+describe('rig placement', () => {
   it('round-trips LED surface clips and rejects dangling surface refs', () => {
     const base = minimalProject();
     const project = parseProject({

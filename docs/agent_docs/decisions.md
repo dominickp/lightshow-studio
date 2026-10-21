@@ -209,3 +209,58 @@ Short form: context → decision → consequence. Update or supersede rather tha
 - A future particle/stateful plume can replace the shader internals behind the same fixture, `fire` action, and `FixtureState` without changing the document format.
 - The sound file is bundled with the app. User-replaceable per-jet samples would need a project-audio field and are deferred.
 
+
+## ADR-014 — `.dmxsim` is a ZIP bundle with content-addressed media
+
+**Context.** A project is the portable unit of user work, but a show is not
+just JSON: it needs its song, and LED wall looks can reference uploaded images
+and videos. Version 3 stored an audio *reference* only (ADR-003), so sharing a
+show meant also sending the track and re-linking it by hand, and a project that
+used uploaded wall media could not leave the machine it was authored on.
+
+Embedding bytes as base64 inside JSON would inflate every file by a third, force
+a single parse of the whole payload, and make large videos unusable. Sidecar
+files are not shareable. A ZIP container keeps the document inspectable while
+carrying arbitrary media.
+
+**Decision.**
+- Since project version 4, `.dmxsim` is a ZIP archive containing
+  `project.json` and `media/<sha256>.<ext>`. The document schema itself is
+  unchanged in structure: the container is new, the validated JSON inside is
+  the same kind of document as before.
+- Media is content-addressed. The document stores digests, not paths:
+  `audio.sha256` for the song and `look.media.source = "embedded:<sha256>"` for
+  wall media. `bundled:<id>` still points at app-shipped clips and is not
+  copied; `local:<uuid>` remains a transient reference that Save rewrites to
+  `embedded:`.
+- `project.json` carries a `media` manifest (digest, kind, MIME, byte count,
+  optional file name). Writers rebuild it from the bytes actually referenced,
+  so removing a clip drops its media from the next save.
+- Reading is tolerant of missing bytes: a manifest entry with no archive file
+  becomes a warning, the project opens, and the affected look is black. Reading
+  is strict about everything else: ZIP validity, entry names (no absolute paths
+  or `..`), entry count, total size, and a 512 MB cap.
+- There are no migrations. This spike is a demo, and only the bundled demo
+  project is regenerated when the format changes. A version mismatch is a clear
+  error.
+- The demo ships as a binary bundle in git
+  (`resources/sample_projects/koto-chill/koto-chill.dmxsim`). **Save project**
+  from the app produces a replacement directly; `npm run project:generate`
+  rebuilds it from `demo-arrangement.ts` and the source `.ogg`.
+
+**Consequences.**
+- Amends ADR-003: the app still does not import from YouTube, upload to a
+  cloud, or distribute audio on its own, but it now embeds a locally chosen
+  track so the *user* can share the show out of band. Rights to bundled media
+  remain the user's responsibility.
+- The JSON stays diffable (`unzip -p show.dmxsim project.json`), but the file as
+  a whole is binary, so iterating on the demo means editing in the app and
+  replacing the bundle rather than hand-editing the file.
+- Media is stored untranscoded, so quality is preserved and a future video
+  export can reuse the originals. Nothing in the container presumes a playback
+  implementation.
+- Content addressing gives deduplication and an obvious cache key, so the same
+  track or loop is stored once per file and can be cached across projects.
+- `fflate` is now a direct dependency of `packages/show-model`; the bundle
+  reader/writer is runtime-agnostic so the browser and the demo generator share
+  it.

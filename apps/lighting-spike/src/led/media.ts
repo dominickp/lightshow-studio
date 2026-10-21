@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import type { LedMediaFit, LedMediaKind, LedMediaRef } from '@dmxsim/show-model';
+import type { LedMediaFit, LedMediaKind, LedMediaRef, ProjectMediaFile, ProjectMediaMap } from '@dmxsim/show-model';
 import type { LedMediaRuntime } from './led-wall';
 
 /** A selectable wall source, either shipped with the app or uploaded. */
@@ -226,6 +226,8 @@ async function deleteAsset(id: string): Promise<void> {
 export class LedMediaLibrary implements LedMediaRuntime {
   private readonly entries = new Map<string, MediaEntry>();
   private readonly localAssets = new Map<string, LedMediaAsset>();
+  /** Files that arrived inside a project bundle, by digest. */
+  private readonly embeddedFiles = new Map<string, ProjectMediaFile>();
   private readonly hydrating = new Set<string>();
   private readonly listeners = new Set<() => void>();
 
@@ -243,11 +245,63 @@ export class LedMediaLibrary implements LedMediaRuntime {
       if (asset === undefined) return null;
       return this.createEntry(asset).texture;
     }
+    if (source.startsWith('embedded:')) {
+      const asset = this.localAssets.get(source);
+      return asset === undefined ? null : this.createEntry(asset).texture;
+    }
     if (source.startsWith('local:')) {
       void this.hydrate(source);
       return null;
     }
     return null;
+  }
+
+  /**
+   * Register media that arrived in a project bundle.
+   *
+   * Embedded files are not persisted to IndexedDB: the bundle is the source of
+   * truth, and re-opening the project restores them. They join the upload
+   * gallery so an opened show stays editable.
+   */
+  addEmbedded(media: ProjectMediaMap): void {
+    let added = false;
+    for (const [sha256, file] of media) {
+      if (file.kind === 'audio') continue;
+      const source = `embedded:${sha256}`;
+      this.embeddedFiles.set(sha256, file);
+      if (this.localAssets.has(source)) continue;
+      const asset: LedMediaAsset = {
+        source,
+        label: file.fileName ?? `Embedded ${file.kind}`,
+        kind: file.kind,
+        url: URL.createObjectURL(new Blob([file.bytes as unknown as BlobPart], { type: file.mime })),
+      };
+      this.localAssets.set(source, asset);
+      this.createEntry(asset);
+      added = true;
+    }
+    if (added) this.notify();
+  }
+
+  /** Read the bytes behind a `local:` or `embedded:` source, for saving. */
+  async fileFor(source: string): Promise<ProjectMediaFile | null> {
+    if (source.startsWith('embedded:')) {
+      return this.embeddedFiles.get(source.slice('embedded:'.length)) ?? null;
+    }
+    if (!source.startsWith('local:')) return null;
+    try {
+      const record = await loadAsset(source.slice('local:'.length));
+      if (record === null) return null;
+      return {
+        bytes: new Uint8Array(await record.blob.arrayBuffer()),
+        kind: record.type.startsWith('image/') ? 'image' : 'video',
+        mime: record.type || 'application/octet-stream',
+        fileName: record.name,
+      };
+    } catch (error) {
+      console.warn(`could not read uploaded media ${source}`, error);
+      return null;
+    }
   }
 
   /** Keep a video frame on the song clock; pause when the transport pauses. */
@@ -351,6 +405,7 @@ export class LedMediaLibrary implements LedMediaRuntime {
     this.entries.clear();
     for (const asset of this.localAssets.values()) URL.revokeObjectURL(asset.url);
     this.localAssets.clear();
+    this.embeddedFiles.clear();
     this.listeners.clear();
   }
 

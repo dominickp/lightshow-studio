@@ -8,7 +8,7 @@
     },
     "version": {
       "type": "number",
-      "const": 3
+      "const": 4
     },
     "name": {
       "type": "string",
@@ -1168,9 +1168,14 @@
           "default": "external",
           "type": "string",
           "enum": [
+            "embedded",
             "bundled",
             "external"
           ]
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
         },
         "id": {
           "type": "string"
@@ -1189,6 +1194,47 @@
         "source"
       ],
       "additionalProperties": false
+    },
+    "media": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "audio",
+              "image",
+              "video"
+            ]
+          },
+          "mime": {
+            "type": "string",
+            "minLength": 1
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "fileName": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "sha256",
+          "kind",
+          "mime",
+          "bytes"
+        ],
+        "additionalProperties": false
+      }
     }
   },
   "required": [
@@ -1200,7 +1246,8 @@
     "timeline",
     "arrangement",
     "settings",
-    "audio"
+    "audio",
+    "media"
   ],
   "additionalProperties": false
 }

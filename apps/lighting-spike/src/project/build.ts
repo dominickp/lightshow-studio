@@ -59,5 +59,8 @@ export function buildProjectFile(input: BuildProjectInput): ProjectFile {
       ui: input.ui,
     },
     audio: input.audio,
+    // Filled in when the bundle is written; the in-memory document has no
+    // embedded media until then.
+    media: [],
   };
 }

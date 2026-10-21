@@ -1,46 +1,78 @@
 # Project File Format (`.dmxsim`)
 
-**Status:** version 3, implemented in `packages/show-model/src/project.ts`.
-**Schema companion:** `project-file.schema.json` (generated).
-**Reader/writer:** `parseProject()` / `serializeProject()` in `@dmxsim/show-model`.
+**Status:** version 4, implemented in `packages/show-model/src/project.ts` and
+`packages/show-model/src/bundle.ts`.
+**Schema companion:** `project-file.schema.json` (generated, describes
+`project.json`).
+**Reader/writer:** `parseProject()` / `readProjectBundle()` /
+`writeProjectBundle()` in `@dmxsim/show-model`.
 
 A `.dmxsim` file is the portable unit of user work: the venue, the fixture rig,
-the authored arrangement, the song timeline (beat grid and loop), the audio
-reference, and the app settings needed to reproduce a session. It is UTF-8 JSON
-and is validated before it reaches app state (ADR-008).
+the authored arrangement, the song timeline (beat grid and loop), the audio,
+the LED wall media, and the app settings needed to reproduce a session.
+
+Since version 4 the file is a **ZIP bundle**, not a bare JSON document. It
+holds `project.json` plus a content-addressed `media/` directory, so a show can
+be shared as one attachment including its song and wall images/videos. The JSON
+document is validated with Zod before it reaches app state (ADR-008).
 
 Because a project names its venue and embeds full fixture profiles, opening a
 file on another machine reproduces the stage without a profile lookup and
-without a rig-equality check (ADR-011).
+without a rig-equality check (ADR-011). Venue *geometry* still ships with the
+app (see below).
 
-The lighting spike loads `resources/sample_projects/koto-chill/koto-chill.dmxsim` at
-startup, so the bundled demo can be edited on disk and opened back with **Open
-project**. It sits next to the sample audio it scores. **Save project** writes
-the current rig, timeline, clips, and settings back out.
+The lighting spike loads `resources/sample_projects/koto-chill/koto-chill.dmxsim`
+at startup. That file is a bundle; replacing it with a bundle saved from the app
+is how the demo arrangement is published. **Open project** and **Save project**
+read and write the same container.
+
+## Container
+
+```
+koto-chill.dmxsim            # ZIP archive
+  project.json               # the version 4 document (below)
+  media/<sha256>.<ext>       # audio, wall images and videos
+```
+
+- `project.json` is the human-editable document; `unzip -p show.dmxsim
+  project.json` prints it.
+- Media is **content-addressed** by lowercase SHA-256. Two clips that use the
+  same file store it once, and the same source re-saved produces identical
+  bytes. Entry names come from the manifest's MIME type or original extension.
+- The manifest (`media` in `project.json`) lists every file the document
+  references. Writers prune it, so deleting a clip removes its bytes from the
+  next save.
+- Readers validate the envelope, limit entry counts and sizes (512 MB total),
+  reject absolute paths and `..` segments, and never extract to disk.
+- A manifest entry with no matching archive file is a **warning, not an error**:
+  the project still opens, the affected look falls back to black, and the UI
+  reports how many files were missing. Opening never mutates the file.
 
 ## Goals
 
-- Reproduce a session: same rig, same clips, same loop, same view settings.
-- Stay diffable and human-editable so the demo can be iterated on disk.
-- Version explicitly and extend without breaking older files.
-- Never embed audio; store a reference instead (ADR-003).
+- Reproduce a session: same rig, same clips, same loop, same audio, same view
+  settings, in one shareable file.
+- Keep `project.json` diffable and human-editable, even though the container is
+  binary.
+- Version explicitly and reject mismatched versions with a clear message.
 
-## Non-goals (version 3)
+## Non-goals (version 4)
 
-- Embedding audio samples or rendered video.
+- Backward compatibility. This spike is a demo: only the current version is
+  read, and the bundled demo is regenerated for each format change.
 - Referencing fixture profiles by ID only; profiles are embedded snapshots.
-- Storing venue geometry. The file names a venue template and stores each
-  fixture's mount plus resolved transform; the geometry ships with the app.
+- Storing venue geometry. The file names a venue template; the template's
+  structure, anchors, and camera presets ship with the app.
+- Renderer-side transcoding. Media is stored as imported, so a future video
+  export can reuse the originals.
 - Undo history, autosave state, or in-flight UI selection.
-- Implicit cross-version migrations. Supported upgrades are explicit, tested,
-  and run before schema validation.
 
 ## Top-level shape
 
 ```json
 {
   "format": "dmxsim-project",
-  "version": 3,
+  "version": 4,
   "name": "Koto Chill demo",
   "description": "optional free text",
   "venue": { "id": "club-stage", "name": "Club Stage" },
@@ -48,25 +80,50 @@ the current rig, timeline, clips, and settings back out.
   "timeline": { "...": "duration, beat grid, loop" },
   "arrangement": { "clips": [], "surfaces": [], "surfaceClips": [] },
   "settings": { "...": "render, playback, ui" },
-  "audio": { "...": "reference only" }
+  "audio": { "...": "embedded track" },
+  "media": [{ "sha256": "...", "kind": "audio", "mime": "audio/ogg", "bytes": 2827348 }]
 }
 ```
 
 | Field | Required | Meaning |
 |---|---|---|
 | `format` | yes | Literal `dmxsim-project`. |
-| `version` | yes | Integer document version. This spec describes `3`. |
+| `version` | yes | Integer document version. This spec describes `4`. |
 | `name` | yes | Human-readable project name; used for the export filename. |
 | `description` | no | Free text. |
 | `venue` | yes | Venue template id and display name. |
 | `show` | yes | Fixture rig and (future) show-level tracks. |
 | `timeline` | yes | Song length, beat grid, and loop region. |
-| `arrangement` | no | Authored clips. Missing means no clips. |
+| `arrangement` | no | Authored fixture and wall clips. |
 | `settings` | no | Render/playback/UI state. Missing sections use defaults. |
-| `audio` | no | Reference to the audio file. Defaults to `external`. |
+| `audio` | no | The song. Defaults to `external` (no usable audio). |
+| `media` | no | Manifest of files in `media/`. Defaults to empty. |
 
-Unknown fields are ignored (stripped) by readers. Writers must not rely on that
-to transmit data to older readers.
+Unknown fields are ignored (stripped) by readers.
+
+## `media`
+
+```json
+{ "sha256": "b97d…", "kind": "audio", "mime": "audio/ogg", "bytes": 2827348, "fileName": "The Koto Chill.ogg" }
+```
+
+| Field | Rules |
+|---|---|
+| `sha256` | Lowercase 64-character digest of the stored bytes. Unique in the file. |
+| `kind` | `audio`, `image`, or `video`. |
+| `mime` | MIME type detected on import. |
+| `bytes` | Exact byte length, for progress and sanity checks. |
+| `fileName` | Optional display/relink hint. Never a path. |
+
+References use the digest, not the file name:
+
+- audio: `audio.sha256`
+- wall media: `look.media.source = "embedded:<sha256>"`
+
+`bundled:<id>` still refers to a clip shipped inside the app (the Mantissa
+loops) and is not copied into bundles; `local:<uuid>` is a transient reference
+to a file in the browser's media library, and Save rewrites it to `embedded:`.
+
 
 ## `venue`
 
@@ -250,12 +307,18 @@ participate in DMX fixture evaluation.
   "media": { "source": "bundled:003", "kind": "video", "fit": "cover", "label": "Mantissa 003" }
   ```
 
-  `source` is namespaced. `bundled:<id>` resolves to a clip shipped with the
-  app; `local:<uuid>` resolves to a file the user imported, which the app keeps
-  in IndexedDB on that machine. Media bytes are never written into the project
-  file, so a project that uses uploads is not portable to another machine unless
-  those files are imported there too. `fit` is `cover` (crop) or `contain`
-  (letterbox).
+  `source` is namespaced:
+
+  - `bundled:<id>` resolves to a clip shipped with the app (the Mantissa loops)
+    and is not copied into bundles.
+  - `local:<uuid>` is a transient reference to a file in the browser's media
+    library (IndexedDB). It only exists on the machine that imported it, and
+    **Save rewrites it to `embedded:<sha256>`**.
+  - `embedded:<sha256>` points at a file in the bundle's `media/` directory and
+    requires a matching manifest entry. Opening a bundle registers these files
+    with the media library, so an opened show stays editable.
+
+  `fit` is `cover` (crop) or `contain` (letterbox).
 - `pitchMm` is the physical pixel pitch. The renderer uses a capped, uniformly
   scaled LED matrix so individual diodes remain legible at viewport resolution.
 - A surface clip must reference a declared surface when the project declares
@@ -317,94 +380,90 @@ section.
 ## `audio`
 
 ```json
-{ "source": "bundled", "id": "koto-chill", "title": "The Koto Chill", "artist": "zircon", "fileName": "The Koto Chill.ogg" }
+{ "source": "embedded", "sha256": "b97d…", "title": "The Koto Chill", "artist": "zircon", "fileName": "The Koto Chill.ogg" }
 ```
 
+- `source: "embedded"` means the song is in the bundle; `sha256` must appear in
+  the `media` manifest. Opening the file loads and decodes its own track.
 - `source: "bundled"` resolves to a track shipped with the app; `id` identifies
-  it.
-- `source: "external"` means the user must provide the file locally. `fileName`
-  is a hint for UI and relinking, not a path.
-- Audio bytes are never embedded. Moving a project to another machine requires
-  the owner to supply the audio file (ADR-003).
-- Exporting after loading local audio records `{ source: "external", fileName }`.
+  it. Used only as a fallback when no project supplies audio.
+- `source: "external"` means no usable audio is stored. `fileName` is a hint
+  for UI and relinking, not a path.
+- `title` / `artist` are display metadata; they never affect playback.
+- Save embeds whichever track is currently loaded, so bundling a local upload
+  requires no extra step. The demo bundle therefore carries its own `.ogg`.
 
 ## Versioning and compatibility
 
-- `version` is a positive integer. Readers support exactly the versions they
-  know plus forward migrations.
-- A file with a **newer** version is rejected with a clear error; it is never
-  partially loaded.
-- A file with a **different `format`** is rejected.
-- Migration runs before validation (`migrateProject()`), so old shapes are
-  upgraded to the current schema and then checked once.
-- Additive fields must be optional or defaulted. Removing/renaming a field
-  requires a version bump and a migration.
+- `version` is a positive integer and must equal the reader's version. There
+  are no migrations: this is a demo, and only the bundled demo project is
+  regenerated on a format change.
+- A file with a **newer** or **older** version is rejected with a clear error;
+  it is never partially loaded.
+- A file whose first bytes are not a ZIP, or that has no `project.json`, is
+  rejected as "not a valid .dmxsim bundle".
+- Additive fields must be optional or defaulted. Removing or renaming a field
+  requires a version bump and a regenerated demo.
 - Readers ignore unknown fields; writers emit only known fields.
 - Changing the meaning of an existing field without renaming it is forbidden.
-
-### v1 → v2
-
-Version 1 predates venue templates. The migration:
-
-- adds `venue: { id: "club-stage", name: "Club Stage" }` (the only venue that
-  existed at v1);
-- sets `show.version` to `2`;
-- leaves fixtures untouched, so they keep their absolute transform and have no
-  `mount`. They render correctly and appear as unattached until re-anchored.
-
-A v1 file therefore remains fully loadable; nothing about the rig, clips, or
-settings changes meaning.
-
-### v2 → v3
-
-Version 3 adds procedural LED wall surfaces and clips. The migration creates
-empty `arrangement.surfaces` and `arrangement.surfaceClips` collections; an
-empty surface list means the reader should use the wall from the venue template.
-Fixture clips and rig data are unchanged.
 
 ### Adding a field (checklist)
 
 1. Add it to `project.ts` as optional or with `.default()` / `.prefault()`.
 2. Add a test covering the default and a round-trip.
 3. Update this document and regenerate `project-file.schema.json`.
-4. If the field is required for correct playback, bump `version` and migrate.
+4. If the field changes playback or the container, bump `version` and
+   regenerate the bundled demo.
 
 ## Validation
 
-`parseProject()` performs structural validation plus cross-field checks:
+`parseProject()` performs envelope checks plus structural validation:
 
 - `format` is `dmxsim-project`
-- `version` is supported and not newer than the reader
+- `version` equals the reader's version
 - `venue.id` is present
 - fixture IDs are unique
 - `fixtures[].mount.u` is within `0..1`
 - laser `beams` is a positive integer and `pattern` is a known pattern
-- clip IDs are unique
+- clip IDs are unique (fixture and surface clips share the namespace)
 - every `arrangement.clips[].fixtureId` refers to a declared fixture
 - clip `endSec > startSec`
 - loop `endSec > startSec`
 - loop `endSec <= durationSec`
+- media digests are unique
+- embedded audio and every `embedded:` look ref appear in the `media` manifest
 
 Issues surface as `ProjectFileError` with the failing path (for example
 `Invalid project file at \`timeline.loop.endSec\`: ...`). The UI reports the
 message without mutating the current show.
 
+`readProjectBundle()` adds container checks on top: ZIP readability, entry
+names (no absolute paths or `..`), entry count, total size, and the presence of
+`project.json`. Manifest entries with no bytes are returned as `warnings` so the
+project can still open.
+
 ## Demo project workflow
 
 ```
 resources/sample_projects/koto-chill/
-  The Koto Chill.ogg     # audio the demo scores
-  koto-chill.dmxsim      # loaded at startup
-npm run project:generate # rebuilds the .dmxsim from demo-arrangement.ts
+  The Koto Chill.ogg     # source audio, kept so the bundle can be rebuilt
+  koto-chill.dmxsim      # ZIP bundle loaded at startup
+npm run project:generate # rebuilds the bundle from demo-arrangement.ts
 ```
 
-- Edit `koto-chill.dmxsim` directly to iterate on the demo: move/resize clips,
-  change the loop, change settings, then reload the page.
-- **Save project** exports the current state (for example after editing a clip
-  in the app) to a new `.dmxsim` file; replace the bundled file with it if that
-  should become the new default.
-- `npm run project:generate` is a reset: it overwrites the bundled file from
-  the procedural demo and also regenerates the JSON Schema companion.
+- **Recommended loop:** edit the show in the app and press **Save project**.
+  The download is already a complete bundle (document + audio + wall media),
+  so replacing `koto-chill.dmxsim` with it updates the demo.
+- To inspect a bundle: `unzip -p koto-chill.dmxsim project.json`. To change the
+  JSON by hand, unpack into a scratch directory, edit, and re-zip with
+  `project.json` at the root and media under `media/`.
+- `npm run project:generate` is a reset: it rebuilds the arrangement from the
+  procedural demo, embeds the `.ogg`, and regenerates the JSON Schema
+  companion. It overwrites any hand edits in the bundle.
+- `resources/sample_projects/koto-chill/The Koto Chill.ogg` is the source of
+  truth for the audio; it is not loaded by the app any more (the bundle is),
+  but the generator needs it.
+
 The spike's rig is authored in the app (or loaded from a project) and saved
 with the file; opening a project whose venue or fixture IDs differ from the
 running build replaces the rig rather than rejecting the file. See
@@ -415,7 +474,7 @@ running build replaces the rig rather than rejecting the file. See
 ```json
 {
   "format": "dmxsim-project",
-  "version": 3,
+  "version": 4,
   "name": "My song",
   "venue": { "id": "club-stage", "name": "Club Stage" },
   "show": {

@@ -1,9 +1,11 @@
 import {
   ProjectFileError,
-  parseProject,
-  serializeProject,
+  readProjectBundle,
+  writeProjectBundle,
+  type ProjectBundle,
   type ProjectClip,
   type ProjectFile,
+  type ProjectMediaMap,
   type ProjectSurfaceClip,
 } from '@dmxsim/show-model';
 import type { FixturePlacement, LedSurface, Show } from '@dmxsim/show-model';
@@ -168,8 +170,9 @@ export function projectFileName(name: string): string {
   return `${slug === '' ? 'project' : slug}.dmxsim`;
 }
 
-export function downloadProject(project: ProjectFile): void {
-  const blob = new Blob([serializeProject(project)], { type: 'application/json' });
+export async function downloadProject(project: ProjectFile, media: ProjectMediaMap): Promise<void> {
+  const bytes = await writeProjectBundle(project, media);
+  const blob = new Blob([bytes as unknown as BlobPart], { type: 'application/zip' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
@@ -178,13 +181,12 @@ export function downloadProject(project: ProjectFile): void {
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-export async function readProjectFile(file: File): Promise<ProjectFile> {
-  const text = await file.text();
-  let json: unknown;
+export async function readProjectFile(file: File): Promise<ProjectBundle> {
+  let data: Uint8Array;
   try {
-    json = JSON.parse(text);
+    data = new Uint8Array(await file.arrayBuffer());
   } catch {
-    throw new ProjectFileError(`"${file.name}" is not valid JSON`);
+    throw new ProjectFileError(`Could not read "${file.name}"`);
   }
-  return parseProject(json);
+  return readProjectBundle(data);
 }

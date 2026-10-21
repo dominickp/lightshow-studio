@@ -8,7 +8,7 @@ import {
   findAnchor,
   ledSurfaceFromFeature,
   nextFixtureId,
-  parseProject,
+  readProjectBundle,
   resolveMount,
   timeToBeat,
   venueById,
@@ -20,7 +20,9 @@ import {
   type LaserSetup,
   type LedLookState,
   type LedSurface,
+  type ProjectBundle,
   type ProjectFile,
+  type ProjectMediaFile,
   type ProjectSettings,
 } from '@dmxsim/show-model';
 import type { LedPlaybackLayer } from './led/led-wall';
@@ -82,6 +84,7 @@ import { kelvinToCss, kelvinToRgb } from './kelvin';
 import { clamp } from './lib/math';
 import { PerfMonitor } from './app/perf';
 import { buildProjectFile } from './project/build';
+import { embedProjectMedia } from './project/media';
 import { openProject as openProjectFile, saveProject as saveProjectFile } from './project/session';
 import {
   STORAGE_KEYS,
@@ -93,23 +96,24 @@ import { Stage } from './stage';
 import { Post } from './post';
 
 /**
- * The demo is a project file, not generated code: the app loads
- * `resources/sample_projects/koto-chill/koto-chill.dmxsim` at startup so the show can be edited on disk and
- * opened back through `Open project`. The procedural rig/cues remain as a
- * fallback if the file is missing or invalid.
+ * The demo is a project bundle, not generated code: the app loads
+ * `resources/sample_projects/koto-chill/koto-chill.dmxsim` at startup so the
+ * show (and its audio) can be replaced as a single file. The procedural
+ * rig/cues remain as a fallback if the bundle is missing or invalid.
  */
-const loadBundledProject = async (): Promise<ProjectFile | null> => {
+const loadBundledProject = async (): Promise<ProjectBundle | null> => {
   try {
     const response = await fetch(demoProjectUrl);
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-    return parseProject(await response.json());
+    return await readProjectBundle(new Uint8Array(await response.arrayBuffer()));
   } catch (error) {
     console.warn('could not load the bundled project; using the generated demo rig', error);
     return null;
   }
 };
 
-const bundledProject = await loadBundledProject();
+const bundledBundle = await loadBundledProject();
+const bundledProject = bundledBundle?.project ?? null;
 const show = bundledProject === null
   ? createDemoRig(loopStartSec, TRACK.bpm)
   : showFromProject(bundledProject);
@@ -142,6 +146,13 @@ let projectAudio: ProjectFile['audio'] = bundledProject?.audio ?? {
   fileName: 'The Koto Chill.ogg',
 };
 /**
+ * Bytes of the loaded track, so Save can embed it. `null` means the audio is
+ * app-shipped (`bundled:`) and stays a reference.
+ */
+let projectAudioFile: ProjectMediaFile | null = null;
+/** Digest of the embedded track currently in the clock, to skip re-decoding it. */
+let loadedAudioSha: string | null = null;
+/**
  * Fixture-count stops for the debug render budget. The rig is editable now, so
  * the list is derived from the current rig and always ends at "all fixtures".
  */
@@ -173,6 +184,9 @@ await renderer.init();
 
 const stage = new Stage(renderer.domElement, show, activeVenue);
 const media = new LedMediaLibrary();
+// Wall media that shipped inside the demo bundle must exist before the stage
+// builds its materials from the project's looks.
+if (bundledBundle !== null) media.addEmbedded(bundledBundle.media);
 stage.setLedMediaRuntime(media);
 // A local upload restored from IndexedDB is only usable once its texture
 // exists, so rebuild the media materials when the library reports it.
@@ -2715,11 +2729,19 @@ ui.audioFile.addEventListener('change', () => {
   ui.audioStatus.textContent = `Loading ${file.name}…`;
   void (async () => {
     try {
-      const buffer = await clock.decode(await file.arrayBuffer());
+      const data = await file.arrayBuffer();
+      const buffer = await clock.decode(data);
       clock.load(buffer);
       clock.setLoop({ startSec: 0, endSec: buffer.duration }, true);
       clock.seek(0);
       projectAudio = { source: 'external', fileName: file.name };
+      projectAudioFile = {
+        bytes: new Uint8Array(data),
+        kind: 'audio',
+        mime: file.type === '' ? 'application/octet-stream' : file.type,
+        fileName: file.name,
+      };
+      loadedAudioSha = null;
       ui.transportTrack.textContent = file.name;
       ui.transportTime.textContent = `${formatClock(0)} / ${formatClock(buffer.duration)}`;
       ui.audioStatus.textContent = 'Local audio loaded · beat grid not set';
@@ -3209,7 +3231,7 @@ const setProjectStatus = (message: string): void => {
 };
 
 const describeAudio = (audio: ProjectFile['audio'], bpm: number | null): string => {
-  if (audio.source === 'bundled' && audio.title !== undefined) {
+  if (audio.title !== undefined) {
     const artist = audio.artist === undefined ? '' : ` — ${audio.artist}`;
     const tempo = bpm === null ? '' : ` · ${Math.round(bpm)} BPM`;
     return `${audio.title}${artist}${tempo}`;
@@ -3352,8 +3374,45 @@ const buildProject = (): ProjectFile | null => {
   });
 };
 
+/**
+ * Replace the clock with the audio a bundle carries.
+ *
+ * Bundles are the only source of a project's track now, so opening a shared
+ * show plays its own song instead of whatever happened to be loaded. Audio
+ * already in the clock is left alone when the digest matches.
+ */
+const loadProjectAudio = async (bundle: ProjectBundle): Promise<void> => {
+  const { audio } = bundle.project;
+  if (audio.source !== 'embedded' || audio.sha256 === undefined) return;
+  if (audio.sha256 === loadedAudioSha) return;
+  const file = bundle.media.get(audio.sha256);
+  if (file === undefined) {
+    console.warn(`project audio ${audio.fileName ?? audio.sha256} is missing from the bundle`);
+    return;
+  }
+  const buffer = await clock.decode(file.bytes.slice().buffer as ArrayBuffer);
+  clock.load(buffer);
+  waveform.setPeaks(computePeaks(buffer, 1600));
+  projectAudioFile = file;
+  loadedAudioSha = audio.sha256;
+};
+
+/** Apply a bundle: register its wall media, load its audio, then the document. */
+const applyProjectBundle = async (bundle: ProjectBundle): Promise<void> => {
+  media.addEmbedded(bundle.media);
+  await loadProjectAudio(bundle);
+  applyProject(bundle.project);
+};
+
 const saveProject = (): void => {
-  saveProjectFile({ build: buildProject, setStatus: setProjectStatus });
+  void saveProjectFile({
+    build: buildProject,
+    embed: (project) => embedProjectMedia(project, {
+      audio: async () => projectAudioFile,
+      file: (source) => media.fileFor(source),
+    }),
+    setStatus: setProjectStatus,
+  });
 };
 
 const openProject = async (file: File): Promise<void> => {
@@ -3361,7 +3420,7 @@ const openProject = async (file: File): Promise<void> => {
     file,
     hasAudio: () => currentTimeline !== null && clock.duration > 0,
     rigMatches: (project) => rigMatches(project, show.fixtures),
-    apply: applyProject,
+    apply: applyProjectBundle,
     setBusy: (busy) => { ui.projectOpen.disabled = busy; },
     setStatus: setProjectStatus,
   });
@@ -3378,9 +3437,25 @@ ui.projectFile.addEventListener('change', () => {
 ui.loading.textContent = 'loading audio…';
 
 try {
-  const response = await fetch(TRACK_URL);
-  if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-  const buffer = await clock.decode(await response.arrayBuffer());
+  /* The demo bundle carries its song; the sample track on disk is the fallback
+   * when the bundle is unavailable or predates embedded audio. */
+  const bundledAudioSha = bundledProject?.audio.source === 'embedded'
+    ? bundledProject.audio.sha256
+    : undefined;
+  const bundledAudio = bundledAudioSha === undefined
+    ? undefined
+    : bundledBundle?.media.get(bundledAudioSha);
+  let audioBytes: Uint8Array;
+  if (bundledAudio !== undefined) {
+    audioBytes = bundledAudio.bytes;
+    projectAudioFile = bundledAudio;
+    loadedAudioSha = bundledAudioSha ?? null;
+  } else {
+    const response = await fetch(TRACK_URL);
+    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+    audioBytes = new Uint8Array(await response.arrayBuffer());
+  }
+  const buffer = await clock.decode(audioBytes.slice().buffer as ArrayBuffer);
   clock.load(buffer);
   waveform.setPeaks(computePeaks(buffer, 1600));
   // The track line already names the song; a generic "Ready" here was noise.

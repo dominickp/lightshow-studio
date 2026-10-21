@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { LED_LOOK_KINDS, LED_MEDIA_FITS, LED_MEDIA_KINDS, LED_SYNCS } from './led';
-import { DEFAULT_VENUE_ID } from './venue';
 
 /**
  * Project-file schema (`.dmxsim`).
@@ -10,13 +9,20 @@ import { DEFAULT_VENUE_ID } from './venue';
  * a session. The document is JSON and is validated with Zod before it reaches
  * app state. See `docs/agent_docs/project-file-format.md` for the prose spec.
  *
+ * Since version 4 a `.dmxsim` is a ZIP bundle: this document is stored as
+ * `project.json` next to a `media/` directory that holds the audio and LED wall
+ * files it references. See `bundle.ts`.
+ *
  * The timeline owns the beat grid instead of `show.beatGrid` because the grid
  * is editable independently of the rig (ADR-003), and an imported audio file
  * may legitimately have no detected tempo (`bpm: null`).
  */
 
 export const PROJECT_FORMAT = 'dmxsim-project';
-export const PROJECT_VERSION = 3;
+export const PROJECT_VERSION = 4;
+
+/** Lowercase SHA-256 hex; media is content-addressed in the bundle. */
+const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/, 'expected a lowercase SHA-256 digest');
 
 export const CUE_ACTIONS = ['hold', 'fade', 'pulse', 'sweep', 'strobe', 'fire'] as const;
 export type ProjectCueAction = (typeof CUE_ACTIONS)[number];
@@ -343,17 +349,44 @@ export const projectSettingsSchema = z
   })
   .prefault({});
 
+/**
+ * One file carried in the bundle's `media/` directory.
+ *
+ * Entries are content-addressed: the file is stored as `media/<sha256><ext>`
+ * and everything else (audio, LED wall looks) points at the digest, so the
+ * same bytes are never stored twice. The manifest stays in `project.json` so a
+ * reader can tell what the bundle should contain before opening it.
+ */
+export const PROJECT_MEDIA_KINDS = ['audio', 'image', 'video'] as const;
+export type ProjectMediaKind = (typeof PROJECT_MEDIA_KINDS)[number];
+
+export const projectMediaSchema = z.object({
+  sha256: sha256Schema,
+  kind: z.enum(PROJECT_MEDIA_KINDS),
+  /** MIME type as detected on import; the bundle stores originals untranscoded. */
+  mime: z.string().min(1),
+  bytes: z.number().int().nonnegative(),
+  /** Display/relink hint only, never a path. */
+  fileName: z.string().min(1).optional(),
+});
+
 export const projectAudioSchema = z
   .object({
     /**
-     * `bundled` resolves to a track shipped with the app; `external` means the
-     * user must provide the audio file locally (ADR-003).
+     * `embedded` audio ships in the bundle; `bundled` resolves to a track
+     * shipped with the app; `external` means no usable audio is stored.
      */
-    source: z.enum(['bundled', 'external']).default('external'),
+    source: z.enum(['embedded', 'bundled', 'external']).default('external'),
+    /** Required for `embedded`; must appear in the project's `media` manifest. */
+    sha256: sha256Schema.optional(),
     id: z.string().optional(),
     title: z.string().optional(),
     artist: z.string().optional(),
     fileName: z.string().optional(),
+  })
+  .refine((audio) => audio.source !== 'embedded' || audio.sha256 !== undefined, {
+    message: 'embedded audio needs a sha256',
+    path: ['sha256'],
   })
   .prefault({});
 
@@ -390,8 +423,44 @@ export const projectFileSchema = z
       .prefault({}),
     settings: projectSettingsSchema,
     audio: projectAudioSchema,
+    /** Every media file the bundle carries; referenced by digest. */
+    media: z.array(projectMediaSchema).default([]),
   })
   .superRefine((project, ctx) => {
+    const mediaIds = new Set<string>();
+    for (const [index, entry] of project.media.entries()) {
+      if (mediaIds.has(entry.sha256)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `Duplicate media digest \`${entry.sha256}\``,
+          path: ['media', index, 'sha256'],
+        });
+      }
+      mediaIds.add(entry.sha256);
+    }
+
+    const requireMedia = (sha256: string, path: (string | number)[]): void => {
+      if (mediaIds.has(sha256)) return;
+      ctx.addIssue({
+        code: 'custom',
+        message: `References media \`${sha256}\` that is missing from the manifest`,
+        path,
+      });
+    };
+
+    if (project.audio.source === 'embedded' && project.audio.sha256 !== undefined) {
+      requireMedia(project.audio.sha256, ['audio', 'sha256']);
+    }
+
+    for (const [index, clip] of project.arrangement.surfaceClips.entries()) {
+      const source = clip.look.media?.source;
+      if (source !== undefined && source.startsWith('embedded:')) {
+        requireMedia(source.slice('embedded:'.length), [
+          'arrangement', 'surfaceClips', index, 'look', 'media', 'source',
+        ]);
+      }
+    }
+
     const fixtureIds = new Set<string>();
     for (const [index, fixture] of project.show.fixtures.entries()) {
       if (fixtureIds.has(fixture.id)) {
@@ -471,6 +540,7 @@ export type ProjectTimeline = z.infer<typeof projectTimelineSchema>;
 export type ProjectSettings = z.infer<typeof projectSettingsSchema>;
 export type ProjectShow = z.infer<typeof projectShowSchema>;
 export type ProjectAudio = z.infer<typeof projectAudioSchema>;
+export type ProjectMedia = z.infer<typeof projectMediaSchema>;
 
 export class ProjectFileError extends Error {
   constructor(message: string) {
@@ -480,51 +550,13 @@ export class ProjectFileError extends Error {
 }
 
 /**
- * Forward-only migration hook.
+ * Validate the document envelope before schema validation.
  *
- * v1 predates venue templates: it had no `venue` section and pinned
- * `show.version` to 1. The only venue that existed then is the club stage, so
- * v1 files are upgraded by naming it and bumping the show version. Fixtures
- * keep their absolute transforms and simply have no `mount`; the UI shows them
- * as unattached until they are re-anchored.
+ * The spike is a demo, so there are no legacy readers or migrations: a
+ * document must be the current version. Files from the future are rejected
+ * with a clear message instead of being silently half-loaded.
  */
-function migrateV1toV2(project: Record<string, unknown>): Record<string, unknown> {
-  const show = project.show;
-  const nextShow = typeof show === 'object' && show !== null
-    ? { ...(show as Record<string, unknown>), version: 2 }
-    : show;
-
-  return {
-    ...project,
-    version: 2,
-    venue: project.venue ?? { id: DEFAULT_VENUE_ID, name: 'Club Stage' },
-    show: nextShow,
-  };
-}
-
-/**
- * v3 adds LED wall content: `arrangement.surfaces` and
- * `arrangement.surfaceClips`. Both default to empty, so a v2 file keeps
- * playing its fixture clips unchanged and falls back to the venue's wall.
- */
-function migrateV2toV3(project: Record<string, unknown>): Record<string, unknown> {
-  const arrangement = project.arrangement;
-  const nextArrangement = typeof arrangement === 'object' && arrangement !== null
-    ? { surfaces: [], surfaceClips: [], ...(arrangement as Record<string, unknown>) }
-    : arrangement;
-
-  return {
-    ...project,
-    version: 3,
-    ...(arrangement === undefined ? {} : { arrangement: nextArrangement }),
-  };
-}
-
-/**
- * Forward-only migration hook. Files from the future are rejected with a
- * clear message instead of being silently half-loaded.
- */
-export function migrateProject(input: unknown): unknown {
+export function assertProjectEnvelope(input: unknown): Record<string, unknown> {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
     throw new ProjectFileError('Project file must be a JSON object');
   }
@@ -540,19 +572,17 @@ export function migrateProject(input: unknown): unknown {
       `Project version ${candidate.version} was written by a newer app; this build supports version ${PROJECT_VERSION}`,
     );
   }
-  if (candidate.version < 1) {
-    throw new ProjectFileError(`Unsupported project version ${candidate.version}`);
+  if (candidate.version !== PROJECT_VERSION) {
+    throw new ProjectFileError(
+      `Project version ${candidate.version} is no longer supported; expected version ${PROJECT_VERSION}`,
+    );
   }
-
-  const project = candidate as Record<string, unknown>;
-  if (candidate.version === 1) return migrateV2toV3(migrateV1toV2(project));
-  if (candidate.version === 2) return migrateV2toV3(project);
-  return project;
+  return candidate as Record<string, unknown>;
 }
 
 /** Validate an unknown JSON value as a project document. */
 export function parseProject(input: unknown): ProjectFile {
-  const result = projectFileSchema.safeParse(migrateProject(input));
+  const result = projectFileSchema.safeParse(assertProjectEnvelope(input));
   if (!result.success) {
     const first = result.error.issues[0];
     const path = first?.path.join('.') ?? '';

@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -8,8 +8,11 @@ import {
   defaultProjectSettings,
   ledSurfaceFromFeature,
   projectJsonSchema,
-  serializeProject,
+  sha256Hex,
+  writeProjectBundle,
   type ProjectFile,
+  type ProjectMediaFile,
+  type ProjectMediaMap,
 } from '@dmxsim/show-model';
 import type { CueTimeline } from '../src/arrangement';
 import { createDemoCues, createDemoSurfaceCues } from '../src/demo-arrangement';
@@ -18,12 +21,15 @@ import { splitCues } from '../src/project-file';
 import { TRACK, loopEndSec, loopStartSec } from '../src/track';
 
 /**
- * Regenerates the shipped Koto Chill project and the JSON Schema companion.
+ * Regenerates the shipped Koto Chill project bundle and the JSON Schema
+ * companion.
  *
  * The demo is loaded by the app from
- * `resources/sample_projects/koto-chill/koto-chill.dmxsim`, so edit that
- * file directly to iterate on the show. Run this only to rebuild it from the
- * authored `demo-arrangement.ts` (which would overwrite those edits).
+ * `resources/sample_projects/koto-chill/koto-chill.dmxsim`, which is a ZIP
+ * bundle holding `project.json` and the song. Replace that file with a saved
+ * bundle to publish arrangement edits; run this script only to rebuild it from
+ * the authored `demo-arrangement.ts` (which would overwrite those edits). The
+ * source `.ogg` stays next to the bundle so it can be regenerated.
  *
  *   npm run project:generate
  */
@@ -83,17 +89,31 @@ const project: ProjectFile = {
     },
   },
   audio: {
-    source: 'bundled',
-    id: 'koto-chill',
+    source: 'embedded',
     title: TRACK.title,
     artist: TRACK.artist,
     fileName: 'The Koto Chill.ogg',
   },
+  // Filled in by `writeProjectBundle` from the media map below.
+  media: [],
 };
 
+const audioPath = fileURLToPath(new URL('../../../resources/sample_projects/koto-chill/The Koto Chill.ogg', import.meta.url));
+const audioBytes = new Uint8Array(readFileSync(audioPath));
+const audioSha = await sha256Hex(audioBytes);
+project.audio.sha256 = audioSha;
+const audio: ProjectMediaFile = {
+  bytes: audioBytes,
+  kind: 'audio',
+  mime: 'audio/ogg',
+  fileName: 'The Koto Chill.ogg',
+};
+const media: ProjectMediaMap = new Map([[audioSha, audio]]);
+
+const bundle = await writeProjectBundle(project, media);
 const projectPath = fileURLToPath(new URL('../../../resources/sample_projects/koto-chill/koto-chill.dmxsim', import.meta.url));
 mkdirSync(dirname(projectPath), { recursive: true });
-writeFileSync(projectPath, serializeProject(project));
+writeFileSync(projectPath, bundle);
 
 const schemaPath = fileURLToPath(new URL('../../../docs/agent_docs/project-file.schema.json', import.meta.url));
 writeFileSync(schemaPath, `${JSON.stringify(projectJsonSchema(), null, 2)}\n`);

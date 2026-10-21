@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseProject, type ProjectFile } from '@dmxsim/show-model';
+import { parseProject, PROJECT_VERSION, type ProjectFile } from '@dmxsim/show-model';
 import {
   applyProjectFixtureSetup,
   cueTimelineFromProject,
@@ -42,7 +42,7 @@ const profile: FixtureProfile = {
 
 const project: ProjectFile = parseProject({
   format: 'dmxsim-project',
-  version: 2,
+  version: PROJECT_VERSION,
   name: 'Round trip',
   venue: { id: 'club-stage', name: 'Club Stage' },
   show: {

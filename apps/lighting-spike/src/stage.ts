@@ -154,7 +154,9 @@ export class Stage {
     this.controls.target.set(...this.views[0]!.target);
     this.controls.minDistance = 2;
     this.controls.maxDistance = 42;
-    this.controls.maxPolarAngle = Math.PI * 0.495;
+    /* Just past horizontal (90°) so the camera can dip to crowd/eye level in
+     * front of the stage. The previous 89.1° cap kept it above the target. */
+    this.controls.maxPolarAngle = Math.PI * 0.55;
     this.controls.addEventListener('start', () => {
       this.orbitInteracting = true;
     });
@@ -407,6 +409,44 @@ export class Stage {
     this.applyVisibility();
   }
 
+  /** Frames left to draw with every fixture lit, so the emitters are built. */
+  private warmupFrames = 0;
+
+  /**
+   * Draw a few real frames with every fixture lit.
+   *
+   * three builds a material (and its GPU resources) the first time that mesh is
+   * drawn. Fixtures start dark, so the cue that brings a group in pays the cost
+   * in a single frame — in the demo, every head, laser and strobe arriving
+   * together at measure 5 froze playback for ~0.35 s. The first *lit* draw has
+   * to happen through the real post-processing pass, so idle warm-ups and
+   * offscreen passes do not help; only a real frame does.
+   *
+   * The warm-up frames run while paused (at load, or after a rig edit), and at
+   * a dim level so the substitution is not a visible flash.
+   */
+  warmup(frames = 3): void {
+    this.warmupFrames = Math.max(this.warmupFrames, frames);
+  }
+
+  /** A dim lit state for every fixture, used for the warm-up frames. */
+  private primeStates(): FixtureState[] {
+    return this.rigs.map((rig) => ({
+      fixtureId: rig.placement.id,
+      kind: rig.placement.profile.kind,
+      intensity: 0.05,
+      color: { r: 1, g: 1, b: 1 },
+      panDeg: 0,
+      tiltDeg: 0,
+      spreadDeg: 12,
+      focus: 0.5,
+      strobeHz: 0,
+      strobeLevel: 1,
+      rotation: 0,
+      active: true,
+    }));
+  }
+
   setActiveCount(count: number): void {
     this.activeCount = count;
     this.applyVisibility();
@@ -564,7 +604,13 @@ export class Stage {
   }
 
   update(states: readonly FixtureState[], timeSec: number, options: StageUpdateOptions): void {
-    const byId = new Map(states.map((state) => [state.fixtureId, state]));
+    /* Warm-up frames substitute a dim lit state so every emitter is drawn once
+     * through the real pipeline. They only run while paused, so a rig edit made
+     * during playback can never flash the stage. */
+    const warming = this.warmupFrames > 0 && (options.playing ?? true) === false;
+    const resolved = warming ? this.primeStates() : states;
+    if (warming) this.warmupFrames -= 1;
+    const byId = new Map(resolved.map((state) => [state.fixtureId, state]));
 
     for (const rig of this.rigs) {
       const state = byId.get(rig.placement.id);
@@ -604,7 +650,7 @@ export class Stage {
     let g = 0;
     let b = 0;
     let active = 0;
-    for (const state of states) {
+    for (const state of resolved) {
       // A cryo jet emits vapour, not light: keep it out of the room ambience.
       if (!state.active || state.kind === 'cryo-jet') continue;
       r += state.color.r * state.intensity;
@@ -625,7 +671,7 @@ export class Stage {
     this.ambient.color.copy(color);
     this.ambient.intensity = active > 0 ? 0.1 + energy * 0.14 : 0.06;
 
-    this.updateLights(states);
+    this.updateLights(resolved);
   }
 
   /**

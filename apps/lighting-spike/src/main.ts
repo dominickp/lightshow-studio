@@ -196,6 +196,11 @@ stage.setLedSurfaces(surfaces);
 stage.camera.aspect = viewport.clientWidth / Math.max(1, viewport.clientHeight);
 stage.camera.updateProjectionMatrix();
 const post = new Post(renderer, stage.scene, stage.camera);
+/* Draw a few dim frames with every fixture lit before playback is possible.
+ * Fixtures are lazily drawn, so without this the first cue that brings a group
+ * in (in the demo, all heads/lasers/strobes at measure 5) pays the one-time
+ * pipeline cost as a single long frame. */
+stage.warmup();
 const clock = new AudioClock();
 const cryoAudio = new CryoJetAudio(clock);
 void cryoAudio.load(cryoJetSfxUrl);
@@ -1040,7 +1045,11 @@ ui.trackFilter.disabled = show.fixtures.length === 0;
  */
 const applyRig = (fixtures: FixturePlacement[], rebuildRigs: boolean): void => {
   show.fixtures = fixtures;
-  if (rebuildRigs) stage.setShow(show);
+  if (rebuildRigs) {
+    stage.setShow(show);
+    /* New rigs mean new materials; warm them before the next cue draws them. */
+    stage.warmup();
+  }
   arrangement.setFixtures(fixtures);
   rebuildTrackFilter();
   ui.trackFilter.disabled = fixtures.length === 0;

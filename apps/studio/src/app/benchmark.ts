@@ -2,7 +2,7 @@ import { defaultLedLook, type FixturePlacement, type LedSurface } from '@dmxsim/
 import type { Cue, CueAction } from '../arrangement/types';
 
 /**
- * Reproducible render benchmark for the lighting spike.
+ * Reproducible render benchmark for the studio app.
  *
  * The scenario is **self-contained**: it builds its own cue set from whatever
  * rig is loaded instead of reading clips from the sample project, so editing

@@ -229,7 +229,7 @@ export const trackSchema = z.object({
   clips: z.array(clipSchema),
 });
 
-/** Authored arrangement clip: the spike's coarse preset representation. */
+/** Authored arrangement clip: the app's coarse preset representation. */
 export const projectClipSchema = z
   .object({
     id: z.string().min(1),
@@ -603,7 +603,7 @@ export class ProjectFileError extends Error {
 /**
  * Validate the document envelope before schema validation.
  *
- * The spike is a demo, so there are no legacy readers or migrations: a
+ * The app is a demo, so there are no legacy readers or migrations: a
  * document must be the current version. Files from the future are rejected
  * with a clear message instead of being silently half-loaded.
  */

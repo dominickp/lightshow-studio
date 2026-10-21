@@ -2,7 +2,7 @@ import type { FixtureProfile } from '@dmxsim/show-model';
 
 /**
  * Seed fixture library. Values are plausible rather than manufacturer-exact;
- * these are the profiles the spike and Phase 1 authoring UI draw from.
+ * these are the profiles the studio app and Phase 1 authoring UI draw from.
  */
 
 export const MOVING_HEAD: FixtureProfile = {

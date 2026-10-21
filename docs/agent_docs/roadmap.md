@@ -2,16 +2,16 @@
 
 Phase gates are about proving the risky thing before building the expensive thing.
 
-## Phase 0 — Spikes (throwaway code allowed)
+## Phase 0 — Prototypes (throwaway code allowed)
 
-- **Lighting spike** (`apps/lighting-spike`): procedural venue, mixed fixture types, additive TSL beam proxies with profile-sized emitting apertures, fog, bloom, floor pools, perf HUD, dynamic resolution. The selected-fixture panel edits persisted fixture setup (mount yaw/pitch, level, beam angle); clips override level, colour, aim, and strobe while active, but do not author beam angle yet.
-- **Reference-driven lighting-fidelity spike:** use a small set of the supplied concert images to define repeatable camera/show comparisons; compare the current beam proxy with half-resolution volumetrics; tune beam-angle/falloff, aperture and haze density, and exposure/bloom to retain detail in bright overlaps. Record before/after images and frame cost on a 60 Hz / mid-range GPU before choosing a rendering path. This is a stylized concert-realism target, not a photoreal-asset project.
+- **Studio app** (`apps/studio`): procedural venue, mixed fixture types, additive TSL beam proxies with profile-sized emitting apertures, fog, bloom, floor pools, perf HUD, dynamic resolution. The selected-fixture panel edits persisted fixture setup (mount yaw/pitch, level, beam angle); clips override level, colour, aim, and strobe while active, but do not author beam angle yet.
+- **Reference-driven lighting-fidelity study:** use a small set of the supplied concert images to define repeatable camera/show comparisons; compare the current beam proxy with half-resolution volumetrics; tune beam-angle/falloff, aperture and haze density, and exposure/bloom to retain detail in bright overlaps. Record before/after images and frame cost on a 60 Hz / mid-range GPU before choosing a rendering path. This is a stylized concert-realism target, not a photoreal-asset project.
 - **Venue and fixture authoring discovery**: define a venue as a loadable stage structure with a default rig; users can add, remove, position, mount, aim, duplicate, and group fixtures. Specify placement gestures, snapping/attachment to truss or stage points, and fixture-library/profile selection before building a full editor.
 - **Atmosphere authoring discovery**: haze/fog-machine density and position should be controllable, including song-timed activation/envelopes so a fog cue can precede a laser look. Keep global venue atmosphere separate from local/sourced effects and fixture cues.
-- **Audio clock prototype** (`apps/lighting-spike/src/audio-clock.ts`): implemented against the sample track with `AudioContext` time, output-latency compensation, audio loop points, waveform peaks/grid, play/pause/scrub, and local audio selection/import.
+- **Audio clock prototype** (`apps/studio/src/audio-clock.ts`): implemented against the sample track with `AudioContext` time, output-latency compensation, audio loop points, waveform peaks/grid, play/pause/scrub, and local audio selection/import.
 - **Beat detection evaluation**: compare `web-audio-beat-detector` / `essentia.js` results against manually tapped BPM. Not started — the current track's 130 BPM / 0.02 s offset was measured offline and hard-coded in `src/track.ts`.
 
-Exit criteria: a documented frame budget in `docs/agent_docs/spike-notes.md`, a look worth iterating on, and enough audio-sync evidence to proceed into the vertical slice. The first two have promising evidence; target-hardware performance and automated beat analysis remain open.
+Exit criteria: a documented frame budget in `docs/agent_docs/renderer-notes.md`, a look worth iterating on, and enough audio-sync evidence to proceed into the vertical slice. The first two have promising evidence; target-hardware performance and automated beat analysis remain open.
 
 ### Recommended next: timeline authoring slice
 

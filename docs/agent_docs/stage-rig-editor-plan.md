@@ -7,7 +7,7 @@ Laser rendering is a separate plan: `laser-rendering-plan.md`.
 
 ## Why now
 
-The spike's venue is fixed in code (`addRoom()` in `src/stage.ts`) and its rig
+The app's venue is fixed in code (`addRoom()` in `src/stage.ts`) and its rig
 is generated in `src/demo-rig.ts`. A `.dmxsim` project can change fixture
 *setup* values but not which fixtures exist: `openProject()` rejects any
 project whose fixture IDs differ from the running build
@@ -109,7 +109,7 @@ export interface VenuePrimitive {
 `addRoom()` becomes `buildVenue(template)` in the stage: one loop over
 `structure` plus feature builders (`ledWall`, `accentStrips`, `crowd`, `haze`)
 that reuse today's code. The scene-side mapping lives in
-`apps/lighting-spike/src/venue-builder.ts` (`buildVenue`, `buildCrowd`,
+`apps/studio/src/venue-builder.ts` (`buildVenue`, `buildCrowd`,
 `disposeGroup`), so `show-model` stays renderer-free. The current room becomes
 `CLUB_STAGE` with the same numbers (`stage.ts` today: floor 40×34 at z=3, walls
 at ±17 and z=-12, ceiling y=12, riser 24×0.3×9.4 at z=-7.3, trusses y=8 at

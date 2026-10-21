@@ -21,7 +21,7 @@ Reference photos in `docs/user_docs/lightshow_inspiration/` share these traits:
 - fixtures aimed at camera are **blinding glare**, not a small lens dot;
 - wide fixtures (wash/blinder/strobe) read as soft **area sources**.
 
-The current renderer (`apps/lighting-spike/src/rig.ts`) builds every fixture
+The current renderer (`apps/studio/src/rig.ts`) builds every fixture
 from one hollow cone mesh:
 
 - `facing = |normalView · viewDir|` made the cone read as a glowing tube and
@@ -111,7 +111,7 @@ now reaches the surface.
 
 Verified: mean floor-band luminance 0.026 / 0.099 / 0.139 at haze 0 / 0.65 / 1.
 A slider lives in the **Venue settings** panel (Atmosphere group) and persists in
-`dmxsim.spike.render` as `haze`; `H` cycles 0 → 0.3 → 0.65 → 1. Haze is a
+`dmxsim.render` as `haze`; `H` cycles 0 → 0.3 → 0.65 → 1. Haze is a
 render preference, not a project setting, so the `.dmxsim` schema is unchanged.
 
 Known gap at `haze = 0`: the room reads very dark outside the pools. There is no
@@ -152,7 +152,7 @@ phase `0.75 + 1.6·toward²`, axial falloff `1 − 0.35·t`. Pool intensity is
 the club demo; re-check them when real surface lighting (Tier 1.9) lands,
 because pools and beams will then share a much brighter floor.
 
-Known gaps visible in the spike after Tier 0:
+Known gaps visible in the app after Tier 0:
 
 - ~~the room is still not *lit* by the fixtures~~ — fixed by the Tier 1.9/1.10
   first pass (2026-10-18): floor washes, lit crowd silhouettes, wall spill,

@@ -4053,7 +4053,7 @@ const applyProjectSettings = (settings: ProjectSettings, source: 'project' | 'de
   syncButtons();
 };
 
-/** Load a project into the running app. The rig is fixed for the spike. */
+/** Load a project into the running app. The rig is fixed for the app. */
 const applyProject = (project: ProjectFile, source: 'project' | 'default' = 'project'): void => {
   projectName = project.name;
   projectDescription = project.description;

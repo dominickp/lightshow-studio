@@ -1,6 +1,6 @@
 # Lighting Show-Authoring UI: UX and Information Architecture
 
-This document evaluates the show-authoring surface of the DMX simulator: the lower dock that currently combines a transport, waveform, ruler, and one lane per fixture. It defines what the component should be called, what a lighting programmer expects to do in it, which controls each fixture type needs, how the arrangement should behave, and the gap between the current spike and a credible first authoring pass. It is intentionally opinionated and scoped to the existing show model (`Clip` envelopes over `ControllableAttribute`) rather than a generic DAW or console clone.
+This document evaluates the show-authoring surface of the DMX simulator: the lower dock that currently combines a transport, waveform, ruler, and one lane per fixture. It defines what the component should be called, what a lighting programmer expects to do in it, which controls each fixture type needs, how the arrangement should behave, and the gap between the current app and a credible first authoring pass. It is intentionally opinionated and scoped to the existing show model (`Clip` envelopes over `ControllableAttribute`) rather than a generic DAW or console clone.
 
 ## What this component is called
 
@@ -115,7 +115,7 @@ Separate **fixture setup**, **static look controls**, and **time-varying behavio
 3. **Motion behavior:** pan/tilt fixtures have a static aim target and optional animated movement relative to their mount. The user chooses target/path or a shape (sweep, circle, figure-8, bounce), range, speed in cycles/beat or seconds, direction, and phase. Fixed fixtures have no animated pan/tilt; the user changes their placement aim instead.
 4. **Atmosphere:** venue-wide haze is a persistent scene setting; positioned fog machines emit local atmosphere that can be triggered/faded by song-time clips, with density, coverage, and decay. Atmosphere is not a fixture beam and should be independently controllable.
 
-### Prototype now in the lighting spike
+### Current fixture panel
 
 The selected fixture's panel is a side panel docked to the right of the arrangement, not a floating overlay. It has two panes and shows one at a time: **modify rig** (opened from the `MODIFY RIG` button in the timeline sidebar, listing lights grouped by mount) and **fixture settings** (opened by clicking a track name). Clicking either entry point again closes it, and the timeline column reclaims the full width while it is closed. Resizing the panel persists. The panel shows the fixture kind, id and model, capability chips, and clip counts (total and under the playhead) alongside the **fixture setup** controls: name, mount anchor, position along that mount, mount yaw and pitch, level, and beam angle for zoom-capable profiles. Setup is the persisted layer that applies when no clip asserts an attribute. Beam angle is mapped through the profile's spread range. **The current clip vocabulary is coarse** — action (hold/fade/pulse/sweep/strobe) and one of five palette colours. It authors dimmer, RGB, pan/tilt, and strobe envelopes, but never `zoom`, so beam angle is a fixture-only setting today even though the show model supports animating it. The demo sweep remains a hard-coded canned action, not an editable movement-pattern authoring system.
 

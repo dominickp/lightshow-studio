@@ -21,7 +21,7 @@ file on another machine reproduces the stage without a profile lookup and
 without a rig-equality check (ADR-011). Venue *geometry* still ships with the
 app (see below).
 
-The lighting spike loads `resources/sample_projects/koto-chill/koto-chill.dmxsim`
+The studio app loads `resources/sample_projects/koto-chill/koto-chill.dmxsim`
 at startup. That file is a bundle; replacing it with a bundle saved from the app
 is how the demo arrangement is published. **Open project** and **Save project**
 read and write the same container.
@@ -58,7 +58,7 @@ koto-chill.dmxsim            # ZIP archive
 
 ## Non-goals (version 4)
 
-- Backward compatibility. This spike is a demo: only the current version is
+- Backward compatibility. This app is a demo: only the current version is
   read, and the bundled demo is regenerated for each format change.
 - Referencing fixture profiles by ID only; profiles are embedded snapshots.
 - Storing venue geometry. The file names a venue template; the template's
@@ -147,7 +147,7 @@ to a file in the browser's media library, and Save rewrites it to `embedded:`.
 ```json
 {
   "version": 2,
-  "name": "Spike — demo rig",
+  "name": "Studio — demo rig",
   "fixtures": [
     {
       "id": "mh-front-0",
@@ -200,7 +200,7 @@ to a file in the browser's media library, and Save rewrites it to `embedded:`.
   use the profile's built-in defaults. Values are the same normalized units as
   clip keyframes, so a future editor can copy one to the other.
 - `tracks` is reserved for envelope-based `Track`/`Clip` data from
-  `show-model`. The spike authors `arrangement.clips` instead and emits an
+  `show-model`. The app authors `arrangement.clips` instead and emits an
   empty array. Both may coexist during a transition.
 
 > **Timing note.** `show` deliberately has no `beatGrid`. The editable grid
@@ -229,7 +229,7 @@ to a file in the browser's media library, and Save rewrites it to `embedded:`.
 
 ## `arrangement.clips`
 
-This is the spike's authored arrangement: one clip per fixture lane, coarse
+This is the app's authored arrangement: one clip per fixture lane, coarse
 preset action plus a palette colour.
 
 ```json
@@ -420,7 +420,7 @@ participate in DMX fixture evaluation.
 ### Relationship to `show.tracks[].clips`
 
 The long-term model (ADR-005) is a `Clip` with per-attribute keyframes. The
-spike's `arrangement.clips` is a compact authoring preset that maps to that
+app's `arrangement.clips` is a compact authoring preset that maps to that
 model at evaluation time. A future version will either:
 
 1. extend `arrangement.clips` with optional envelope data, or
@@ -557,7 +557,7 @@ npm run project:generate # rebuilds the bundle from demo-arrangement.ts
   truth for the audio; it is not loaded by the app any more (the bundle is),
   but the generator needs it.
 
-The spike's rig is authored in the app (or loaded from a project) and saved
+The app's rig is authored in the app (or loaded from a project) and saved
 with the file; opening a project whose venue or fixture IDs differ from the
 running build replaces the rig rather than rejecting the file. See
 `stage-rig-editor-plan.md`.

@@ -309,7 +309,7 @@ function spread(count: number, from: number, to: number): number[] {
 function clubDefaultRig(): RigPreset {
   const fixtures: RigPresetEntry[] = [];
   // Fixtures hang below the truss and sit on top of the riser, matching the
-  // spikes's original hand-authored positions.
+  // original hand-authored positions.
   const HANG = { x: 0, y: -0.6, z: 0 };
 
   spread(10, 1.2 / 10.5, 1 - 1.2 / 10.5).forEach((u, index) => {
@@ -404,7 +404,7 @@ function clubDefaultRig(): RigPreset {
 }
 
 /**
- * The original spike venue, reproduced exactly as `Stage.addRoom()` built it.
+ * The original venue, reproduced exactly as `Stage.addRoom()` built it.
  * Dimensions are the numbers that were hardcoded in the renderer.
  */
 export const CLUB_STAGE: VenueTemplate = {

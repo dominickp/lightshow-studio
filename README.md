@@ -6,18 +6,18 @@ A browser-based stage-lighting simulator: design lighting effects in time to mus
 - **Decisions (ADRs)**: [docs/agent_docs/decisions.md](./docs/agent_docs/decisions.md)
 - **Architecture / repo layout**: [docs/agent_docs/repo-shape.md](./docs/agent_docs/repo-shape.md)
 - **Risks**: [docs/agent_docs/risks.md](./docs/agent_docs/risks.md)
-- **Spike findings**: [docs/agent_docs/spike-notes.md](./docs/agent_docs/spike-notes.md)
+- **Renderer notes**: [docs/agent_docs/renderer-notes.md](./docs/agent_docs/renderer-notes.md)
 - **Original concept**: [docs/user_docs/project_idea.md](./docs/user_docs/project_idea.md)
 
 ## Status
 
-Phase 0 — the lighting/perf spike ([apps/lighting-spike](./apps/lighting-spike)) is working and the core show model ([packages/show-model](./packages/show-model)) is tested. The timeline/editor product app is not started yet.
+Phase 0 — the studio app ([apps/studio](./apps/studio)) is working and the core show model ([packages/show-model](./packages/show-model)) is tested. The timeline/editor product app is not started yet.
 
 ## Development
 
 ```sh
 npm install
-npm run dev        # runs the lighting spike
+npm run dev        # runs the studio app
 npm test           # unit tests
 npm run typecheck
 npm run build

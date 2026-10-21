@@ -3,6 +3,6 @@
   "references": [
     { "path": "./packages/show-model" },
     { "path": "./packages/fixtures" },
-        { "path": "./apps/lighting-spike" }
+    { "path": "./apps/studio" }
   ]
 }

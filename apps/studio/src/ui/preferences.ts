@@ -4,15 +4,15 @@
  */
 export const STORAGE_KEYS = {
   userColors: 'dmxsim.recentColors',
-  timelineMode: 'dmxsim.spike.timelineMode',
-  render: 'dmxsim.spike.render',
-  volume: 'dmxsim.spike.volume',
-  stats: 'dmxsim.spike.stats',
-  dockHeight: 'dmxsim.spike.dockHeight',
-  dockCollapsed: 'dmxsim.spike.dockCollapsed',
-  waveHeight: 'dmxsim.spike.waveHeight',
-  panelWidth: 'dmxsim.spike.sidePanelWidth',
-  photosensitivity: 'dmxsim.spike.photosensitivity',
+  timelineMode: 'dmxsim.timelineMode',
+  render: 'dmxsim.render',
+  volume: 'dmxsim.volume',
+  stats: 'dmxsim.stats',
+  dockHeight: 'dmxsim.dockHeight',
+  dockCollapsed: 'dmxsim.dockCollapsed',
+  waveHeight: 'dmxsim.waveHeight',
+  panelWidth: 'dmxsim.sidePanelWidth',
+  photosensitivity: 'dmxsim.photosensitivity',
 } as const;
 
 /** `localStorage` throws in private mode or when the quota is exhausted. */

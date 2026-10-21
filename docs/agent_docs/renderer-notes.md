@@ -1,10 +1,10 @@
-# Lighting Spike Notes
+# Renderer Notes
 
 ## Prototype
 
-`apps/lighting-spike` renders a procedural club/stage scene with 32 fixtures (moving heads, washes, strobes, lasers, and PARs), a 16-bar 130 BPM show, a crowd silhouette instanced mesh, TSL beam-cone haze proxies, floor pools, LED wall, one shadow-casting spotlight, and bloom.
+`apps/studio` renders a procedural club/stage scene with 32 fixtures (moving heads, washes, strobes, lasers, and PARs), a 16-bar 130 BPM show, a crowd silhouette instanced mesh, TSL beam-cone haze proxies, floor pools, LED wall, one shadow-casting spotlight, and bloom.
 
-The beams are additive cone meshes with animated TSL noise and scene fog. They are a fast visual proxy, **not** true volumetric raymarching. The next graphics spike should compare this against a half-resolution volumetric pass.
+The beams are additive cone meshes with animated TSL noise and scene fog. They are a fast visual proxy, **not** true volumetric raymarching. The next rendering experiment should compare this against a half-resolution volumetric pass.
 
 ## Observed in the current dev environment
 
@@ -21,7 +21,7 @@ The low-poly venue plus saturated moving beams is visually promising. Additive f
 
 ## Audio clock prototype
 
-`apps/lighting-spike/src/audio-clock.ts` replaces the placeholder performance clock. Song time is `AudioContext.currentTime - outputLatency`, anchored on an `AudioBufferSourceNode`, so play, pause, scrub and loop are all re-anchors rather than a second time source (ADR-002). The transport can also load a user-selected local audio file; imported tracks start at zero with full-track looping, and their waveform is shown without beat ticks until a beat grid is supplied.
+`apps/studio/src/audio-clock.ts` replaces the placeholder performance clock. Song time is `AudioContext.currentTime - outputLatency`, anchored on an `AudioBufferSourceNode`, so play, pause, scrub and loop are all re-anchors rather than a second time source (ADR-002). The transport can also load a user-selected local audio file; imported tracks start at zero with full-track looping, and their waveform is shown without beat ticks until a beat grid is supplied.
 
 - Latency compensation uses `outputLatency` (40 ms in the integrated Chrome here), so visuals follow the sample that is actually audible.
 - Looping uses the source node's `loopStart`/`loopEnd`, which is sample-accurate; the visual clock wraps on the same region.
@@ -52,7 +52,7 @@ The shipped demo is now data, not code: the app fetches `resources/sample_projec
 
 ### Frame-cost fixes (2026-10-18)
 
-The user reported ~42 fps in Firefox (WebGPU active) while Chromium held 144 fps. Firefox measured a **20.8 ms median / 27.8 ms p95** rAF interval at 34 ms output latency, so the timeline was CPU/paint-bound, not backend-bound. Changes made to the spike:
+The user reported ~42 fps in Firefox (WebGPU active) while Chromium held 144 fps. Firefox measured a **20.8 ms median / 27.8 ms p95** rAF interval at 34 ms output latency, so the timeline was CPU/paint-bound, not backend-bound. Changes made to the app:
 
 - The waveform is painted only on resize, zoom, peaks, or loop/timeline changes; the playhead is a DOM element. Previously a song-wide canvas was cleared and re-blitted every frame (5,929 CSS px at 100% zoom, ~59,500 px at 1000%).
 - Lane playheads share one inherited `--playhead-x` custom property instead of 32 per-row `style.left` writes per frame.
@@ -74,7 +74,7 @@ See `docs/agent_docs/ux-lighting-controls.md` for the evaluated control surface 
 - **130.00 BPM**, first beat at **0.02 s**; the tempo is stable across the whole file.
 - Tempo grid search over the onset envelope is sharp at 130.00, so a constant grid is safe for this track.
 - Bars 41–56 (73.87–103.40 s) are a high-energy 16-bar window used as the default loop.
-- This is a placeholder for import-time analysis. Auto-detection must stay user-correctable (tap tempo, BPM, offset), which the spike does not implement yet.
+- This is a placeholder for import-time analysis. Auto-detection must stay user-correctable (tap tempo, BPM, offset), which the app does not implement yet.
 
 ### Verified in this environment
 
@@ -86,5 +86,5 @@ See `docs/agent_docs/ux-lighting-controls.md` for the evaluated control surface 
 1. Compare mesh-cone proxies with a half-resolution volumetric pass and measure both on a 60 Hz / mid-range GPU device.
 2. Increase the stress test to 48–64 fixtures; test with bloom and shadows independently.
 3. Validate WebGL2 fallback and compare output/quality.
-4. Improve physical fixture geometry and DMX profile/channel fidelity before carrying spike code into `packages/renderer`.
+4. Improve physical fixture geometry and DMX profile/channel fidelity before carrying renderer code into `packages/renderer`.
 5. Add editable BPM/offset and real import-time beat analysis (correctable), then validate the grid and snapping with local tracks.

@@ -7,16 +7,16 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev -w @dmxsim/lighting-spike",
-    "build": "npm run build -w @dmxsim/lighting-spike",
+    "dev": "npm run dev -w @dmxsim/studio",
+    "build": "npm run build -w @dmxsim/studio",
     "test": "vitest run",
     "typecheck": "tsc -b --pretty",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "knip": "knip",
     "check": "npm run typecheck && npm run lint && npm run knip && npm test",
-    "bench:report": "vite-node --config apps/lighting-spike/vite.config.ts apps/lighting-spike/scripts/perf-report.ts",
-    "project:generate": "vite-node --config apps/lighting-spike/vite.config.ts apps/lighting-spike/scripts/generate-demo-project.ts"
+    "bench:report": "vite-node --config apps/studio/vite.config.ts apps/studio/scripts/perf-report.ts",
+    "project:generate": "vite-node --config apps/studio/vite.config.ts apps/studio/scripts/generate-demo-project.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

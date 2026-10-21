@@ -18,10 +18,10 @@ add a short `// eslint-disable-next-line prefer-const` with the reason rather
 than restructuring the code. Keep `packages/show-model` free of `three`
 imports; the lint config enforces it with `no-restricted-imports`.
 
-## Testing hook (lighting spike)
-`window.__dmxsim` in `apps/lighting-spike` drives playback programmatically via Playwright: `seek(sec)`, `play()`, `pause()`, `toggle()`, plus `time`, `playing`, `duration` (null until audio loads) and `fixtureCount`. Use it to scrub the playhead instead of clicking the ruler.
+## Testing hook
+`window.__dmxsim` in `apps/studio` drives playback programmatically via Playwright: `seek(sec)`, `play()`, `pause()`, `toggle()`, plus `time`, `playing`, `duration` (null until audio loads) and `fixtureCount`. Use it to scrub the playhead instead of clicking the ruler.
 
-## Render benchmark (lighting spike)
+## Render benchmark
 Run this when a change could affect frame cost: renderer/materials/shaders, lights, shadows, post-processing, fixture or laser geometry, LED wall, per-frame JS in the `frame()` loop, or timeline painting.
 
 ```js

@@ -4,8 +4,7 @@ npm workspaces monorepo. One TypeScript toolchain, Vite for apps.
 
 ```
 apps/
-  web/            # Phase 1 product app (not yet created)
-  lighting-spike/ # Phase 0 lighting/perf spike (renderer experiment; extract stable parts later)
+  studio/         # dmx-sim studio app: viewport, timeline, inspector
 packages/
   show-model/     # Pure TS: schema, evaluate(), presets, migrations. NO three.js.
   renderer/       # three/webgpu: fixture meshes, TSL materials, post-processing
@@ -17,13 +16,13 @@ docs/user_docs/   # User-authored docs — never modify
 ## Dependency rules
 
 ```
-apps/web, apps/lighting-spike -> packages/renderer -> packages/show-model
-apps/web, apps/lighting-spike -> packages/show-model
-apps/web, apps/lighting-spike -> packages/fixtures -> packages/show-model (types only)
+apps/studio -> packages/renderer -> packages/show-model
+apps/studio -> packages/show-model
+apps/studio -> packages/fixtures -> packages/show-model (types only)
 show-model must never import three, DOM, or WebAudio.
 ```
 
-The current spike keeps its scene implementation in `apps/lighting-spike`; extract stable renderer pieces to `packages/renderer` after the visual/performance experiments.
+The studio app keeps its scene implementation in `apps/studio`; extract stable renderer pieces to `packages/renderer` as they settle.
 
 Enforce with an ESLint `no-restricted-imports` rule in `packages/show-model`.
 
@@ -46,7 +45,7 @@ Enforce with an ESLint `no-restricted-imports` rule in `packages/show-model`.
 - Seed profiles: generic moving head, wash, strobe, laser, PAR, blinder, LED strip
 
 **renderer**
-- Venue builder (`apps/lighting-spike/src/venue-builder.ts` today): structure primitives, LED wall, accent strips, crowd, haze; owns three.js resources and disposal
+- Venue builder (`apps/studio/src/venue-builder.ts` today): structure primitives, LED wall, accent strips, crowd, haze; owns three.js resources and disposal
 - Fixture → scene object factory (`FixtureRig` for spot/wash/fixed, `LaserRig` for multi-beam laser fixtures)
 - Venue builder: structure primitives, LED wall, crowd, booth, haze, exposed surfaces for beam termination
 - TSL beam/volume/fog/emissive materials
@@ -54,7 +53,7 @@ Enforce with an ESLint `no-restricted-imports` rule in `packages/show-model`.
 - `setFixtureStates(states)` per frame; no show logic
 - Perf instrumentation (frame ms, draw calls, visible lights, active laser beams)
 
-**apps/web**
+**apps/studio**
 - Layout: viewport, timeline, inspector
 - Audio engine + analysis worker
 - Editor state (zustand) separate from the immutable show document

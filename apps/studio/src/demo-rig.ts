@@ -12,7 +12,7 @@ import type { Show } from '@dmxsim/show-model';
  * single source of choreography (see `demo-arrangement.ts`).
  */
 
-const DEMO_RIG_NAME = 'Spike — demo rig';
+const DEMO_RIG_NAME = 'Studio — demo rig';
 
 export function createDemoRig(startSec: number, bpm: number): Show {
   return {

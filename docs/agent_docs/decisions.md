@@ -127,7 +127,7 @@ Short form: context → decision → consequence. Update or supersede rather tha
 
 ## ADR-010 — Fixture setup is persisted state, not a render override
 
-**Context.** The spike shipped a fixture panel with a render-only "test output" override: it forced a fixture on and offset its aim and beam angle for inspection, but nothing was saved. That made it a debug tool rather than a way to describe a rig — a user could find a good mounting angle or beam angle and then lose it. It also hid a real modelling gap: parameters such as zoom and pan/tilt are DMX-controlled, yet the model had no place to store the value a fixture holds when no clip asserts it.
+**Context.** The early build shipped a fixture panel with a render-only "test output" override: it forced a fixture on and offset its aim and beam angle for inspection, but nothing was saved. That made it a debug tool rather than a way to describe a rig — a user could find a good mounting angle or beam angle and then lose it. It also hid a real modelling gap: parameters such as zoom and pan/tilt are DMX-controlled, yet the model had no place to store the value a fixture holds when no clip asserts it.
 
 **Decision.** Split fixture control into layers by *how the value is produced*, not by whether it is "digital":
 
@@ -240,7 +240,7 @@ carrying arbitrary media.
   becomes a warning, the project opens, and the affected look is black. Reading
   is strict about everything else: ZIP validity, entry names (no absolute paths
   or `..`), entry count, total size, and a 512 MB cap.
-- There are no migrations. This spike is a demo, and only the bundled demo
+- There are no migrations. This app is a demo, and only the bundled demo
   project is regenerated when the format changes. A version mismatch is a clear
   error.
 - The demo ships as a binary bundle in git

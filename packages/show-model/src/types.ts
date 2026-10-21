@@ -184,6 +184,24 @@ export interface Keyframe {
   value: number;
 }
 
+/**
+ * Pulse shaping for a strobing fixture.
+ *
+ * The strobe channel still sets the rate through `attributes.strobe`; these
+ * settings describe the shape of each individual flash. All fractions are of
+ * one pulse cycle, so the same shape sounds identical at any speed.
+ */
+export interface StrobeSettings {
+  /** Explicit rate in Hz. Overrides the strobe-channel value when present. */
+  hz?: number;
+  /** Fraction of the cycle spent ramping up from `depth` to full. */
+  attack?: number;
+  /** Fraction of the cycle spent ramping back down to `depth`. */
+  release?: number;
+  /** Level held between flashes, 0 (blackout) .. 1 (no pulsing). */
+  depth?: number;
+}
+
 export interface Clip {
   id: string;
   startSec: number;
@@ -194,6 +212,10 @@ export interface Clip {
   fadeInSec?: number;
   fadeOutSec?: number;
   easing?: Easing;
+  /** Pulse shaping for this clip. Only used when the clip strobes. */
+  strobe?: StrobeSettings;
+  /** Explicit pulse rate for a `pulse`-style dimmer envelope, in Hz. */
+  pulseHz?: number;
 }
 
 export interface Track {
@@ -234,8 +256,14 @@ export interface FixtureState {
   /** Beam full-angle spread in degrees (the zoom result). */
   spreadDeg: number;
   focus: number;
-  /** 0 means no strobing. Phase is derived from song time by the renderer. */
+  /** 0 means no strobing. */
   strobeHz: number;
+  /**
+   * Strobe gate at this instant, 0..1. `1` when the fixture is not strobing;
+   * multiply `intensity` by this to get the emitted level. Computed in the
+   * evaluator so every renderer and export agrees on the pulse shape.
+   */
+  strobeLevel: number;
   rotation: number;
   /** Laser beam state, present only for laser fixtures. */
   laser?: LaserState;

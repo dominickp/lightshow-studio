@@ -25,6 +25,9 @@ export function copySelection(selected: readonly Cue[]): ClipClipboardItem[] {
     ...(cue.look === undefined ? {} : { look: cue.look }),
     ...(cue.opacity === undefined ? {} : { opacity: cue.opacity }),
     ...(cue.fadeInSec === undefined ? {} : { fadeInSec: cue.fadeInSec }),
+    ...(cue.fadeOutSec === undefined ? {} : { fadeOutSec: cue.fadeOutSec }),
+    ...(cue.strobe === undefined ? {} : { strobe: cue.strobe }),
+    ...(cue.pulseHz === undefined ? {} : { pulseHz: cue.pulseHz }),
     ...(cue.colorOverride === undefined ? {} : { colorOverride: cue.colorOverride }),
   }));
 }

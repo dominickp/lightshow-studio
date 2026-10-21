@@ -10,6 +10,7 @@ import type {
   LaserSetup,
   LaserState,
   Show,
+  StrobeSettings,
 } from './types';
 
 const DEFAULTS: Record<ControllableAttribute, number> = {
@@ -52,6 +53,49 @@ const FALLBACK_LASER_LIMITS: LaserLimits = {
 };
 
 const TWO_PI = Math.PI * 2;
+
+/**
+ * Default pulse shape. A real strobe is close to a square wave, so the
+ * ramps are short: enough to avoid the hard edge on camera and in haze,
+ * but not so long that the flash reads as a dimmer pulse.
+ */
+const DEFAULT_STROBE: Required<Omit<StrobeSettings, 'hz'>> = {
+  attack: 0.05,
+  release: 0.18,
+  depth: 0,
+};
+
+/** Share of one cycle the lamp is lit. The rest is the off gap. */
+export const STROBE_DUTY = 0.5;
+
+/**
+ * Normalized strobe gate at `phase` (0..1 through one cycle).
+ *
+ * The lamp is lit for the first `STROBE_DUTY` of the cycle, with an optional
+ * attack ramp at the leading edge and a release ramp at the trailing edge.
+ * `depth` is the floor between flashes, so a value above 0 gives a shimmer
+ * rather than a full blackout.
+ */
+export function strobeGate(
+  phase: number,
+  settings: StrobeSettings = {},
+): number {
+  const attack = clamp01(settings.attack ?? DEFAULT_STROBE.attack);
+  const release = clamp01(settings.release ?? DEFAULT_STROBE.release);
+  const depth = clamp01(settings.depth ?? DEFAULT_STROBE.depth);
+  const p = phase - Math.floor(phase);
+
+  let shape = 0;
+  if (p < STROBE_DUTY) {
+    const attackEnd = Math.min(attack, STROBE_DUTY);
+    const releaseStart = STROBE_DUTY - Math.min(release, STROBE_DUTY - attackEnd);
+    if (p < attackEnd) shape = attackEnd <= 0 ? 1 : p / attackEnd;
+    else if (p >= releaseStart) shape = (STROBE_DUTY - p) / (STROBE_DUTY - releaseStart);
+    else shape = 1;
+  }
+
+  return clamp01(depth + (1 - depth) * shape);
+}
 
 /** Resolved laser setup plus the scanner phase at `timeSec`. */
 export function resolveLaser(
@@ -115,7 +159,12 @@ function resolveAttributes(
   clips: readonly Clip[],
   timeSec: number,
   defaults?: FixtureDefaults,
-): { values: Record<ControllableAttribute, number>; fade: number; hasActiveClip: boolean } {
+): {
+  values: Record<ControllableAttribute, number>;
+  fade: number;
+  hasActiveClip: boolean;
+  strobe?: StrobeSettings;
+} {
   const values: Record<ControllableAttribute, number> = { ...DEFAULTS };
 
   // Setup values are the starting point: a clip that does not animate an
@@ -129,11 +178,13 @@ function resolveAttributes(
 
   let fade = 1;
   let hasActiveClip = false;
+  let strobe: StrobeSettings | undefined;
 
   for (const clip of clips) {
     if (timeSec < clip.startSec || timeSec > clip.endSec) continue;
     if (clip.endSec <= clip.startSec) continue;
     hasActiveClip = true;
+    if (clip.strobe !== undefined) strobe = clip.strobe;
 
     const span = clip.endSec - clip.startSec;
     const t01 = clamp01((timeSec - clip.startSec) / span);
@@ -150,7 +201,7 @@ function resolveAttributes(
     }
   }
 
-  return { values, fade, hasActiveClip };
+  return { values, fade, hasActiveClip, ...(strobe === undefined ? {} : { strobe }) };
 }
 
 const lerpRange = (n: number, range: readonly [number, number]): number =>
@@ -162,7 +213,7 @@ export function evaluateFixture(
   clips: readonly Clip[],
   timeSec: number,
 ): FixtureState {
-  const { values, fade, hasActiveClip } = resolveAttributes(clips, timeSec, fixture.defaults);
+  const { values, fade, hasActiveClip, strobe } = resolveAttributes(clips, timeSec, fixture.defaults);
   const { profile } = fixture;
   const caps = profile.capabilities;
 
@@ -181,7 +232,16 @@ export function evaluateFixture(
   const panNorm = caps.panTilt ? values.pan : 0.5;
   const tiltNorm = caps.panTilt ? values.tilt : 0.5;
   const zoomNorm = caps.zoom ? values.zoom : 0.5;
-  const strobe = caps.strobe ? values.strobe : 0;
+
+  /* The strobe channel sets a rate; an explicit per-clip Hz overrides it so a
+   * clip can ask for "8 Hz" instead of an opaque channel percentage. */
+  const strobeValue = caps.strobe ? values.strobe : 0;
+  const [strobeMin, strobeMax] = profile.limits.strobeHz;
+  const requestedHz = strobe?.hz ?? (strobeValue > 0.001 ? lerpRange(strobeValue, profile.limits.strobeHz) : 0);
+  const strobeHz = requestedHz > 0.001
+    ? Math.min(strobeMax, Math.max(strobeMin, requestedHz))
+    : 0;
+  const strobeLevel = strobeHz > 0 ? strobeGate(timeSec * strobeHz, strobe) : 1;
 
   const laser = profile.kind === 'laser'
     ? resolveLaser(fixture.laser, profile.laser, timeSec, caps.rotation ? values.rotation : 0)
@@ -199,7 +259,8 @@ export function evaluateFixture(
     tiltDeg: lerpRange(tiltNorm, profile.limits.tiltDeg),
     spreadDeg: lerpRange(zoomNorm, profile.beam.spreadDeg),
     focus: caps.focus ? values.focus : 0.5,
-    strobeHz: strobe > 0.001 ? lerpRange(strobe, profile.limits.strobeHz) : 0,
+    strobeHz,
+    strobeLevel,
     rotation: caps.rotation ? values.rotation : 0,
     ...(laser === undefined ? {} : { laser }),
     active: intensity > 0.001,

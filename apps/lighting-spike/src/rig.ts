@@ -453,10 +453,9 @@ export class FixtureRig {
     this.yoke.rotation.y = yaw * DEG;
     this.head.rotation.x = -state.tiltDeg * DEG;
 
-    const strobeOn = state.strobeHz <= 0
-      ? true
-      : Math.floor(timeSec * state.strobeHz) % 2 === 0;
-    const level = state.intensity * (strobeOn ? 1 : 0);
+    /* The evaluator owns the pulse rate and shape, so scrubbing, playback and
+     * offline export all land on the same frame of the strobe. */
+    const level = state.intensity * state.strobeLevel;
 
     const color = this.color.setRGB(state.color.r, state.color.g, state.color.b, THREE.SRGBColorSpace);
     const spread = Math.max(0.2, state.spreadDeg);

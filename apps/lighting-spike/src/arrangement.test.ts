@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { reserveCueIds, type Cue } from './arrangement';
+import { STROBE } from '@dmxsim/fixtures';
+import type { FixturePlacement } from '@dmxsim/show-model';
+import { cueToClip, reserveCueIds, type Cue } from './arrangement';
 
 const cue = (id: string, startSec = 0): Cue => ({
   id,
@@ -9,6 +11,13 @@ const cue = (id: string, startSec = 0): Cue => ({
   colorIndex: 0,
   action: 'hold',
 });
+
+const strobeFixture: FixturePlacement = {
+  id: 'strobe-0',
+  profile: STROBE,
+  position: { x: 0, y: 3, z: 0 },
+  yawDeg: 0,
+};
 
 describe('reserveCueIds', () => {
   it('keeps unique ids and continues past the highest cue-N', () => {
@@ -34,5 +43,37 @@ describe('reserveCueIds', () => {
     const input = [cue('cue-1', 0), cue('cue-1', 10)];
     reserveCueIds(input);
     expect(input.map((item) => item.id)).toEqual(['cue-1', 'cue-1']);
+  });
+});
+
+describe('cueToClip', () => {
+  it('passes strobe shaping and the rate override through', () => {
+    const clip = cueToClip(strobeFixture, {
+      ...cue('cue-1'),
+      fixtureId: 'strobe-0',
+      action: 'strobe',
+      strobe: { hz: 12, attack: 0.1, release: 0.3 },
+    });
+    expect(clip.attributes.strobe).toEqual([{ at: 0, value: 0.78 }]);
+    expect(clip.strobe).toEqual({ hz: 12, attack: 0.1, release: 0.3 });
+  });
+
+  it('keeps a custom fade out and defaults it otherwise', () => {
+    expect(cueToClip(strobeFixture, cue('cue-1')).fadeOutSec).toBeCloseTo(0.08);
+    expect(cueToClip(strobeFixture, { ...cue('cue-1'), fadeOutSec: 1.5 }).fadeOutSec).toBeCloseTo(1.5);
+  });
+
+  it('pulses at an explicit rate regardless of clip length', () => {
+    const clip = cueToClip(strobeFixture, {
+      ...cue('cue-1'),
+      startSec: 0,
+      endSec: 2,
+      action: 'pulse',
+      pulseHz: 2,
+    });
+    // Two cycles per second over two seconds = 8 half-cycle keyframes.
+    expect(clip.attributes.dimmer).toHaveLength(9);
+    expect(clip.attributes.dimmer?.[0]?.value).toBeCloseTo(0.9);
+    expect(clip.attributes.dimmer?.at(-1)?.value).toBeCloseTo(0.9);
   });
 });

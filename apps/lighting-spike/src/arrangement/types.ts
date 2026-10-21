@@ -1,4 +1,4 @@
-import type { LedLookState } from '@dmxsim/show-model';
+import type { LedLookState, StrobeSettings } from '@dmxsim/show-model';
 
 export type CueAction = 'hold' | 'fade' | 'pulse' | 'sweep' | 'strobe' | 'fire';
 
@@ -35,6 +35,12 @@ export interface Cue extends SurfaceCueFields {
   action: CueAction;
   /** Overrides the default 40 ms fade-in when the cue starts (seconds). */
   fadeInSec?: number;
+  /** Overrides the default 80 ms fade-out when the cue ends (seconds). */
+  fadeOutSec?: number;
+  /** Pulse shape for the `strobe` action. */
+  strobe?: StrobeSettings;
+  /** Pulse speed for the `pulse` action, in Hz. */
+  pulseHz?: number;
   /** Custom color when the cue was authored with the color picker. */
   colorOverride?: CueColorOverride;
 }
@@ -64,6 +70,9 @@ export interface ClipClipboardItem extends SurfaceCueFields {
   colorIndex: number;
   action: CueAction;
   fadeInSec?: number;
+  fadeOutSec?: number;
+  strobe?: StrobeSettings;
+  pulseHz?: number;
   colorOverride?: CueColorOverride;
 }
 

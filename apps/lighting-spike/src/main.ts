@@ -10,6 +10,8 @@ import {
   nextFixtureId,
   readProjectBundle,
   resolveMount,
+  strobeGate,
+  STROBE_DUTY,
   timeToBeat,
   venueById,
   type FixtureDefaults,
@@ -331,6 +333,29 @@ const ui = {
   arrangementScroll: element('arrangement-scroll'),
   ruler: element<HTMLCanvasElement>('timeline-ruler'),
   cueAction: element<HTMLSelectElement>('cue-action'),
+  clipTiming: element<HTMLButtonElement>('btn-clip-timing'),
+  strobeEditor: element<HTMLElement>('strobe-editor'),
+  seClose: element<HTMLButtonElement>('se-close'),
+  seGlyph: element('se-glyph'),
+  seTitle: element('se-title'),
+  sePreview: element<HTMLCanvasElement>('se-preview'),
+  sePreviewCaption: element('se-preview-caption'),
+  sePulseSection: element('se-pulse-section'),
+  seShapeSection: element('se-shape-section'),
+  seRateLabel: element('se-rate-label'),
+  seRate: element<HTMLInputElement>('se-rate'),
+  seRateValue: element('se-rate-value'),
+  seRateChips: element('se-rate-chips'),
+  seAttack: element<HTMLInputElement>('se-attack'),
+  seAttackValue: element('se-attack-value'),
+  seRelease: element<HTMLInputElement>('se-release'),
+  seReleaseValue: element('se-release-value'),
+  seDepth: element<HTMLInputElement>('se-depth'),
+  seDepthValue: element('se-depth-value'),
+  seFadeIn: element<HTMLInputElement>('se-fadein'),
+  seFadeInValue: element('se-fadein-value'),
+  seFadeOut: element<HTMLInputElement>('se-fadeout'),
+  seFadeOutValue: element('se-fadeout-value'),
   cueColorField: element('cue-color-field'),
   cueColor: element('cue-color'),
   cueDelete: element<HTMLButtonElement>('btn-cue-delete'),
@@ -673,6 +698,10 @@ const syncCueInspector = (
   }
   ui.cueAction.disabled = fixture === null;
   ui.cueAction.value = mixed ? '' : cue?.action ?? arrangement.suggestedAction;
+
+  /* One compact button carries the summary; the popover does the editing. */
+  syncTimingEditor(isSurface ? null : cue, fixture);
+
   const colorEnabled = !isSurface && fixture !== null && Boolean(fixture.profile.capabilities.color);
   // Do not show a disabled colour picker for fixtures that cannot mix colour.
   ui.cueColorField.hidden = !colorEnabled;
@@ -2139,6 +2168,259 @@ ui.cueAction.addEventListener('change', () => {
   arrangement.setPendingAction(action);
   arrangement.setSelectedAction(action);
 });
+
+/* --- Clip timing / strobe popover ---------------------------------------- */
+
+/** One decimal only when the rate is not a whole number, so 8 Hz stays "8". */
+const formatHz = (hz: number): string => {
+  const rounded = Math.round(hz * 10) / 10;
+  return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)} Hz`;
+};
+
+/** The rate a strobe cue plays at, including the legacy channel fallback. */
+const strobeRateFor = (cue: Cue, fixture: FixturePlacement | null): number => {
+  const [min, max] = fixture?.profile.limits.strobeHz ?? [1, 30];
+  return cue.strobe?.hz ?? min + (max - min) * 0.78;
+};
+
+const cueLength = (cue: Cue): number => Math.max(0.001, cue.endSec - cue.startSec);
+
+/** Rate range: strobes follow the profile; a pulse is just a dimmer pattern. */
+const rateBounds = (cue: Cue, fixture: FixturePlacement | null): [number, number] =>
+  cue.action === 'strobe' ? fixture?.profile.limits.strobeHz ?? [1, 30] : [0.5, 20];
+
+/** Summary shown on the single toolbar button. */
+const timingSummary = (cue: Cue, fixture: FixturePlacement | null): string => {
+  if (cue.action === 'strobe') return `Strobe ${formatHz(strobeRateFor(cue, fixture))} ▾`;
+  if (cue.action === 'pulse') return `Pulse ${formatHz(cue.pulseHz ?? 4 / cueLength(cue))} ▾`;
+  return 'Fades ▾';
+};
+
+const setSliderValue = (input: HTMLInputElement, value: number): void => {
+  // Do not fight the thumb while the user is dragging it.
+  if (document.activeElement === input) return;
+  input.value = String(value);
+};
+
+/** Draw two cycles of the actual gate, so the numbers have a shape. */
+function drawTimingPreview(cue: Cue): void {
+  const ctx = ui.sePreview.getContext('2d');
+  if (ctx === null) return;
+  const width = ui.sePreview.width;
+  const height = ui.sePreview.height;
+  ctx.clearRect(0, 0, width, height);
+
+  const isStrobe = cue.action === 'strobe';
+  const settings = isStrobe ? cue.strobe ?? {} : { attack: 0, release: 0, depth: 0.08 };
+  const cycles = 2;
+  const steps = 260;
+  const top = 6;
+  const bottom = height - 6;
+  const levelAt = (phase: number): number => isStrobe
+    ? strobeGate(phase, settings)
+    : (phase % 1) < 0.5 ? 0.9 : (settings.depth ?? 0.08);
+
+  ctx.beginPath();
+  for (let index = 0; index <= steps; index += 1) {
+    const t = index / steps;
+    const x = t * width;
+    const y = bottom - levelAt(t * cycles) * (bottom - top);
+    if (index === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.lineTo(width, bottom);
+  ctx.lineTo(0, bottom);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(255, 138, 92, 0.16)';
+  ctx.fill();
+
+  ctx.beginPath();
+  for (let index = 0; index <= steps; index += 1) {
+    const t = index / steps;
+    const x = t * width;
+    const y = bottom - levelAt(t * cycles) * (bottom - top);
+    if (index === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = '#ff8a5c';
+  ctx.lineWidth = 3;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  ui.sePreviewCaption.textContent = isStrobe
+    ? `two cycles · lit ${Math.round(STROBE_DUTY * 100)}% of each`
+    : 'two cycles · square pulses';
+}
+
+/** Musical rate chips: one, two or four hits per beat. */
+function renderRateChips(rate: number, cue: Cue, fixture: FixturePlacement | null): void {
+  ui.seRateChips.replaceChildren();
+  const bpm = currentTimeline?.bpm ?? null;
+  if (bpm === null || bpm <= 0) return;
+  const limits = rateBounds(cue, fixture);
+  for (const [label, hits] of [['1/4', 1], ['1/8', 2], ['1/16', 4]] as const) {
+    // One decimal keeps the slider, the readout and the stored rate identical.
+    const hz = Math.round(clamp((bpm / 60) * hits, limits[0], limits[1]) * 10) / 10;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    button.title = `${formatHz(hz)} · ${hits} hit${hits === 1 ? '' : 's'} per beat`;
+    button.setAttribute('aria-pressed', String(Math.abs(hz - rate) < 0.05));
+    button.addEventListener('click', () => {
+      beginTimingEdit();
+      ensureTimingHistory();
+      applyTimingPatch({ rate: hz });
+      endTimingEdit();
+    });
+    ui.seRateChips.append(button);
+  }
+}
+
+/** Refresh the button and popover from the current selection. */
+function syncTimingEditor(cue: Cue | null, fixture: FixturePlacement | null): void {
+  ui.clipTiming.hidden = cue === null;
+  if (cue === null) {
+    closeTimingEditor();
+    return;
+  }
+
+  const isStrobe = cue.action === 'strobe';
+  const isPulse = cue.action === 'pulse';
+  ui.clipTiming.textContent = timingSummary(cue, fixture);
+  ui.clipTiming.title = isStrobe || isPulse
+    ? 'Strobe / pulse rate and shape, plus clip fades'
+    : 'Clip fades';
+
+  ui.sePulseSection.hidden = !(isStrobe || isPulse);
+  ui.seShapeSection.hidden = !isStrobe;
+  ui.seGlyph.textContent = isStrobe ? '⚡' : isPulse ? '≈' : '⏱';
+  ui.seTitle.textContent = isStrobe ? 'Strobe' : isPulse ? 'Pulse' : 'Clip timing';
+  ui.seRateLabel.textContent = isStrobe ? 'Strobe rate' : isPulse ? 'Pulse rate' : 'Rate';
+
+  const [rateMin, rateMax] = rateBounds(cue, fixture);
+  ui.seRate.min = String(rateMin);
+  ui.seRate.max = String(rateMax);
+  const rate = isStrobe ? strobeRateFor(cue, fixture) : cue.pulseHz ?? 4 / cueLength(cue);
+  setSliderValue(ui.seRate, rate);
+  ui.seRateValue.textContent = formatHz(rate);
+  renderRateChips(rate, cue, fixture);
+
+  const attackPct = Math.round((cue.strobe?.attack ?? 0.05) * 100);
+  const releasePct = Math.round((cue.strobe?.release ?? 0.18) * 100);
+  const depthPct = Math.round((cue.strobe?.depth ?? 0) * 100);
+  setSliderValue(ui.seAttack, attackPct);
+  setSliderValue(ui.seRelease, releasePct);
+  setSliderValue(ui.seDepth, depthPct);
+  ui.seAttackValue.textContent = `${attackPct}%`;
+  ui.seReleaseValue.textContent = `${releasePct}%`;
+  ui.seDepthValue.textContent = `${depthPct}%`;
+
+  const fadeInSec = cue.fadeInSec ?? (cue.action === 'fade' ? 0 : 0.04);
+  const fadeOutSec = cue.fadeOutSec ?? 0.08;
+  setSliderValue(ui.seFadeIn, fadeInSec);
+  setSliderValue(ui.seFadeOut, fadeOutSec);
+  ui.seFadeInValue.textContent = `${fadeInSec.toFixed(2)} s`;
+  ui.seFadeOutValue.textContent = `${fadeOutSec.toFixed(2)} s`;
+
+  if (!ui.strobeEditor.hidden) drawTimingPreview(cue);
+}
+
+/**
+ * Apply the popover's current controls to the selection.
+ *
+ * `history: false` is used during a drag; the matching undo step is opened by
+ * `beginTimingEdit` on pointer-down (and on arrow-key nudges).
+ */
+function applyTimingPatch(overrides: { rate?: number } = {}): void {
+  const cue = arrangement.selectedCue;
+  if (cue === null) return;
+  const [rateMin, rateMax] = rateBounds(cue, arrangement.selectedFixture);
+  const rate = clamp(overrides.rate ?? Number(ui.seRate.value), rateMin, rateMax);
+  const attack = clamp(Number(ui.seAttack.value) / 100, 0, 0.5);
+  const release = clamp(Number(ui.seRelease.value) / 100, 0, 0.5);
+  const depth = clamp(Number(ui.seDepth.value) / 100, 0, 1);
+  const fadeInSec = clamp(Number(ui.seFadeIn.value), 0, 4);
+  const fadeOutSec = clamp(Number(ui.seFadeOut.value), 0, 4);
+
+  arrangement.setSelectedClipSettings({
+    fadeInSec,
+    fadeOutSec,
+    ...(cue.action === 'strobe'
+      ? { strobe: { ...cue.strobe, hz: rate, attack, release, depth } }
+      : cue.action === 'pulse'
+        ? { pulseHz: rate }
+        : {}),
+  }, { history: false });
+}
+
+let timingEditPending = false;
+const beginTimingEdit = (): void => {
+  timingEditPending = true;
+};
+/** Open the undo step on the first real change of a gesture. */
+const ensureTimingHistory = (): void => {
+  if (!timingEditPending) return;
+  timingEditPending = false;
+  arrangement.beginClipEdit();
+};
+const endTimingEdit = (): void => {
+  timingEditPending = false;
+};
+
+function openTimingEditor(): void {
+  const cue = arrangement.selectedCue;
+  if (cue === null) return;
+  syncTimingEditor(cue, arrangement.selectedFixture);
+  ui.strobeEditor.hidden = false;
+  ui.clipTiming.setAttribute('aria-expanded', 'true');
+  drawTimingPreview(cue);
+}
+
+function closeTimingEditor(): void {
+  if (ui.strobeEditor.hidden) return;
+  ui.strobeEditor.hidden = true;
+  ui.clipTiming.setAttribute('aria-expanded', 'false');
+}
+
+ui.clipTiming.addEventListener('click', () => {
+  if (ui.strobeEditor.hidden) openTimingEditor();
+  else closeTimingEditor();
+});
+ui.seClose.addEventListener('click', () => {
+  closeTimingEditor();
+  ui.clipTiming.focus();
+});
+ui.strobeEditor.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  event.preventDefault();
+  closeTimingEditor();
+  ui.clipTiming.focus();
+});
+document.addEventListener('pointerdown', (event) => {
+  const target = event.target;
+  if (ui.strobeEditor.hidden || !(target instanceof Node)) return;
+  if (ui.strobeEditor.contains(target) || ui.clipTiming.contains(target)) return;
+  closeTimingEditor();
+});
+
+for (const slider of [ui.seRate, ui.seAttack, ui.seRelease, ui.seDepth, ui.seFadeIn, ui.seFadeOut]) {
+  slider.addEventListener('pointerdown', beginTimingEdit);
+  slider.addEventListener('pointerup', endTimingEdit);
+  slider.addEventListener('keydown', (event) => {
+    if (event.repeat) return;
+    if (!/^(Arrow|Home|End|Page)/.test(event.key)) return;
+    beginTimingEdit();
+  });
+  slider.addEventListener('input', () => {
+    ensureTimingHistory();
+    applyTimingPatch();
+  });
+  slider.addEventListener('change', () => {
+    ensureTimingHistory();
+    applyTimingPatch();
+    endTimingEdit();
+  });
+}
 const chooseColor = (colorIndex: number, override?: CueColorOverride): void => {
   arrangement.setPendingColor(colorIndex, override);
   arrangement.setSelectedColor(colorIndex, override);
@@ -2840,7 +3122,7 @@ window.addEventListener('keydown', (event) => {
     arrangement.deleteSelected();
   } else if (event.key === 'd' || event.key === 'D') {
     applyTimelineMode('drop');
-  } else if (event.key === 'v' || event.key === 'V') {
+  } else if (event.key === 's' || event.key === 'S') {
     applyTimelineMode('select');
   } else if (event.key === 'Escape') {
     arrangement.clearSelection();
@@ -2857,7 +3139,7 @@ window.addEventListener('keydown', (event) => {
     applyShadows();
   } else if (event.key === '4') {
     strobesOn = !strobesOn;
-  } else if (event.key === 's' || event.key === 'S') {
+  } else if (event.key === 'x' || event.key === 'X') {
     toggleStats();
   } else if (event.key === '`' || event.key === '~') {
     toggleControls();
@@ -3151,7 +3433,7 @@ const frame = (now: number): void => {
       .map((cue) => arrangement.toClip(cue));
     const state = evaluateFixture(fixture, trackClips, songTime);
     return fixture.profile.kind === 'strobe' && !strobesOn
-      ? { ...state, intensity: 0, active: false, strobeHz: 0 }
+      ? { ...state, intensity: 0, active: false, strobeHz: 0, strobeLevel: 1 }
       : state;
   });
 

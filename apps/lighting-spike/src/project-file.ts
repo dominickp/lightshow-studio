@@ -22,6 +22,9 @@ export function cueToProjectClip(cue: Cue): ProjectClip {
     colorIndex: cue.colorIndex,
     ...(cue.colorOverride === undefined ? {} : { colorOverride: cue.colorOverride }),
     ...(cue.fadeInSec === undefined ? {} : { fadeInSec: cue.fadeInSec }),
+    ...(cue.fadeOutSec === undefined ? {} : { fadeOutSec: cue.fadeOutSec }),
+    ...(cue.strobe === undefined ? {} : { strobe: cue.strobe }),
+    ...(cue.pulseHz === undefined ? {} : { pulseHz: cue.pulseHz }),
   };
 }
 
@@ -36,6 +39,9 @@ export function projectClipToCue(clip: ProjectClip): Cue {
     colorIndex: clip.colorIndex,
     ...(clip.colorOverride === undefined ? {} : { colorOverride: clip.colorOverride }),
     ...(clip.fadeInSec === undefined ? {} : { fadeInSec: clip.fadeInSec }),
+    ...(clip.fadeOutSec === undefined ? {} : { fadeOutSec: clip.fadeOutSec }),
+    ...(clip.strobe === undefined ? {} : { strobe: clip.strobe }),
+    ...(clip.pulseHz === undefined ? {} : { pulseHz: clip.pulseHz }),
   };
 }
 
@@ -53,6 +59,7 @@ export function surfaceCueToProjectClip(cue: Cue): ProjectSurfaceClip {
     look: cue.look!,
     opacity: cue.opacity ?? 1,
     ...(cue.fadeInSec === undefined ? {} : { fadeInSec: cue.fadeInSec }),
+    ...(cue.fadeOutSec === undefined ? {} : { fadeOutSec: cue.fadeOutSec }),
   };
 }
 
@@ -68,6 +75,7 @@ export function projectSurfaceClipToCue(clip: ProjectSurfaceClip): Cue {
     look: clip.look,
     opacity: clip.opacity,
     ...(clip.fadeInSec === undefined ? {} : { fadeInSec: clip.fadeInSec }),
+    ...(clip.fadeOutSec === undefined ? {} : { fadeOutSec: clip.fadeOutSec }),
   };
 }
 

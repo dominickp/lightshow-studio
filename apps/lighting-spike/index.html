@@ -41,7 +41,7 @@
         <span class="controls-group">Scene</span>
         <button id="btn-count">Fixture count <em>[ ]</em></button>
         <span class="controls-group">Diagnostics</span>
-        <button id="btn-stats" class="on">Stats <em>s</em></button>
+        <button id="btn-stats" class="on">Stats <em>x</em></button>
       </div>
 
       <details id="hint">
@@ -50,10 +50,10 @@
           <b>Space</b> play/pause · <b>← →</b> seek 1/16 (Shift = measure) · <b>M</b> mute ·
           drag the ruler or waveform to scrub · <b>L</b> loop ·
           <b>1</b> beams <b>2</b> bloom <b>3</b> shadows <b>4</b> strobes ·
-          <b>C</b> camera · <b>O</b> orbit · <b>[ ]</b> fixture count · <b>S</b> stats · <b>`</b> controls panel · <b>H</b> haze<br />
+          <b>C</b> camera · <b>O</b> orbit · <b>[ ]</b> fixture count · <b>X</b> stats · <b>`</b> controls panel · <b>H</b> haze<br />
           <b>Ctrl/⌘ + wheel</b> zoom at pointer · <b>Ctrl/⌘ +/-</b> zoom · <b>Ctrl/⌘ 0</b> fit ·
           <b>Middle-drag</b> the timeline or waveform to pan ·
-          <b>D</b> drop mode · <b>V</b> select mode · <b>Backspace</b> deletes the selection<br />
+          <b>S</b> select mode · <b>D</b> drop mode · <b>Backspace</b> deletes the selection<br />
           Drop mode: drag a lane to draw a clip, drag a clip to move, drag its edge to resize ·
           Select mode: click or marquee cards, drag a selected card to move the selection,
           drag a card edge to resize it, <b>Shift/Ctrl + click</b> adds, <b>Ctrl/⌘ A</b> selects all,
@@ -94,10 +94,10 @@
       <div id="clip-inspector" aria-label="Timeline tools">
         <span class="inspector-title" title="Timeline tools">Tools</span>
         <div class="tool-modes" role="group" aria-label="Timeline mode">
+          <button id="btn-mode-select" type="button" aria-pressed="false"
+            title="Select mode: click or marquee to select clips (S)">Select</button>
           <button id="btn-mode-drop" type="button" aria-pressed="true"
             title="Drop mode: drag a lane to draw clips (D)">Drop</button>
-          <button id="btn-mode-select" type="button" aria-pressed="false"
-            title="Select mode: click or marquee to select clips (V)">Select</button>
         </div>
         <span class="inspector-target">
           <span class="clip-field-label">Selection</span>
@@ -107,6 +107,10 @@
           <span class="clip-field-label">Action</span>
           <select id="cue-action" aria-label="Clip action" disabled></select>
         </label>
+        <!-- One compact entry point instead of a row of sliders: the popover
+             holds clip fades and the strobe/pulse shape. -->
+        <button id="btn-clip-timing" type="button" hidden aria-haspopup="dialog" aria-expanded="false"
+          title="Clip fades and strobe / pulse timing">Timing ▾</button>
         <div class="clip-field" id="cue-look-field" hidden>
           <span class="clip-field-label">LED look</span>
           <button id="btn-look-edit" type="button" title="Edit the selected look" hidden>▤ Gradient drift ▾</button>
@@ -165,6 +169,67 @@
                 <option value="cover">Cover (crop)</option>
                 <option value="contain">Contain (letterbox)</option>
               </select>
+            </label>
+          </div>
+        </div>
+        <div id="strobe-editor" role="dialog" aria-label="Clip timing and strobe" hidden>
+          <div class="se-head">
+            <span class="se-glyph" id="se-glyph" aria-hidden="true">⚡</span>
+            <span class="se-title" id="se-title">Timing</span>
+            <button id="se-close" type="button" title="Close (Esc)" aria-label="Close timing editor">×</button>
+          </div>
+
+          <!-- A waveform of the actual gate, so the numbers have a shape. -->
+          <div class="se-preview">
+            <canvas id="se-preview" width="560" height="88" aria-hidden="true"></canvas>
+            <span class="se-preview-caption" id="se-preview-caption"></span>
+          </div>
+
+          <div id="se-pulse-section" hidden>
+            <div class="se-row">
+              <span id="se-rate-label">Strobe rate</span>
+              <output id="se-rate-value">12 Hz</output>
+            </div>
+            <input id="se-rate" type="range" min="1" max="30" step="0.1" value="12"
+              aria-labelledby="se-rate-label" />
+            <div class="se-chips" id="se-rate-chips" role="group" aria-label="Musical rate"></div>
+
+            <div id="se-shape-section">
+              <p class="se-subhead">Flash shape</p>
+              <label class="se-control">
+                <span class="se-name">Fade in</span>
+                <input id="se-attack" type="range" min="0" max="50" step="1" value="5"
+                  aria-label="Flash fade in, percent of one cycle" />
+                <output id="se-attack-value">5%</output>
+              </label>
+              <label class="se-control">
+                <span class="se-name">Fade out</span>
+                <input id="se-release" type="range" min="0" max="50" step="1" value="18"
+                  aria-label="Flash fade out, percent of one cycle" />
+                <output id="se-release-value">18%</output>
+              </label>
+              <label class="se-control">
+                <span class="se-name">Between</span>
+                <input id="se-depth" type="range" min="0" max="100" step="1" value="0"
+                  aria-label="Level between strobe flashes" />
+                <output id="se-depth-value">0%</output>
+              </label>
+            </div>
+          </div>
+
+          <p class="se-subhead">Clip fades</p>
+          <div id="se-fade-section">
+            <label class="se-control">
+              <span class="se-name">Fade in</span>
+              <input id="se-fadein" type="range" min="0" max="4" step="0.02" value="0.04"
+                aria-label="Clip fade in, seconds" />
+              <output id="se-fadein-value">0.04 s</output>
+            </label>
+            <label class="se-control">
+              <span class="se-name">Fade out</span>
+              <input id="se-fadeout" type="range" min="0" max="4" step="0.02" value="0.08"
+                aria-label="Clip fade out, seconds" />
+              <output id="se-fadeout-value">0.08 s</output>
             </label>
           </div>
         </div>

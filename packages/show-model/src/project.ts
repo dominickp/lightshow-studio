@@ -172,6 +172,18 @@ export const keyframeSchema = z.object({
   value: z.number(),
 });
 
+/** Per-pulse shaping for a strobing clip. Fractions are of one cycle. */
+export const strobeSettingsSchema = z.object({
+  /** Explicit pulse rate in Hz; overrides the strobe channel value. */
+  hz: z.number().nonnegative().optional(),
+  /** Share of the cycle spent ramping up. */
+  attack: normalizedSchema.optional(),
+  /** Share of the cycle spent ramping down. */
+  release: normalizedSchema.optional(),
+  /** Level between flashes, 0..1. */
+  depth: normalizedSchema.optional(),
+});
+
 export const clipSchema = z.object({
   id: z.string().min(1),
   startSec: z.number().nonnegative(),
@@ -180,6 +192,8 @@ export const clipSchema = z.object({
   fadeInSec: z.number().nonnegative().optional(),
   fadeOutSec: z.number().nonnegative().optional(),
   easing: z.enum(EASINGS).optional(),
+  strobe: strobeSettingsSchema.optional(),
+  pulseHz: z.number().nonnegative().optional(),
 });
 
 export const trackSchema = z.object({
@@ -219,6 +233,12 @@ export const projectClipSchema = z
       .optional(),
     /** Overrides the default fade-in when the clip starts (seconds). */
     fadeInSec: z.number().nonnegative().optional(),
+    /** Overrides the default fade-out when the clip ends (seconds). */
+    fadeOutSec: z.number().nonnegative().optional(),
+    /** Pulse shape for `strobe` clips. */
+    strobe: strobeSettingsSchema.optional(),
+    /** Pulse speed for `pulse` clips, in Hz. */
+    pulseHz: z.number().nonnegative().optional(),
   })
   .refine((clip) => clip.endSec > clip.startSec, {
     message: 'endSec must be greater than startSec',
@@ -282,6 +302,7 @@ export const ledSurfaceClipSchema = z
     look: ledLookSchema,
     opacity: z.number().min(0).max(1).default(1),
     fadeInSec: z.number().nonnegative().optional(),
+    fadeOutSec: z.number().nonnegative().optional(),
   })
   .refine((clip) => clip.endSec > clip.startSec, {
     message: 'endSec must be greater than startSec',

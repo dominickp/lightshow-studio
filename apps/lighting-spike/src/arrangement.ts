@@ -1,4 +1,4 @@
-import type { Clip, FixturePlacement, LedLookState, LedSurface } from '@dmxsim/show-model';
+import type { Clip, FixturePlacement, Keyframe, LedLookState, LedSurface } from '@dmxsim/show-model';
 import { actionsFor } from './arrangement/capabilities';
 import {
   canMoveCueToLane,
@@ -570,6 +570,34 @@ export class Arrangement {
     this.renderRows();
     this.notifyChange();
     this.notifySelection();
+  }
+
+  /**
+   * Apply per-clip timing and pulse settings to the selection.
+   *
+   * A shallow merge is enough here: the inspector always sends the full
+   * `strobe` object it wants, so stale attack/release values cannot survive.
+   * Slider drags pass `history: false` after a single `beginClipEdit`, so one
+   * gesture is one undo step instead of one per pointer move.
+   */
+  setSelectedClipSettings(
+    patch: Partial<Pick<Cue, 'fadeInSec' | 'fadeOutSec' | 'pulseHz' | 'strobe'>>,
+    options: { history?: boolean } = {},
+  ): void {
+    if (this.selectedCueIds.size === 0) return;
+    if (options.history !== false) this.pushHistory();
+    this.cues = this.cues.map((item) => this.selectedCueIds.has(item.id)
+      ? { ...item, ...patch }
+      : item);
+    this.renderRows();
+    this.notifyChange();
+    this.notifySelection();
+  }
+
+  /** Open an undo step before a slider drag that will use `history: false`. */
+  beginClipEdit(): void {
+    if (this.selectedCueIds.size === 0) return;
+    this.pushHistory();
   }
 
   /** The action used for the next clip when nothing is selected. */
@@ -1612,12 +1640,41 @@ export function reserveCueIds(cues: readonly Cue[]): { cues: Cue[]; nextId: numb
 }
 
 /**
+ * Dimmer keyframes for a `pulse` cue.
+ *
+ * Without a rate the legacy shape is kept (four pulses across the clip). With
+ * `pulseHz` the clip pulses at that speed regardless of its length.
+ */
+function pulseKeyframes(durationSec: number, pulseHz?: number): Keyframe[] {
+  if (pulseHz === undefined || pulseHz <= 0) {
+    return [
+      { at: 0, value: 0.9 },
+      { at: 0.12, value: 0.08 },
+      { at: 0.24, value: 0.9 },
+      { at: 0.36, value: 0.08 },
+      { at: 0.48, value: 0.9 },
+      { at: 0.6, value: 0.08 },
+      { at: 0.72, value: 0.9 },
+      { at: 0.84, value: 0.08 },
+      { at: 1, value: 0.9 },
+    ];
+  }
+  const steps = Math.max(2, Math.round(Math.max(0.001, durationSec) * pulseHz * 2));
+  const frames: Keyframe[] = [];
+  for (let index = 0; index <= steps; index += 1) {
+    frames.push({ at: index / steps, value: index % 2 === 0 ? 0.9 : 0.08 });
+  }
+  return frames;
+}
+
+/**
  * Converts one arrangement cue into the evaluator's clip form. Pure so the
  * stage and headless tests share exactly the same interpretation of a cue.
  */
 export function cueToClip(fixture: FixturePlacement | undefined, cue: Cue): Clip {
   const caps = fixture?.profile.capabilities;
   const color = resolveCueColor(cue);
+  const clipLength = Math.max(0.001, cue.endSec - cue.startSec);
   const attrs: Clip['attributes'] = {
     dimmer: cue.action === 'fire'
       // Brief, hard-hitting burst with a tail, the shape of a CO2 jet.
@@ -1630,17 +1687,7 @@ export function cueToClip(fixture: FixturePlacement | undefined, cue: Cue): Clip
       : cue.action === 'fade'
         ? [{ at: 0, value: 0 }, { at: 1, value: 0.9 }]
         : cue.action === 'pulse'
-          ? [
-              { at: 0, value: 0.9 },
-              { at: 0.12, value: 0.08 },
-              { at: 0.24, value: 0.9 },
-              { at: 0.36, value: 0.08 },
-              { at: 0.48, value: 0.9 },
-              { at: 0.6, value: 0.08 },
-              { at: 0.72, value: 0.9 },
-              { at: 0.84, value: 0.08 },
-              { at: 1, value: 0.9 },
-            ]
+          ? pulseKeyframes(clipLength, cue.pulseHz)
           : [{ at: 0, value: 0.9 }],
   };
 
@@ -1663,16 +1710,21 @@ export function cueToClip(fixture: FixturePlacement | undefined, cue: Cue): Clip
     attrs.pan = [{ at: 0, value: 0.15 }, { at: 0.5, value: 0.85 }, { at: 1, value: 0.15 }];
     attrs.tilt = [{ at: 0, value: 0.42 }, { at: 0.5, value: 0.66 }, { at: 1, value: 0.42 }];
   }
-  if (cue.action === 'strobe' && caps?.strobe) attrs.strobe = [{ at: 0, value: 0.78 }];
+  if (cue.action === 'strobe' && caps?.strobe) {
+    /* Keep the channel value as a fallback rate; `strobe.hz` overrides it so
+     * the inspector can expose an actual frequency. */
+    attrs.strobe = [{ at: 0, value: 0.78 }];
+  }
 
   return {
     id: cue.id,
     startSec: cue.startSec,
     endSec: cue.endSec,
     fadeInSec: cue.fadeInSec ?? (cue.action === 'fade' ? 0 : 0.04),
-    fadeOutSec: 0.08,
+    fadeOutSec: cue.fadeOutSec ?? 0.08,
     easing: cue.action === 'sweep' ? 'sine' : cue.action === 'pulse' ? 'step' : 'linear',
     attributes: attrs,
+    ...(cue.action === 'strobe' && cue.strobe !== undefined ? { strobe: cue.strobe } : {}),
   };
 }
 
@@ -1787,7 +1839,10 @@ function sameCues(a: readonly Cue[], b: readonly Cue[]): boolean {
       || left.colorIndex !== right.colorIndex
       || left.action !== right.action
       || left.fadeInSec !== right.fadeInSec
+      || left.fadeOutSec !== right.fadeOutSec
+      || left.pulseHz !== right.pulseHz
       || left.surfaceId !== right.surfaceId
+      || JSON.stringify(left.strobe ?? null) !== JSON.stringify(right.strobe ?? null)
       || JSON.stringify(left.look ?? null) !== JSON.stringify(right.look ?? null)
       || JSON.stringify(left.colorOverride ?? null) !== JSON.stringify(right.colorOverride ?? null)) return false;
   }

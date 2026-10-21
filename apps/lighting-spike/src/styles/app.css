@@ -525,6 +525,17 @@
         min-width: 0;
       }
       #clip-inspector .clip-field[hidden] { display: none; }
+      /* The timing button carries the summary; all editing lives in the popover. */
+      #clip-inspector #btn-clip-timing {
+        flex: 0 0 auto;
+        font-variant-numeric: tabular-nums;
+      }
+      #clip-inspector #btn-clip-timing[hidden] { display: none; }
+      #clip-inspector #btn-clip-timing[aria-expanded='true'] {
+        border-color: rgba(255, 126, 83, 0.6);
+        background: rgba(255, 126, 83, 0.12);
+        color: #ffb08c;
+      }
       #clip-inspector .clip-field-label {
         flex: 0 0 auto;
         color: #5f6b80;
@@ -1472,5 +1483,147 @@
         cursor: pointer;
       }
       #look-editor .le-media-remove:hover { background: rgba(255, 90, 90, 0.12); border-color: rgba(255, 155, 155, 0.6); }
+
+      /* --- Clip timing / strobe popover ---------------------------------- */
+      /* Same shell as the look editor: it opens upward from the tools bar so
+         the timeline stays visible behind it. */
+      #strobe-editor {
+        position: absolute;
+        z-index: 40;
+        left: 8px;
+        bottom: calc(100% - 4px);
+        width: min(290px, 92vw);
+        /* Never taller than the room above the tools bar, so it cannot run off
+           the top of a short window. */
+        max-height: min(76vh, 380px);
+        overflow-y: auto;
+        scrollbar-width: none;
+        padding: 6px 10px 8px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #10161f;
+        box-shadow: 0 18px 42px rgba(0, 0, 0, 0.55);
+        color: var(--txt);
+      }
+      #strobe-editor::-webkit-scrollbar { display: none; }
+      #strobe-editor[hidden] { display: none; }
+
+      #strobe-editor .se-head { display: flex; align-items: center; gap: 7px; }
+      #strobe-editor .se-glyph {
+        display: grid;
+        place-items: center;
+        width: 22px; height: 22px;
+        border-radius: 5px;
+        background: #2a150d;
+        color: #ff9a6c;
+        font-size: 12px;
+      }
+      #strobe-editor .se-title {
+        color: #7f8ca1;
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      #strobe-editor #se-close {
+        display: grid;
+        place-items: center;
+        margin-left: auto;
+        width: 18px; height: 18px;
+        padding: 0;
+        border: none;
+        border-radius: 4px;
+        background: transparent;
+        color: var(--dim);
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+      }
+      #strobe-editor #se-close:hover { background: rgba(255, 255, 255, 0.07); color: var(--accent); }
+
+      #strobe-editor .se-preview {
+        margin: 5px 0 7px;
+        padding: 4px 6px 2px;
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 7px;
+        background: #0b1119;
+      }
+      #strobe-editor .se-preview canvas { display: block; width: 100%; height: 32px; }
+      #strobe-editor .se-preview-caption {
+        display: block;
+        margin-top: 2px;
+        color: var(--dim);
+        font-size: 9px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      #strobe-editor .se-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 4px;
+        font-size: 11px;
+      }
+      #strobe-editor .se-row output {
+        color: var(--accent);
+        font-size: 10px;
+        font-variant-numeric: tabular-nums;
+      }
+      /* One line per slider: name, track, value. Keeps the popover short enough
+         to fit above the tools bar without scrolling on a laptop screen. */
+      #strobe-editor .se-control {
+        display: grid;
+        grid-template-columns: 58px minmax(0, 1fr) 42px;
+        align-items: center;
+        gap: 7px;
+        margin-top: 2px;
+        font-size: 10px;
+      }
+      #strobe-editor .se-control .se-name { color: var(--txt); }
+      #strobe-editor .se-control output {
+        color: var(--accent);
+        font-size: 10px;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      #strobe-editor .se-subhead {
+        margin: 6px 0 0;
+        padding-top: 5px;
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
+        color: #5f6b80;
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      #strobe-editor input[type='range'] {
+        width: 100%;
+        height: 12px;
+        margin: 0;
+        accent-color: #ff8a5c;
+        cursor: pointer;
+      }
+      #strobe-editor #se-pulse-section[hidden],
+      #strobe-editor #se-fade-section[hidden] { display: none; }
+
+      #strobe-editor .se-chips { display: flex; gap: 4px; margin-top: 4px; }
+      #strobe-editor .se-chips button {
+        flex: 1 1 0;
+        padding: 2px 4px;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        background: #0b1119;
+        color: var(--dim);
+        font: inherit;
+        font-size: 9px;
+        font-variant-numeric: tabular-nums;
+        cursor: pointer;
+      }
+      #strobe-editor .se-chips button:hover { border-color: #ff8a5c; color: var(--txt); }
+      #strobe-editor .se-chips button[aria-pressed='true'] {
+        border-color: #ff8a5c;
+        background: rgba(255, 138, 92, 0.14);
+        color: #ffb08c;
+      }
+      #strobe-editor .se-chips:empty { display: none; }
 
       .le-glyph { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 5px; background: #1a1230; color: #cdb2ff; }

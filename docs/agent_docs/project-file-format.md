@@ -243,7 +243,8 @@ preset action plus a palette colour.
         "endSec": 75.712,
         "action": "sweep",
         "colorIndex": 3,
-        "fadeInSec": 0
+        "fadeInSec": 0,
+        "fadeOutSec": 0.08
       }
     ]
   }
@@ -259,6 +260,36 @@ preset action plus a palette colour.
 | `action` | `hold`, `fade`, `pulse`, `sweep`, `strobe`, or `fire`. |
 | `colorIndex` | Non-negative integer index into the app palette. Default `0`. |
 | `fadeInSec` | Optional non-negative override for the clip's fade-in. |
+| `fadeOutSec` | Optional non-negative override for the clip's fade-out. |
+| `strobe` | Optional pulse shaping for `strobe` clips; see below. |
+| `pulseHz` | Optional pulse speed for `pulse` clips. Without it the legacy four-pulse shape is used. |
+
+Fades are independent of clip length: a long clip can still snap on over
+40 ms, and a short strobe hit can fade out over several beats.
+
+### Strobe shaping
+
+`strobe` clips keep the strobe channel value as their rate, with an optional
+override and a per-flash envelope:
+
+```json
+{
+  "action": "strobe",
+  "strobe": { "hz": 12, "attack": 0.05, "release": 0.18, "depth": 0 }
+}
+```
+
+| Field | Rules |
+|---|---|
+| `hz` | Optional rate in Hz. Clamped to the profile's `limits.strobeHz`. Overrides the normalized `strobe` channel value. |
+| `attack` | Fraction of one cycle spent ramping up from `depth` to full, `0..1`. |
+| `release` | Fraction of one cycle spent ramping down to `depth`. |
+| `depth` | Level held between flashes, `0..1`; `0` is a full blackout. |
+
+The lamp is lit for the first half of each cycle. The evaluator resolves this
+into `FixtureState.strobeLevel`, so playback, scrubbing and offline export all
+show the same flash. Shorter ramps read as a hard strobe; longer ones read as
+a pulsing dimmer.
 
 Cues are evaluated against the loop only when they fall inside the loop
 region; clips outside it are authored but cannot play. The demo generator

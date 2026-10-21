@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_LASER_SETUP, barToTime, evaluateFixture, evaluateFixtureStates, resolveLaser, secondsPerBeat, snapToGrid, timeToBeat } from './index';
+import { DEFAULT_LASER_SETUP, barToTime, evaluateFixture, evaluateFixtureStates, resolveLaser, secondsPerBeat, snapToGrid, strobeGate, timeToBeat } from './index';
 import type { Clip, FixtureProfile, FixturePlacement, Show } from './index';
 
 const profile: FixtureProfile = {
@@ -107,6 +107,45 @@ describe('evaluateFixture', () => {
     const override = clip({ id: 'clip-2', startSec: 12, endSec: 14, attributes: { dimmer: [{ at: 0, value: 0.9 }] } });
     expect(evaluateFixture(fixture, [base, override], 13).intensity).toBeCloseTo(0.9);
     expect(evaluateFixture(fixture, [base, override], 11).intensity).toBeCloseTo(0.2);
+  });
+
+  it('shapes the strobe gate with attack and release ramps', () => {
+    /* The lamp is lit for the first half of each cycle: a ramp up, a hold and
+     * a ramp down, then the off gap. */
+    expect(strobeGate(0.25, { attack: 0, release: 0 })).toBeCloseTo(1);
+    expect(strobeGate(0.55, { attack: 0, release: 0 })).toBeCloseTo(0);
+    expect(strobeGate(0.1, { attack: 0.2, release: 0 })).toBeCloseTo(0.5);
+    expect(strobeGate(0.45, { attack: 0, release: 0.2 })).toBeCloseTo(0.25);
+  });
+
+  it('keeps a level between flashes when a depth is set', () => {
+    expect(strobeGate(0.8, { depth: 0.3 })).toBeCloseTo(0.3);
+    expect(strobeGate(0.2, { depth: 0.3 })).toBeCloseTo(1);
+  });
+
+  it('overrides the channel rate with an explicit strobe Hz', () => {
+    const strobing = clip({
+      attributes: { dimmer: [{ at: 0, value: 1 }], strobe: [{ at: 0, value: 0.5 }] },
+      strobe: { hz: 8, attack: 0, release: 0 },
+    });
+    const on = evaluateFixture(fixture, [strobing], 15);
+    expect(on.strobeHz).toBeCloseTo(8);
+    expect(on.strobeLevel).toBeCloseTo(1);
+    // Half a cycle later the lamp is in its off gap.
+    const off = evaluateFixture(fixture, [strobing], 15 + 0.5 / 8);
+    expect(off.strobeLevel).toBeCloseTo(0);
+  });
+
+  it('clamps an over-range strobe rate to the profile limits', () => {
+    const strobing = clip({
+      attributes: { dimmer: [{ at: 0, value: 1 }] },
+      strobe: { hz: 200 },
+    });
+    expect(evaluateFixture(fixture, [strobing], 15).strobeHz).toBeCloseTo(25);
+  });
+
+  it('does not strobe when the clip has no strobe signal', () => {
+    expect(evaluateFixture(fixture, [clip()], 15).strobeLevel).toBe(1);
   });
 });
 

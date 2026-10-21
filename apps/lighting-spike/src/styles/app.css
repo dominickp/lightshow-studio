@@ -1766,3 +1766,46 @@
       #strobe-editor .se-chips:empty { display: none; }
 
       .le-glyph { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 5px; background: #1a1230; color: #cdb2ff; }
+
+      /* Dismissible photosensitivity toast. Pinned above the stage so it never
+         blocks the preview; `[hidden]` must beat the `display: flex` below. */
+      #photosensitivity {
+        position: fixed;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 40;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        max-width: calc(100vw - 24px);
+        padding: 6px 8px 6px 12px;
+        border: 1px solid rgba(255, 120, 180, 0.75);
+        border-radius: 8px;
+        background: rgba(24, 10, 18, 0.92);
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+        color: #ffc4dd;
+        font-size: 10px;
+        user-select: none;
+        cursor: pointer;
+      }
+      #photosensitivity[hidden] { display: none; }
+      #photosensitivity:hover { border-color: rgba(255, 120, 180, 1); }
+      #photosensitivity span { line-height: 1.4; }
+      #photosensitivity button {
+        flex: 0 0 auto;
+        display: grid;
+        place-items: center;
+        width: 18px;
+        height: 18px;
+        padding: 0;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        background: none;
+        color: inherit;
+        font-size: 12px;
+        line-height: 1;
+        cursor: pointer;
+      }
+      #photosensitivity button:hover { border-color: rgba(255, 120, 180, 0.55); color: #fff; }
+      #photosensitivity button:focus-visible { outline: 2px solid rgba(255, 120, 180, 0.7); outline-offset: 1px; }

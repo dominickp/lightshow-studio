@@ -7,6 +7,14 @@
     <link rel="stylesheet" href="/src/styles/app.css" />
   </head>
   <body>
+    <!-- Dismissible photosensitivity notice. Hidden by default so returning
+         visitors never see it flash; `ui/photosensitivity.ts` reveals it on the
+         first visit and records the dismissal. -->
+    <div id="photosensitivity" role="status" title="Click anywhere on this notice to dismiss it" hidden>
+      <span>This application is not suitable for people with photosensitivity</span>
+      <button id="photosensitivity-dismiss" type="button" aria-label="Dismiss permanently" title="Dismiss">×</button>
+    </div>
+
     <section id="stage-viewport" aria-label="3D lighting preview">
       <div id="app"></div>
 

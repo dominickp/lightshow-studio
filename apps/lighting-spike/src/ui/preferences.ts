@@ -12,6 +12,7 @@ export const STORAGE_KEYS = {
   dockCollapsed: 'dmxsim.spike.dockCollapsed',
   waveHeight: 'dmxsim.spike.waveHeight',
   panelWidth: 'dmxsim.spike.sidePanelWidth',
+  photosensitivity: 'dmxsim.spike.photosensitivity',
 } as const;
 
 /** `localStorage` throws in private mode or when the quota is exhausted. */

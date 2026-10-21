@@ -100,8 +100,13 @@ import {
   writePreference,
 } from './ui/preferences';
 import { enhanceSlider, parseNumericText } from './ui/slider';
+import { setupPhotosensitivityNotice } from './ui/photosensitivity';
 import { Stage } from './stage';
 import { Post } from './post';
+
+// Shown before the async startup below so a first visit sees the notice
+// immediately rather than after the renderer and project bundle are ready.
+setupPhotosensitivityNotice();
 
 /**
  * The demo is a project bundle, not generated code: the app loads

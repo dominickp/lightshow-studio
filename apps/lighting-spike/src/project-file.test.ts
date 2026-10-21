@@ -77,6 +77,11 @@ describe('project mapping', () => {
     expect(cueToProjectClip(withoutFade)).not.toHaveProperty('fadeInSec');
   });
 
+  it('round-trips a clip with a static aim', () => {
+    const aimed: Cue = { ...cue, action: 'aim', aim: { pan: 0.5, tilt: 0.75 } };
+    expect(projectClipToCue(cueToProjectClip(aimed))).toEqual(aimed);
+  });
+
   it('round-trips procedural surface clips separately from fixture clips', () => {
     const surfaceCue: Cue = {
       id: 'led-1',

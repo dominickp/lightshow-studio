@@ -135,4 +135,26 @@ describe('cueToClip', () => {
     expect(clip.sweep).toBeUndefined();
     expect(clip.attributes.pan?.[1]?.value).toBeCloseTo(0.85);
   });
+
+  it('passes an aim travel through without baking pan/tilt keyframes', () => {
+    const aim = { pan: 0.5, tilt: 0.2, toTilt: 0.95, travelSec: 2.5, easing: 'sine' } as const;
+    const clip = cueToClip(movingHeadFixture, {
+      ...cue('cue-1'),
+      fixtureId: 'mh-0',
+      action: 'aim',
+      aim,
+    });
+    expect(clip.aim).toEqual(aim);
+    expect(clip.attributes.pan).toBeUndefined();
+    expect(clip.attributes.tilt).toBeUndefined();
+  });
+
+  it('does not attach aim settings to a non-aim clip', () => {
+    const clip = cueToClip(movingHeadFixture, {
+      ...cue('cue-1'),
+      fixtureId: 'mh-0',
+      aim: { pan: 0.5, tilt: 0.2 },
+    });
+    expect(clip.aim).toBeUndefined();
+  });
 });

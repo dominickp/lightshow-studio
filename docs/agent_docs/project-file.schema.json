@@ -626,6 +626,49 @@
                       "type": "number",
                       "minimum": 0
                     },
+                    "aim": {
+                      "type": "object",
+                      "properties": {
+                        "pan": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "tilt": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "toPan": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "toTilt": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "travelSec": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "easing": {
+                          "type": "string",
+                          "enum": [
+                            "linear",
+                            "sine",
+                            "easeInOut",
+                            "step"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "pan",
+                        "tilt"
+                      ],
+                      "additionalProperties": false
+                    },
                     "sweep": {
                       "type": "object",
                       "properties": {
@@ -785,6 +828,7 @@
                 "type": "string",
                 "enum": [
                   "hold",
+                  "aim",
                   "fade",
                   "pulse",
                   "sweep",
@@ -888,6 +932,49 @@
               "pulseHz": {
                 "type": "number",
                 "minimum": 0
+              },
+              "aim": {
+                "type": "object",
+                "properties": {
+                  "pan": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "tilt": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "toPan": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "toTilt": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "travelSec": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "easing": {
+                    "type": "string",
+                    "enum": [
+                      "linear",
+                      "sine",
+                      "easeInOut",
+                      "step"
+                    ]
+                  }
+                },
+                "required": [
+                  "pan",
+                  "tilt"
+                ],
+                "additionalProperties": false
               },
               "sweep": {
                 "type": "object",

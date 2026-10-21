@@ -24,7 +24,7 @@ export const PROJECT_VERSION = 4;
 /** Lowercase SHA-256 hex; media is content-addressed in the bundle. */
 const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/, 'expected a lowercase SHA-256 digest');
 
-export const CUE_ACTIONS = ['hold', 'fade', 'pulse', 'sweep', 'strobe', 'fire'] as const;
+export const CUE_ACTIONS = ['hold', 'aim', 'fade', 'pulse', 'sweep', 'strobe', 'fire'] as const;
 export type ProjectCueAction = (typeof CUE_ACTIONS)[number];
 
 const FIXTURE_KINDS = [
@@ -184,6 +184,18 @@ export const strobeSettingsSchema = z.object({
   depth: normalizedSchema.optional(),
 });
 
+/** Pan/tilt aim for a clip, with an optional single travel to an end pose. */
+export const aimSettingsSchema = z.object({
+  pan: normalizedSchema,
+  tilt: normalizedSchema,
+  /** End pose. Omitted fields keep their start value. */
+  toPan: normalizedSchema.optional(),
+  toTilt: normalizedSchema.optional(),
+  /** Travel duration in seconds; omitted stretches it across the clip. */
+  travelSec: z.number().nonnegative().optional(),
+  easing: z.enum(EASINGS).optional(),
+});
+
 /** Pan/tilt movement shaping for a sweep clip. Centres and ranges are normalized. */
 export const sweepSettingsSchema = z.object({
   /** Movement cycles per second. Omitted keeps one cycle across the clip. */
@@ -206,6 +218,7 @@ export const clipSchema = z.object({
   easing: z.enum(EASINGS).optional(),
   strobe: strobeSettingsSchema.optional(),
   pulseHz: z.number().nonnegative().optional(),
+  aim: aimSettingsSchema.optional(),
   sweep: sweepSettingsSchema.optional(),
 });
 
@@ -252,6 +265,8 @@ export const projectClipSchema = z
     strobe: strobeSettingsSchema.optional(),
     /** Pulse speed for `pulse` clips, in Hz. */
     pulseHz: z.number().nonnegative().optional(),
+    /** Fixed pan/tilt aim for `aim` clips. */
+    aim: aimSettingsSchema.optional(),
     /** Movement shaping for `sweep` clips. */
     sweep: sweepSettingsSchema.optional(),
   })

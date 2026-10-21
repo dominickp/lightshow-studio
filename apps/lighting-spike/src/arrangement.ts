@@ -1,4 +1,4 @@
-import type { Clip, FixturePlacement, Keyframe, LedLookState, LedSurface } from '@dmxsim/show-model';
+import type { AimSettings, Clip, FixturePlacement, Keyframe, LedLookState, LedSurface } from '@dmxsim/show-model';
 import { actionsFor } from './arrangement/capabilities';
 import {
   canMoveCueToLane,
@@ -29,7 +29,7 @@ import type {
   TimelineMode,
 } from './arrangement/types';
 import { isSurfaceCue } from './arrangement/types';
-import { defaultLedLook } from '@dmxsim/show-model';
+import { DEFAULT_AIM, defaultLedLook } from '@dmxsim/show-model';
 import { lookDefinition } from './led/look-definitions';
 import { clamp } from './lib/math';
 
@@ -563,9 +563,27 @@ export class Arrangement {
           ...item,
           action,
           // Pin the movement speed when a clip becomes a sweep, so resizing
-          // the clip later does not slow it down.
+          // the clip later does not slow it down. A previous static aim
+          // becomes the sweep centre, so switching actions does not jump.
           ...(action === 'sweep' && item.sweep === undefined
-            ? { sweep: { hz: sweepRateForLength(item.endSec - item.startSec) } }
+            ? {
+                sweep: {
+                  hz: sweepRateForLength(item.endSec - item.startSec),
+                  ...(item.aim === undefined
+                    ? {}
+                    : { panCenter: item.aim.pan, tiltCenter: item.aim.tilt }),
+                },
+              }
+            : {}),
+          // A new aim starts at the sweep centre it replaces (or the profile
+          // centre), so a moving clip can be frozen where it already points.
+          ...(action === 'aim' && item.aim === undefined
+            ? {
+                aim: {
+                  pan: item.sweep?.panCenter ?? DEFAULT_AIM.pan,
+                  tilt: item.sweep?.tiltCenter ?? DEFAULT_AIM.tilt,
+                },
+              }
             : {}),
         }
       : item);
@@ -599,7 +617,7 @@ export class Arrangement {
    * gesture is one undo step instead of one per pointer move.
    */
   setSelectedClipSettings(
-    patch: Partial<Pick<Cue, 'fadeInSec' | 'fadeOutSec' | 'pulseHz' | 'strobe' | 'sweep'>>,
+    patch: Partial<Pick<Cue, 'fadeInSec' | 'fadeOutSec' | 'pulseHz' | 'strobe' | 'aim' | 'sweep'>>,
     options: { history?: boolean } = {},
   ): void {
     if (this.selectedCueIds.size === 0) return;
@@ -1395,6 +1413,13 @@ export class Arrangement {
     const endSec = Math.min(duration, Math.max(startSec + MIN_CLIP_SEC, requestedEnd ?? startSec + this.defaultLength()));
     if (endSec - startSec < MIN_CLIP_SEC) return;
     const surface = this.surfaceById(fixtureId);
+    const fixture = this.fixtures.find((item) => item.id === fixtureId);
+    /* A new aim starts from the fixture's stored setup, not the profile
+     * centre, so a laser pre-aimed in the fixture panel stays there. */
+    const fixtureAim: AimSettings = {
+      pan: fixture?.defaults?.pan ?? DEFAULT_AIM.pan,
+      tilt: fixture?.defaults?.tilt ?? DEFAULT_AIM.tilt,
+    };
     const cue: Cue = surface === null
       ? {
           id: this.nextCueId(),
@@ -1404,6 +1429,7 @@ export class Arrangement {
           colorIndex: this.suggestedColorIndex,
           action,
           ...(action === 'sweep' ? { sweep: { hz: sweepRateForLength(endSec - startSec) } } : {}),
+          ...(action === 'aim' ? { aim: fixtureAim } : {}),
           ...(this.pendingColorOverride === null ? {} : { colorOverride: this.pendingColorOverride }),
         }
       : {
@@ -1849,6 +1875,7 @@ export function cueToClip(fixture: FixturePlacement | undefined, cue: Cue): Clip
     easing: cue.action === 'sweep' ? 'sine' : cue.action === 'pulse' ? 'step' : 'linear',
     attributes: attrs,
     ...(cue.action === 'strobe' && cue.strobe !== undefined ? { strobe: cue.strobe } : {}),
+    ...(cue.action === 'aim' && cue.aim !== undefined ? { aim: cue.aim } : {}),
     ...(cue.action === 'sweep' && cue.sweep !== undefined ? { sweep: cue.sweep } : {}),
   };
 }

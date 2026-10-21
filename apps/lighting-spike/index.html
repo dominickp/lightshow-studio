@@ -264,6 +264,50 @@
             </label>
           </div>
 
+          <div id="se-aim-section" hidden>
+            <p class="se-subhead">Aim from</p>
+            <label class="se-control">
+              <span class="se-name">Pan</span>
+              <input id="se-aim-pan" type="range" min="-180" max="180" step="1" value="0"
+                aria-label="Aim start pan, degrees" />
+              <output id="se-aim-pan-value">0°</output>
+            </label>
+            <label class="se-control">
+              <span class="se-name">Tilt</span>
+              <input id="se-aim-tilt" type="range" min="-135" max="135" step="1" value="0"
+                aria-label="Aim start tilt, degrees; positive points toward the audience" />
+              <output id="se-aim-tilt-value">0°</output>
+            </label>
+
+            <p class="se-subhead">Travel to</p>
+            <label class="se-control">
+              <span class="se-name">Pan</span>
+              <input id="se-aim-pan-to" type="range" min="-180" max="180" step="1" value="0"
+                aria-label="Aim end pan, degrees" />
+              <output id="se-aim-pan-to-value">0°</output>
+            </label>
+            <label class="se-control">
+              <span class="se-name">Tilt</span>
+              <input id="se-aim-tilt-to" type="range" min="-135" max="135" step="1" value="0"
+                aria-label="Aim end tilt, degrees; positive points toward the audience" />
+              <output id="se-aim-tilt-to-value">0°</output>
+            </label>
+            <div class="se-row">
+              <span id="se-aim-travel-label">Travel time</span>
+              <output id="se-aim-travel-value">2.00 s</output>
+            </div>
+            <input id="se-aim-travel" type="range" min="0" max="8" step="0.05" value="2"
+              aria-labelledby="se-aim-travel-label" />
+            <label class="se-control">
+              <span class="se-name">Easing</span>
+              <select id="se-aim-easing" aria-label="Aim travel easing">
+                <option value="sine" selected>Ease in/out</option>
+                <option value="linear">Linear</option>
+                <option value="easeInOut">Snappier</option>
+              </select>
+            </label>
+          </div>
+
           <p class="se-subhead">Clip fades</p>
           <div id="se-fade-section">
             <label class="se-control">

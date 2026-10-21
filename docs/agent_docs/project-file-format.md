@@ -257,12 +257,13 @@ preset action plus a palette colour.
 | `fixtureId` | Must match a `show.fixtures[].id`. Readers may drop unknown lanes. |
 | `startSec` | Non-negative. |
 | `endSec` | Positive, strictly greater than `startSec`. |
-| `action` | `hold`, `fade`, `pulse`, `sweep`, `strobe`, or `fire`. |
+| `action` | `hold`, `aim`, `fade`, `pulse`, `sweep`, `strobe`, or `fire`. |
 | `colorIndex` | Non-negative integer index into the app palette. Default `0`. |
 | `fadeInSec` | Optional non-negative override for the clip's fade-in. |
 | `fadeOutSec` | Optional non-negative override for the clip's fade-out. |
 | `strobe` | Optional pulse shaping for `strobe` clips; see below. |
 | `pulseHz` | Optional pulse speed for `pulse` clips. Without it the legacy four-pulse shape is used. |
+| `aim` | Optional fixed pan/tilt for `aim` clips; see below. |
 | `sweep` | Optional movement shaping for `sweep` clips; see below. |
 
 Fades are independent of clip length: a long clip can still snap on over
@@ -291,6 +292,33 @@ The lamp is lit for the first half of each cycle. The evaluator resolves this
 into `FixtureState.strobeLevel`, so playback, scrubbing and offline export all
 show the same flash. Shorter ramps read as a hard strobe; longer ones read as
 a pulsing dimmer.
+
+### Aim
+
+`aim` clips point a fixture at one spot, or travel once from one pose to
+another and then hold. There is no wave and no keyframe list: a move is just a
+start pose, an end pose and a travel time, which is how a laser fan is lowered
+slowly onto the crowd.
+
+```json
+{
+  "action": "aim",
+  "aim": { "pan": 0.5, "tilt": 0.2, "toTilt": 0.95, "travelSec": 2.5 }
+}
+```
+
+| Field | Rules |
+|---|---|
+| `pan`, `tilt` | Start pose, normalized `0..1`, mapped through the profile's `limits.panDeg` / `limits.tiltDeg`. Both are required. |
+| `toPan`, `toTilt` | End pose, normalized `0..1`. Omitted fields keep their start value, so a clip with neither is a still pose. |
+| `travelSec` | Seconds the move takes, measured from `startSec`. Omitted stretches it across the whole clip; `0` jumps to the end pose. |
+| `easing` | `sine` (default, soft start and stop), `linear`, `easeInOut` or `step`. |
+
+After the travel finishes the fixture holds the end pose until the clip ends,
+so a short `travelSec` in a long clip reads as "move, then sit". `aim` is
+applied after the clip's keyframes, so an authored pan/tilt envelope cannot
+fight the move. An explicit `sweep` on the same clip still wins, which keeps
+hand-built clips unambiguous.
 
 ### Sweep shaping
 

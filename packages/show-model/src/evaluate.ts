@@ -1,4 +1,5 @@
 import type {
+  AimSettings,
   Clip,
   ControllableAttribute,
   Easing,
@@ -28,7 +29,8 @@ const DEFAULTS: Record<ControllableAttribute, number> = {
   rotation: 0,
 };
 
-const EASINGS: Record<Easing, (t: number) => number> = {
+/** Easing curves shared by keyframes and aim travel, so previews match playback. */
+export const EASINGS: Record<Easing, (t: number) => number> = {
   linear: (t) => t,
   sine: (t) => 0.5 - 0.5 * Math.cos(Math.PI * t),
   easeInOut: (t) => (t < 0.5 ? 2 * t * t : 1 - 2 * (1 - t) * (1 - t)),
@@ -109,6 +111,31 @@ export const DEFAULT_SWEEP: Required<Omit<SweepSettings, 'hz'>> = {
   tiltCenter: 0.54,
   tiltRange: 0.12,
 };
+
+/** Aim used when an aim clip does not specify one: the profile centre. */
+export const DEFAULT_AIM: AimSettings = { pan: 0.5, tilt: 0.5 };
+
+/**
+ * Pan/tilt at `timeSec` for an aim clip.
+ *
+ * The travel is a single directed move, not a wave: it starts at `pan`/`tilt`,
+ * reaches `toPan`/`toTilt` after `travelSec`, then stays there for the rest of
+ * the clip. That is what makes a fan descend onto the crowd and hold without
+ * any keyframes. Easing defaults to `sine` so the start and stop are soft.
+ */
+function aimAt(aim: AimSettings, clip: Clip, timeSec: number): { pan: number; tilt: number } {
+  const targetPan = aim.toPan ?? aim.pan;
+  const targetTilt = aim.toTilt ?? aim.tilt;
+  const travel = aim.travelSec ?? Math.max(0, clip.endSec - clip.startSec);
+  if (travel <= 0) return { pan: targetPan, tilt: targetTilt };
+
+  const t = clamp01((timeSec - clip.startSec) / travel);
+  const eased = EASINGS[aim.easing ?? 'sine'](t);
+  return {
+    pan: aim.pan + (targetPan - aim.pan) * eased,
+    tilt: aim.tilt + (targetTilt - aim.tilt) * eased,
+  };
+}
 
 /**
  * One sample of the movement wave, -1..1.
@@ -217,6 +244,15 @@ function resolveAttributes(
     for (const [attribute, keyframes] of Object.entries(clip.attributes)) {
       if (keyframes === undefined || keyframes.length === 0) continue;
       values[attribute as ControllableAttribute] = clamp01(sampleKeyframes(keyframes, t01, ease));
+    }
+
+    /* An aim travels between two poses once, then holds. It is deliberately
+     * evaluated after the keyframes so a hand-edited envelope cannot fight the
+     * travel; an explicit sweep below still takes precedence. */
+    if (clip.aim !== undefined) {
+      const aim = aimAt(clip.aim, clip, timeSec);
+      values.pan = clamp01(aim.pan);
+      values.tilt = clamp01(aim.tilt);
     }
 
     /* A sweep is evaluated from song time rather than baked keyframes, so its

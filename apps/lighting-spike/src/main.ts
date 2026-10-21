@@ -1,8 +1,10 @@
 import * as THREE from 'three/webgpu';
 import {
   CLUB_STAGE,
+  DEFAULT_AIM,
   DEFAULT_LASER_SETUP,
   DEFAULT_SWEEP,
+  EASINGS,
   DEFAULT_VENUE_ID,
   defaultLedLook,
   evaluateFixture,
@@ -15,6 +17,7 @@ import {
   sweepWave,
   timeToBeat,
   venueById,
+  type Easing,
   type FixtureDefaults,
   type FixturePlacement,
   type FixtureState,
@@ -369,6 +372,18 @@ const ui = {
   seTiltCenterValue: element('se-tilt-center-value'),
   seTiltRange: element<HTMLInputElement>('se-tilt-range'),
   seTiltRangeValue: element('se-tilt-range-value'),
+  seAimSection: element('se-aim-section'),
+  seAimPan: element<HTMLInputElement>('se-aim-pan'),
+  seAimPanValue: element('se-aim-pan-value'),
+  seAimTilt: element<HTMLInputElement>('se-aim-tilt'),
+  seAimTiltValue: element('se-aim-tilt-value'),
+  seAimPanTo: element<HTMLInputElement>('se-aim-pan-to'),
+  seAimPanToValue: element('se-aim-pan-to-value'),
+  seAimTiltTo: element<HTMLInputElement>('se-aim-tilt-to'),
+  seAimTiltToValue: element('se-aim-tilt-to-value'),
+  seAimTravel: element<HTMLInputElement>('se-aim-travel'),
+  seAimTravelValue: element('se-aim-travel-value'),
+  seAimEasing: element<HTMLSelectElement>('se-aim-easing'),
   seFadeIn: element<HTMLInputElement>('se-fadein'),
   seFadeInValue: element('se-fadein-value'),
   seFadeOut: element<HTMLInputElement>('se-fadeout'),
@@ -2298,6 +2313,18 @@ const SWEEP_RATE_BOUNDS: [number, number] = [0.05, 4];
 const timingSummary = (cue: Cue, fixture: FixturePlacement | null): string => {
   if (cue.action === 'strobe') return `Strobe ${formatHz(strobeRateFor(cue, fixture))} ▾`;
   if (cue.action === 'pulse') return `Pulse ${formatHz(cue.pulseHz ?? 4 / cueLength(cue))} ▾`;
+  if (cue.action === 'aim') {
+    const aim = cue.aim ?? DEFAULT_AIM;
+    const limits = fixture?.profile.limits ?? FALLBACK_PAN_TILT;
+    const panDeg = Math.round(degFromNorm(aim.pan, limits.panDeg));
+    const tiltDeg = Math.round(degFromNorm(aim.tilt, limits.tiltDeg));
+    const toPanDeg = Math.round(degFromNorm(aim.toPan ?? aim.pan, limits.panDeg));
+    const toTiltDeg = Math.round(degFromNorm(aim.toTilt ?? aim.tilt, limits.tiltDeg));
+    const travels = toPanDeg !== panDeg || toTiltDeg !== tiltDeg;
+    return travels
+      ? `Aim ${panDeg}° / ${tiltDeg}° → ${toPanDeg}° / ${toTiltDeg}°`
+      : `Aim ${panDeg}° / ${tiltDeg}° ▾`;
+  }
   if (cue.action === 'sweep') {
     const phase = Math.round((cue.sweep?.phase ?? 0) * 100);
     return `Sweep ${formatHz(sweepRateFor(cue))}${phase > 0 ? ` · ${phase}%` : ''} ▾`;
@@ -2329,6 +2356,7 @@ function drawTimingPreview(cue: Cue, fixture: FixturePlacement | null): void {
   const isStrobe = cue.action === 'strobe';
   const isPulse = cue.action === 'pulse';
   const isSweep = cue.action === 'sweep';
+  const isAim = cue.action === 'aim';
   const rate = isStrobe
     ? strobeRateFor(cue, fixture)
     : isPulse
@@ -2349,6 +2377,15 @@ function drawTimingPreview(cue: Cue, fixture: FixturePlacement | null): void {
     if (isPulse) return (u * cycles) % 1 < 0.5 ? 0.9 : 0.08;
     // Pan position across the movement cycle, so rate and offset are visible.
     if (isSweep) return 0.5 + 0.5 * sweepWave(u * cycles + phase);
+    /* An aim shows its tilt, so the descent is visible as a ramp that then
+     * holds flat for the rest of the clip. */
+    if (isAim) {
+      const aim = cue.aim ?? DEFAULT_AIM;
+      const travel = clamp(aim.travelSec ?? len, 0.0001, len);
+      const eased = (EASINGS[aim.easing ?? 'sine'])(clamp((u * len) / travel, 0, 1));
+      const tilt = aim.tilt;
+      return tilt + ((aim.toTilt ?? tilt) - tilt) * eased;
+    }
     if (cue.action === 'fade') return u;
     if (cue.action === 'fire') {
       if (u < 0.04) return 0.15 + (u / 0.04) * 0.85;
@@ -2365,7 +2402,7 @@ function drawTimingPreview(cue: Cue, fixture: FixturePlacement | null): void {
     return clamp(env, 0, 1);
   };
   // Movement is geometric, not a dimmer level, so fades do not scale it.
-  const levelAt = (u: number): number => isSweep
+  const levelAt = (u: number): number => isSweep || isAim
     ? shapeAt(u)
     : clamp(shapeAt(u) * envelopeAt(u), 0, 1);
 
@@ -2393,11 +2430,11 @@ function drawTimingPreview(cue: Cue, fixture: FixturePlacement | null): void {
   ctx.lineJoin = 'round';
   ctx.stroke(path);
 
-  if (!isSweep && fadeInSec > 0) {
+  if (!isSweep && !isAim && fadeInSec > 0) {
     ctx.fillStyle = 'rgba(122, 209, 255, 0.55)';
     ctx.fillRect(0, 0, (fadeInSec / len) * width, 2);
   }
-  if (!isSweep && fadeOutSec > 0) {
+  if (!isSweep && !isAim && fadeOutSec > 0) {
     ctx.fillStyle = 'rgba(122, 209, 255, 0.55)';
     ctx.fillRect(width - (fadeOutSec / len) * width, 0, (fadeOutSec / len) * width, 2);
   }
@@ -2407,7 +2444,11 @@ function drawTimingPreview(cue: Cue, fixture: FixturePlacement | null): void {
     parts.push(`${formatHz(rate)} · ${Math.max(1, Math.round(trueCycles))} cycle${Math.round(trueCycles) === 1 ? '' : 's'}`);
   }
   if (cue.action === 'sweep') parts.push(`offset ${Math.round(phase * 100)}%`);
-  if (!isSweep && (fadeInSec > 0 || fadeOutSec > 0)) parts.push('fades shown');
+  if (isAim) {
+    const travel = clamp(cue.aim?.travelSec ?? len, 0, len);
+    parts.push(`travel ${travel.toFixed(2)} s`);
+  }
+  if (!isSweep && !isAim && (fadeInSec > 0 || fadeOutSec > 0)) parts.push('fades shown');
   ui.sePreviewCaption.textContent = parts.join(' · ');
 }
 
@@ -2508,19 +2549,31 @@ function syncTimingEditor(cue: Cue | null, fixture: FixturePlacement | null): vo
   const isStrobe = cue.action === 'strobe';
   const isPulse = cue.action === 'pulse';
   const isSweep = cue.action === 'sweep';
+  const isAim = cue.action === 'aim';
   const len = cueLength(cue);
   ui.clipTiming.textContent = timingSummary(cue, fixture);
   ui.clipTiming.title = isStrobe || isPulse
     ? 'Strobe / pulse rate and shape, plus clip fades'
-    : isSweep
-      ? 'Movement speed, start angle and pan/tilt range, plus clip fades'
-      : 'Clip fades';
+    : isAim
+      ? 'Fixed pan/tilt aim, plus clip fades'
+      : isSweep
+        ? 'Movement speed, start angle and pan/tilt range, plus clip fades'
+        : 'Clip fades';
 
   ui.sePulseSection.hidden = !(isStrobe || isPulse);
   ui.seShapeSection.hidden = !isStrobe;
   ui.seMoveSection.hidden = !isSweep;
-  ui.seGlyph.textContent = isStrobe ? '⚡' : isPulse ? '≈' : isSweep ? '↔' : '⏱';
-  ui.seTitle.textContent = isStrobe ? 'Strobe' : isPulse ? 'Pulse' : isSweep ? 'Sweep' : 'Clip timing';
+  ui.seAimSection.hidden = !isAim;
+  ui.seGlyph.textContent = isStrobe ? '⚡' : isPulse ? '≈' : isAim ? '⌖' : isSweep ? '↔' : '⏱';
+  ui.seTitle.textContent = isStrobe
+    ? 'Strobe'
+    : isPulse
+      ? 'Pulse'
+      : isAim
+        ? 'Aim'
+        : isSweep
+          ? 'Sweep'
+          : 'Clip timing';
   ui.seRateLabel.textContent = isStrobe ? 'Strobe rate' : 'Pulse rate';
 
   const [rateMin, rateMax] = rateBounds(cue, fixture);
@@ -2575,6 +2628,39 @@ function syncTimingEditor(cue: Cue | null, fixture: FixturePlacement | null): vo
     ui.sePanRangeValue.textContent = `±${panRangeDeg}°`;
     ui.seTiltCenterValue.textContent = `${tiltCenterDeg}°`;
     ui.seTiltRangeValue.textContent = `±${tiltRangeDeg}°`;
+  }
+
+  if (isAim) {
+    const aim = cue.aim ?? DEFAULT_AIM;
+    const limits = fixture?.profile.limits ?? FALLBACK_PAN_TILT;
+    for (const slider of [ui.seAimPan, ui.seAimPanTo]) {
+      slider.min = String(limits.panDeg[0]);
+      slider.max = String(limits.panDeg[1]);
+    }
+    for (const slider of [ui.seAimTilt, ui.seAimTiltTo]) {
+      slider.min = String(limits.tiltDeg[0]);
+      slider.max = String(limits.tiltDeg[1]);
+    }
+    const panDeg = Math.round(degFromNorm(aim.pan, limits.panDeg));
+    const tiltDeg = Math.round(degFromNorm(aim.tilt, limits.tiltDeg));
+    const toPanDeg = Math.round(degFromNorm(aim.toPan ?? aim.pan, limits.panDeg));
+    const toTiltDeg = Math.round(degFromNorm(aim.toTilt ?? aim.tilt, limits.tiltDeg));
+    setSliderValue(ui.seAimPan, panDeg);
+    setSliderValue(ui.seAimTilt, tiltDeg);
+    setSliderValue(ui.seAimPanTo, toPanDeg);
+    setSliderValue(ui.seAimTiltTo, toTiltDeg);
+    ui.seAimPanValue.textContent = `${panDeg}°`;
+    ui.seAimTiltValue.textContent = `${tiltDeg}°`;
+    ui.seAimPanToValue.textContent = `${toPanDeg}°`;
+    ui.seAimTiltToValue.textContent = `${toTiltDeg}°`;
+
+    // The travel cannot outlast the clip it lives in; no travel means the
+    // head jumps straight to the end pose.
+    ui.seAimTravel.max = String(Math.max(0.05, len));
+    const travelSec = Math.min(aim.travelSec ?? len, len);
+    setSliderValue(ui.seAimTravel, Math.round(travelSec * 20) / 20);
+    ui.seAimTravelValue.textContent = `${travelSec.toFixed(2)} s`;
+    ui.seAimEasing.value = aim.easing ?? 'sine';
   }
 
   const fadeInSec = cue.fadeInSec ?? (cue.action === 'fade' ? 0 : 0.04);
@@ -2640,6 +2726,18 @@ function applyTimingPatch(overrides: { rate?: number; phase?: number } = {}): vo
           },
         }
       : {}),
+    ...(cue.action === 'aim'
+      ? {
+          aim: {
+            pan: normFromDeg(Number(ui.seAimPan.value), limits.panDeg),
+            tilt: normFromDeg(Number(ui.seAimTilt.value), limits.tiltDeg),
+            toPan: normFromDeg(Number(ui.seAimPanTo.value), limits.panDeg),
+            toTilt: normFromDeg(Number(ui.seAimTiltTo.value), limits.tiltDeg),
+            travelSec: clamp(Number(ui.seAimTravel.value), 0, len),
+            easing: ui.seAimEasing.value as Easing,
+          },
+        }
+      : {}),
   }, { history: false });
 }
 
@@ -2656,6 +2754,12 @@ const ensureTimingHistory = (): void => {
 const endTimingEdit = (): void => {
   timingEditPending = false;
 };
+
+/* A select has no drag gesture, so it opens and closes its own undo step. */
+ui.seAimEasing.addEventListener('change', () => {
+  arrangement.beginClipEdit();
+  applyTimingPatch();
+});
 
 function openTimingEditor(): void {
   const cue = arrangement.selectedCue;
@@ -2704,6 +2808,11 @@ for (const slider of [
   ui.sePanRange,
   ui.seTiltCenter,
   ui.seTiltRange,
+  ui.seAimPan,
+  ui.seAimTilt,
+  ui.seAimPanTo,
+  ui.seAimTiltTo,
+  ui.seAimTravel,
   ui.seFadeIn,
   ui.seFadeOut,
 ]) {

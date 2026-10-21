@@ -9,6 +9,7 @@ export function actionsFor(fixture: FixturePlacement): CueAction[] {
   const caps = fixture.profile.capabilities;
   return [
     'hold',
+    ...(caps.panTilt ? ['aim' as const] : []),
     'fade',
     'pulse',
     ...(caps.panTilt ? ['sweep' as const] : []),

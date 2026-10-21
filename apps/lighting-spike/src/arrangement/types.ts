@@ -1,6 +1,6 @@
-import type { LedLookState, StrobeSettings, SweepSettings } from '@dmxsim/show-model';
+import type { AimSettings, LedLookState, StrobeSettings, SweepSettings } from '@dmxsim/show-model';
 
-export type CueAction = 'hold' | 'fade' | 'pulse' | 'sweep' | 'strobe' | 'fire';
+export type CueAction = 'hold' | 'aim' | 'fade' | 'pulse' | 'sweep' | 'strobe' | 'fire';
 
 /**
  * Surface clips reuse the cue record so selection, history, gestures and
@@ -41,6 +41,8 @@ export interface Cue extends SurfaceCueFields {
   strobe?: StrobeSettings;
   /** Pulse speed for the `pulse` action, in Hz. */
   pulseHz?: number;
+  /** Fixed pan/tilt for the `aim` action: the head points, it does not move. */
+  aim?: AimSettings;
   /** Movement rate, phase offset and pan/tilt range for the `sweep` action. */
   sweep?: SweepSettings;
   /** Custom color when the cue was authored with the color picker. */
@@ -75,6 +77,7 @@ export interface ClipClipboardItem extends SurfaceCueFields {
   fadeOutSec?: number;
   strobe?: StrobeSettings;
   pulseHz?: number;
+  aim?: AimSettings;
   sweep?: SweepSettings;
   colorOverride?: CueColorOverride;
 }

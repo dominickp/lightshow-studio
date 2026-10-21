@@ -155,6 +155,69 @@ describe('evaluateFixture', () => {
     expect(state.panDeg).toBeCloseTo(0.85 * 540 - 270, 5);
   });
 
+  it('holds a static aim on pan and tilt for the whole clip', () => {
+    const aimed = clip({ aim: { pan: 0.5, tilt: 0.75 } });
+    expect(evaluateFixture(fixture, [aimed], 10).tiltDeg).toBeCloseTo(67.5);
+    expect(evaluateFixture(fixture, [aimed], 19).tiltDeg).toBeCloseTo(67.5);
+    expect(evaluateFixture(fixture, [aimed], 15).panDeg).toBeCloseTo(0);
+  });
+
+  it('lets a static aim win over authored pan/tilt keyframes', () => {
+    const aimed = clip({
+      aim: { pan: 0.25, tilt: 0.5 },
+      attributes: {
+        pan: [{ at: 0, value: 0.9 }],
+        tilt: [{ at: 0, value: 0.9 }],
+      },
+    });
+    const state = evaluateFixture(fixture, [aimed], 15);
+    expect(state.panDeg).toBeCloseTo(0.25 * 540 - 270, 5);
+    expect(state.tiltDeg).toBeCloseTo(0);
+  });
+
+  it('travels from the start aim to the end aim and then holds', () => {
+    // Tilt 0.25 -> 0.75 across a 10 s clip: a slow descent over the crowd.
+    const descending = clip({ aim: { pan: 0.5, tilt: 0.25, toTilt: 0.75 } });
+    const start = evaluateFixture(fixture, [descending], 10).tiltDeg;
+    const middle = evaluateFixture(fixture, [descending], 15).tiltDeg;
+    const end = evaluateFixture(fixture, [descending], 20).tiltDeg;
+    const after = evaluateFixture(fixture, [descending], 19.999).tiltDeg;
+
+    expect(start).toBeCloseTo(-67.5, 5);
+    expect(end).toBeCloseTo(67.5, 5);
+    // Sine easing puts the midpoint at the middle of the travel, not at an end.
+    expect(middle).toBeCloseTo(0, 5);
+    expect(after).toBeCloseTo(end, 3);
+    // Pan did not move: only the tilt was given an end pose.
+    expect(evaluateFixture(fixture, [descending], 15).panDeg).toBeCloseTo(0, 5);
+  });
+
+  it('honours an explicit travel time and then holds', () => {
+    const quick = clip({ aim: { pan: 0.5, tilt: 0.25, toTilt: 0.75, travelSec: 2 } });
+    // The move finishes at 12 s and stays put for the rest of the 10 s clip.
+    expect(evaluateFixture(fixture, [quick], 12).tiltDeg).toBeCloseTo(67.5, 5);
+    expect(evaluateFixture(fixture, [quick], 17).tiltDeg).toBeCloseTo(67.5, 5);
+    expect(evaluateFixture(fixture, [quick], 11).tiltDeg).toBeLessThan(67.5);
+  });
+
+  it('eases the travel with the requested curve', () => {
+    const linear = clip({ aim: { pan: 0.5, tilt: 0, toTilt: 1, easing: 'linear' } });
+    // Halfway through the clip a linear travel has crossed half the range.
+    expect(evaluateFixture(fixture, [linear], 15).tiltDeg).toBeCloseTo(0, 5);
+    // `tilt: 0` maps to -135 and `toTilt: 1` to +135, so half is 0.
+    const snapped = clip({ aim: { pan: 0.5, tilt: 0, toTilt: 1, easing: 'step' } });
+    // `step` holds the start pose for the whole travel and snaps at its end.
+    expect(evaluateFixture(fixture, [snapped], 19.9).tiltDeg).toBeCloseTo(-135, 5);
+    expect(evaluateFixture(fixture, [snapped], 20).tiltDeg).toBeCloseTo(135, 5);
+  });
+
+  it('lets an explicit sweep override a static aim on the same clip', () => {
+    const both = clip({ aim: { pan: 0.5, tilt: 0.5 }, sweep: { hz: 1 } });
+    const sweeping = clip({ sweep: { hz: 1 } });
+    expect(evaluateFixture(fixture, [both], 10).panDeg)
+      .toBeCloseTo(evaluateFixture(fixture, [sweeping], 10).panDeg, 5);
+  });
+
   it('keeps a level between flashes when a depth is set', () => {
     expect(strobeGate(0.8, { depth: 0.3 })).toBeCloseTo(0.3);
     expect(strobeGate(0.2, { depth: 0.3 })).toBeCloseTo(1);

@@ -25,6 +25,7 @@ export function cueToProjectClip(cue: Cue): ProjectClip {
     ...(cue.fadeOutSec === undefined ? {} : { fadeOutSec: cue.fadeOutSec }),
     ...(cue.strobe === undefined ? {} : { strobe: cue.strobe }),
     ...(cue.pulseHz === undefined ? {} : { pulseHz: cue.pulseHz }),
+    ...(cue.aim === undefined ? {} : { aim: cue.aim }),
     ...(cue.sweep === undefined ? {} : { sweep: cue.sweep }),
   };
 }
@@ -43,6 +44,7 @@ export function projectClipToCue(clip: ProjectClip): Cue {
     ...(clip.fadeOutSec === undefined ? {} : { fadeOutSec: clip.fadeOutSec }),
     ...(clip.strobe === undefined ? {} : { strobe: clip.strobe }),
     ...(clip.pulseHz === undefined ? {} : { pulseHz: clip.pulseHz }),
+    ...(clip.aim === undefined ? {} : { aim: clip.aim }),
     ...(clip.sweep === undefined ? {} : { sweep: clip.sweep }),
   };
 }

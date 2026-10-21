@@ -229,6 +229,32 @@ export interface SweepSettings {
   tiltRange?: number;
 }
 
+/**
+ * Where a clip points, and optionally how it travels there.
+ *
+ * Aim is the non-oscillating counterpart of a sweep: the head moves from one
+ * pose to another once, then holds. With no end pose (or an end equal to the
+ * start) the clip is a still pose. Values are normalized 0..1 like every other
+ * attribute, so the profile's physical limits still apply.
+ */
+export interface AimSettings {
+  /** Pan at the start of the travel, normalized 0..1. */
+  pan: number;
+  /** Tilt at the start of the travel, normalized 0..1. */
+  tilt: number;
+  /** Pan reached at the end of the travel. Omitted keeps `pan`. */
+  toPan?: number;
+  /** Tilt reached at the end of the travel. Omitted keeps `tilt`. */
+  toTilt?: number;
+  /**
+   * Seconds the travel takes, measured from the clip start. Omitted stretches
+   * the travel across the whole clip. `0` jumps straight to the end pose.
+   */
+  travelSec?: number;
+  /** Shape of the travel. Omitted eases in and out, which suits a slow descent. */
+  easing?: Easing;
+}
+
 export interface Clip {
   id: string;
   startSec: number;
@@ -243,6 +269,8 @@ export interface Clip {
   strobe?: StrobeSettings;
   /** Explicit pulse rate for a `pulse`-style dimmer envelope, in Hz. */
   pulseHz?: number;
+  /** Fixed pan/tilt aim. Overrides `attributes.pan`/`tilt`; an explicit sweep wins. */
+  aim?: AimSettings;
   /** Pan/tilt movement shaping. Overrides `attributes.pan`/`tilt` when present. */
   sweep?: SweepSettings;
 }

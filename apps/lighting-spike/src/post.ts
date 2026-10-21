@@ -12,6 +12,11 @@ export class Post {
   private readonly withoutBloom: NodeLike;
   private readonly withBloom: NodeLike;
   private readonly uTime = uniform(0);
+  /* Grain strength is a uniform so the `g` shortcut / Render menu button can
+   * toggle it without rebuilding the node graph. Off by default: it is an
+   * opt-in look, not part of the baseline image. */
+  private readonly uGrain = uniform(0);
+  private grainEnabled = false;
   private bloomEnabled = true;
 
   constructor(renderer: THREE.WebGPURenderer, scene: THREE.Scene, camera: THREE.Camera) {
@@ -28,7 +33,7 @@ export class Post {
   private grade(input: NodeLike): NodeLike {
     const distance = screenUV.sub(0.5).length();
     const vignette = float(1).sub(smoothstep(0.3, 0.92, distance).mul(0.55));
-    const grain = mx_noise_float(vec3(screenUV.mul(720), this.uTime.mul(26))).mul(0.03);
+    const grain = mx_noise_float(vec3(screenUV.mul(720), this.uTime.mul(26))).mul(this.uGrain);
 
     const graded = input.mul(vignette).add(vec3(grain));
 
@@ -43,6 +48,16 @@ export class Post {
 
   get bloom(): boolean {
     return this.bloomEnabled;
+  }
+
+  /** Opt-in film grain (key `g` / the Render menu button). */
+  setGrain(enabled: boolean): void {
+    this.grainEnabled = enabled;
+    this.uGrain.value = enabled ? 0.03 : 0;
+  }
+
+  get grain(): boolean {
+    return this.grainEnabled;
   }
 
   setTime(timeSec: number): void {

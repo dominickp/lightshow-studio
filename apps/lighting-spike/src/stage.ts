@@ -133,6 +133,9 @@ export class Stage {
   private views: CameraView[];
   /** Everything owned by the venue, removed and disposed when it changes. */
   private venueObjects: THREE.Object3D[] = [];
+  /** Crowd mesh, if the venue has one; hidden rather than rebuilt on toggle. */
+  private crowd: THREE.Object3D | null = null;
+  private audience = true;
 
   constructor(private readonly domElement: HTMLElement, show: Show, venue: VenueTemplate = CLUB_STAGE) {
     this.beatSec = secondsPerBeat(show.beatGrid);
@@ -219,6 +222,20 @@ export class Stage {
     return this.haze;
   }
 
+  /** Show or hide the crowd silhouette (the `a` shortcut / Render button). */
+  setAudience(enabled: boolean): void {
+    this.audience = enabled;
+    if (this.crowd !== null) this.crowd.visible = enabled;
+  }
+
+  toggleAudience(): void {
+    this.setAudience(!this.audience);
+  }
+
+  get audienceVisible(): boolean {
+    return this.audience;
+  }
+
   private fogDensity(): number {
     return 0.004 + this.haze * 0.016;
   }
@@ -236,10 +253,13 @@ export class Stage {
     this.venueObjects.push(structure);
 
     const crowdFeature = this.venue.features.crowd;
+    this.crowd = null;
     if (crowdFeature !== undefined) {
       const crowd = buildCrowd(crowdFeature);
+      crowd.visible = this.audience;
       this.scene.add(crowd);
       this.venueObjects.push(crowd);
+      this.crowd = crowd;
     }
 
     const strips = this.buildAccentStrips();

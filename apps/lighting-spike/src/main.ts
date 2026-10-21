@@ -248,6 +248,8 @@ const ui = {
   volume: element<HTMLInputElement>('volume'),
   vol: element<HTMLButtonElement>('btn-vol'),
   bloom: element<HTMLButtonElement>('btn-bloom'),
+  grain: element<HTMLButtonElement>('btn-grain'),
+  audience: element<HTMLButtonElement>('btn-audience'),
   strobe: element<HTMLButtonElement>('btn-strobe'),
   strobeStatus: element('strobe-status'),
   haze: element<HTMLInputElement>('haze'),
@@ -1431,6 +1433,8 @@ const syncButtons = (): void => {
   ui.loop.textContent = clock.loopEnabled ? 'on' : 'off';
   ui.vol.classList.toggle('on', volumetrics);
   ui.bloom.classList.toggle('on', bloomOn);
+  ui.grain.classList.toggle('on', post.grain);
+  ui.audience.classList.toggle('on', stage.audienceVisible);
   ui.strobe.classList.toggle('on', strobesOn);
   ui.strobeStatus.textContent = strobesOn ? 'on' : 'off';
   ui.haze.value = String(Math.round(stage.hazeLevel * 100));
@@ -3512,6 +3516,14 @@ ui.bloom.addEventListener('click', () => {
   post.setBloom(bloomOn);
   syncButtons();
 });
+ui.grain.addEventListener('click', () => {
+  post.setGrain(!post.grain);
+  syncButtons();
+});
+ui.audience.addEventListener('click', () => {
+  stage.toggleAudience();
+  syncButtons();
+});
 ui.strobe.addEventListener('click', () => {
   strobesOn = !strobesOn;
   syncButtons();
@@ -3605,6 +3617,12 @@ window.addEventListener('keydown', (event) => {
      * be compared without opening the panel. */
     const next = [0, 0.3, 0.65, 1].find((value) => value > stage.hazeLevel + 0.01) ?? 0;
     stage.setHaze(next);
+    syncButtons();
+  } else if (event.key === 'g' || event.key === 'G') {
+    post.setGrain(!post.grain);
+    syncButtons();
+  } else if (event.key === 'a' || event.key === 'A') {
+    stage.toggleAudience();
     syncButtons();
   }
   syncButtons();

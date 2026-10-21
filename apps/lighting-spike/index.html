@@ -48,7 +48,7 @@
         <summary>Controls &amp; shortcuts</summary>
         <div>
           <b>Space</b> play/pause · <b>← →</b> seek 1/16 (Shift = measure) · <b>M</b> mute ·
-          drag the ruler or waveform to scrub · <b>L</b> loop ·
+          drag the ruler or waveform to scrub · <b>Shift + drag</b> draws a loop · <b>L</b> removes it ·
           <b>1</b> beams <b>2</b> bloom <b>3</b> shadows <b>4</b> strobes ·
           <b>C</b> camera · <b>O</b> orbit · <b>[ ]</b> fixture count · <b>X</b> stats · <b>`</b> controls panel · <b>H</b> haze<br />
           <b>Ctrl/⌘ + wheel</b> zoom at pointer · <b>Ctrl/⌘ +/-</b> zoom · <b>Ctrl/⌘ 0</b> fit ·
@@ -62,8 +62,8 @@
           right-click a lane and choose <b>Paste here</b> for the same spot;
           right-click a clip for Copy/Delete. A dashed line and row tint show
           where <b>here</b> is whenever the clipboard has clips<br />
-          <b>Shift + drag anywhere in the timeline</b> to draw a loop · drag the cyan loop edges to adjust it ·
-          <b>L</b> or the Loop button toggles looping · Fit loop zooms to it<br />
+          <b>Shift + drag</b> the ruler, waveform, or a lane to draw a loop on measure boundaries · drag the cyan loop edges to adjust it ·
+          <b>L</b> removes the loop · the Loop button toggles looping · Fit loop zooms to it<br />
           <b>Click a fixture name</b> to open its side panel (click again to close) ·
           Playback loops measures 41–56 (1 measure = 1 bar of 4 beats); scrubbing before the loop plays the intro through to the loop end.
         </div>
@@ -445,7 +445,7 @@
         <button id="btn-zoom-in" type="button" aria-label="Zoom in" title="Zoom in (Ctrl/⌘ +)" disabled>+</button>
         <button id="btn-zoom-fit" type="button" aria-label="Fit entire song" title="Fit entire song (Ctrl/⌘ 0)" disabled>Fit</button>
         <button id="btn-loop-fit" type="button" aria-label="Fit loop" title="Zoom to the loop region" disabled>Fit loop</button>
-        <button id="btn-loop" type="button" class="on" aria-pressed="true" title="Toggle looping (L)" disabled>Loop</button>
+        <button id="btn-loop" type="button" class="on" aria-pressed="true" title="Toggle looping" disabled>Loop</button>
         <button id="btn-follow" type="button" class="on" aria-pressed="true" title="Scroll to keep the playhead visible">Follow</button>
       </div>
     </section>

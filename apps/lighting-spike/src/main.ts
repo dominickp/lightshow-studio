@@ -1868,6 +1868,25 @@ const snapTime = (timeSec: number): number => {
   ));
 };
 
+/** One measure in seconds; falls back to a second when the song has no beat grid. */
+const barLengthSec = (): number => {
+  const timeline = currentTimeline;
+  if (timeline === null || timeline.bpm === null || timeline.bpm <= 0) return 1;
+  return (60 / timeline.bpm) * Math.max(1, timeline.beatsPerBar);
+};
+
+/** Loop edges land on measure lines, so a drawn loop is always whole measures. */
+const snapTimeToBar = (timeSec: number): number => {
+  const timeline = currentTimeline;
+  if (timeline === null) return timeSec;
+  const clamped = Math.max(0, Math.min(timeline.durationSec, timeSec));
+  if (timeline.bpm === null || timeline.bpm <= 0) return Math.round(clamped);
+  const barSec = barLengthSec();
+  const snapped = timeline.firstBeatSec
+    + Math.round((clamped - timeline.firstBeatSec) / barSec) * barSec;
+  return Math.max(0, Math.min(timeline.durationSec, snapped));
+};
+
 /** Arrow-key seek: one 1/16 by default, one bar with Shift. */
 const seekBy = (direction: 1 | -1, coarse: boolean): void => {
   const timeline = currentTimeline;
@@ -1927,13 +1946,24 @@ const loopRangeLabel = (): string => {
   return `${startBar}–${endBar}`;
 };
 
+/** A region covering the whole song is the "no loop" state set by `L`. */
+const hasLoopRegion = (): boolean => {
+  const timeline = currentTimeline;
+  if (timeline === null) return false;
+  return loopRegion.startSec > 1e-3
+    || loopRegion.endSec < timeline.durationSec - 1e-3;
+};
+
 const updateLoopUi = (): void => {
-  const enabled = clock.loopEnabled;
+  const hasRegion = hasLoopRegion();
+  const enabled = hasRegion && clock.loopEnabled;
   ui.loopBtn.classList.toggle('on', enabled);
   ui.loopBtn.setAttribute('aria-pressed', String(enabled));
-  const range = loopRangeLabel();
-  ui.loopBtn.textContent = enabled ? `Loop ${range}` : 'Loop off';
-  ui.loopBtn.title = `${enabled ? 'Looping' : 'Loop off'}${range === '' ? '' : ` ${range}`} · click or press L to toggle`;
+  const range = hasRegion ? loopRangeLabel() : '';
+  ui.loopBtn.textContent = !hasRegion ? 'No loop' : enabled ? `Loop ${range}` : 'Loop off';
+  ui.loopBtn.title = !hasRegion
+    ? 'No loop · Shift-drag the ruler, waveform or a lane to draw one'
+    : `${enabled ? 'Looping' : 'Loop off'}${range === '' ? '' : ` ${range}`} · L removes the loop`;
 };
 
 const applyLoop = (commitToClock = true): void => {
@@ -1975,6 +2005,16 @@ const setLoopRegion = (startSec: number, endSec: number, commitToClock = true): 
   applyLoop(commitToClock);
 };
 
+/** `L` removes the loop: the whole song plays free and nothing is shaded out. */
+const clearLoop = (): void => {
+  const timeline = currentTimeline;
+  if (timeline === null) return;
+  clock.setLoopEnabled(false);
+  setLoopRegion(0, timeline.durationSec);
+  updateLoopUi();
+  syncButtons();
+};
+
 ui.loopBtn.addEventListener('click', () => {
   clock.setLoopEnabled(!clock.loopEnabled);
   updateLoopUi();
@@ -1992,6 +2032,31 @@ ui.loopFit.addEventListener('click', () => {
 type LoopGesture = { edge: 'start' | 'end' | 'new'; anchorSec: number };
 let loopGesture: LoopGesture | null = null;
 const LOOP_GRIP_PX = 8;
+
+/** Begin replacing the loop from `timeSec`, opened as one full measure. */
+const beginLoopDraw = (timeSec: number): void => {
+  const timeline = currentTimeline;
+  if (timeline === null) return;
+  const barSec = barLengthSec();
+  const anchor = Math.min(snapTimeToBar(timeSec), Math.max(0, timeline.durationSec - barSec));
+  loopGesture = { edge: 'new', anchorSec: anchor };
+  setLoopRegion(anchor, Math.min(timeline.durationSec, anchor + barSec), false);
+};
+
+/** Extend the loop being drawn; both edges stay on measure lines. */
+const updateLoopDraw = (timeSec: number): void => {
+  if (loopGesture === null || loopGesture.edge !== 'new' || currentTimeline === null) return;
+  const barSec = barLengthSec();
+  const anchor = loopGesture.anchorSec;
+  const time = snapTimeToBar(timeSec);
+  let start = Math.min(anchor, time);
+  let end = Math.max(anchor, time);
+  if (end - start < barSec - 1e-6) {
+    if (time < anchor) start = end - barSec;
+    else end = start + barSec;
+  }
+  setLoopRegion(start, end, false);
+};
 
 const rulerTimeAt = (clientX: number): number => {
   const timeline = currentTimeline;
@@ -2026,10 +2091,7 @@ ui.ruler.addEventListener('pointerdown', (event) => {
   const endX = rulerXFor(loopRegion.endSec);
 
   if (event.shiftKey) {
-    const anchor = snapTime(rulerTimeAt(event.clientX));
-    const beat = currentTimeline.bpm !== null && currentTimeline.bpm > 0 ? 60 / currentTimeline.bpm : 1;
-    loopGesture = { edge: 'new', anchorSec: anchor };
-    setLoopRegion(anchor, anchor + beat, false);
+    beginLoopDraw(rulerTimeAt(event.clientX));
     return;
   }
   if (Math.abs(x - startX) <= LOOP_GRIP_PX) {
@@ -2055,17 +2117,18 @@ ui.ruler.addEventListener('pointermove', (event) => {
   } else if (loopGesture.edge === 'end') {
     setLoopRegion(loopGesture.anchorSec, Math.max(time, loopGesture.anchorSec + MIN_LOOP_SEC), false);
   } else {
-    const a = Math.min(loopGesture.anchorSec, time);
-    const b = Math.max(loopGesture.anchorSec, time);
-    if (b - a >= MIN_LOOP_SEC) setLoopRegion(a, b, false);
+    updateLoopDraw(rulerTimeAt(event.clientX));
   }
 });
 
 const endLoopGesture = (event: PointerEvent): void => {
-  const wasLoop = loopGesture !== null;
+  const gesture = loopGesture;
   loopGesture = null;
   if (ui.ruler.hasPointerCapture(event.pointerId)) ui.ruler.releasePointerCapture(event.pointerId);
-  if (wasLoop) applyLoop(true);
+  if (gesture === null) return;
+  // A newly drawn loop becomes the active loop, even after `L` cleared it.
+  if (gesture.edge === 'new') clock.setLoopEnabled(true);
+  applyLoop(true);
 };
 ui.ruler.addEventListener('pointerup', endLoopGesture);
 ui.ruler.addEventListener('pointercancel', endLoopGesture);
@@ -2075,27 +2138,26 @@ ui.ruler.addEventListener('pointercancel', endLoopGesture);
 const isPointing = (target: Element, event: PointerEvent): boolean =>
   target.hasPointerCapture(event.pointerId);
 
+const isTimeAxisTarget = (target: EventTarget | null): boolean =>
+  target === ui.ruler
+  || target === ui.waveform
+  || (target instanceof Element && target.closest('.ruler-track') !== null);
+
 ui.arrangementScroll.addEventListener('pointerdown', (event) => {
-  // Select mode reserves Shift for additive card selection, so the
-  // Shift-drag loop gesture belongs to drop mode only.
-  if (arrangement.timelineMode === 'select') return;
+  // Select mode reserves Shift for additive card selection, but the ruler and
+  // waveform are not clip surfaces: Shift-drag there always draws a loop.
+  if (arrangement.timelineMode === 'select' && !isTimeAxisTarget(event.target)) return;
   if (!event.shiftKey || currentTimeline === null) return;
   event.preventDefault();
   event.stopPropagation();
-  const beat = currentTimeline.bpm !== null && currentTimeline.bpm > 0 ? 60 / currentTimeline.bpm : 1;
-  const anchor = snapTime(rulerTimeAt(event.clientX));
-  loopGesture = { edge: 'new', anchorSec: anchor };
+  beginLoopDraw(rulerTimeAt(event.clientX));
   ui.arrangementScroll.setPointerCapture(event.pointerId);
-  setLoopRegion(anchor, anchor + beat, false);
 }, { capture: true });
 
 ui.arrangementScroll.addEventListener('pointermove', (event) => {
   if (loopGesture === null || loopGesture.edge !== 'new' || currentTimeline === null) return;
   if (!isPointing(ui.arrangementScroll, event)) return;
-  const time = snapTime(rulerTimeAt(event.clientX));
-  const a = Math.min(loopGesture.anchorSec, time);
-  const b = Math.max(loopGesture.anchorSec, time);
-  if (b - a >= MIN_LOOP_SEC) setLoopRegion(a, b, false);
+  updateLoopDraw(rulerTimeAt(event.clientX));
 });
 
 const endScrollLoopGesture = (event: PointerEvent): void => {
@@ -2104,13 +2166,19 @@ const endScrollLoopGesture = (event: PointerEvent): void => {
   if (ui.arrangementScroll.hasPointerCapture(event.pointerId)) {
     ui.arrangementScroll.releasePointerCapture(event.pointerId);
   }
+  // A newly drawn loop becomes the active loop, even after `L` cleared it.
+  clock.setLoopEnabled(true);
   applyLoop(true);
+  syncButtons();
 };
 ui.arrangementScroll.addEventListener('pointerup', endScrollLoopGesture);
 ui.arrangementScroll.addEventListener('pointercancel', endScrollLoopGesture);
 
 const setLoopMode = (on: boolean): void => {
-  ui.arrangementScroll.classList.toggle('loop-mode', on && arrangement.timelineMode === 'drop');
+  const drop = arrangement.timelineMode === 'drop';
+  ui.arrangementScroll.classList.toggle('loop-mode', on && drop);
+  ui.ruler.classList.toggle('loop-mode', on && !drop);
+  ui.waveform.classList.toggle('loop-mode', on && !drop);
 };
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Shift') setLoopMode(true);
@@ -3101,17 +3169,33 @@ ui.count.addEventListener('click', () => {
   setActiveCount(presets[countIndex] ?? show.fixtures.length);
 });
 
+/* Spaces must always play/pause, whatever control a previous click left
+ * focused — an open `<select>` dropdown or a focused button would otherwise
+ * swallow it. Listen in the capture phase and stop propagation so neither the
+ * native control nor the shortcut handler below sees the key. Text entry
+ * fields keep Space for typing. */
+window.addEventListener(
+  'keydown',
+  (event) => {
+    if (event.code !== 'Space' || event.repeat) return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    const target = event.target;
+    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
+    if (target instanceof HTMLElement && target.isContentEditable) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (target instanceof HTMLElement) target.blur();
+    togglePlay();
+  },
+  true,
+);
+
 window.addEventListener('keydown', (event) => {
   if (isTextEntry(event.target)) return;
   // Bare-letter shortcuts must not fire as Ctrl/Cmd combos: Ctrl+C copies
   // clips, but it also used to toggle the camera via the `c` shortcut.
   if (event.ctrlKey || event.metaKey || event.altKey) return;
-  // A focused button already handles Space (and Enter) itself.
-  if (event.code === 'Space' && event.target instanceof HTMLButtonElement) return;
-  if (event.code === 'Space') {
-    event.preventDefault();
-    togglePlay();
-  } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
     event.preventDefault();
     seekBy(event.key === 'ArrowRight' ? 1 : -1, event.shiftKey);
   } else if (event.key === 'Backspace' || event.key === 'Delete') {
@@ -3144,8 +3228,7 @@ window.addEventListener('keydown', (event) => {
   } else if (event.key === '`' || event.key === '~') {
     toggleControls();
   } else if (event.key === 'l' || event.key === 'L') {
-    clock.setLoopEnabled(!clock.loopEnabled);
-    updateLoopUi();
+    clearLoop();
   } else if (event.key === 'c' || event.key === 'C') {
     stage.nextView();
   } else if (event.key === 'o' || event.key === 'O') {

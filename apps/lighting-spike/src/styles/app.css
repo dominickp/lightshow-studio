@@ -25,6 +25,15 @@
         background: #04060a;
         color: var(--ink);
         font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        /* The app is a control surface, not a document: dragging should never
+           select labels or the canvas. Text inputs opt back in below. */
+        user-select: none;
+        -webkit-user-select: none;
+      }
+
+      input, textarea {
+        user-select: text;
+        -webkit-user-select: text;
       }
 
       button, select { color: inherit; font: inherit; }
@@ -760,6 +769,7 @@
       #arrangement-scroll.loop-mode,
       #arrangement-scroll.loop-mode * { cursor: crosshair !important; }
       #arrangement-scroll.loop-mode { box-shadow: inset 0 0 0 1px rgba(122, 209, 255, 0.45); }
+      #timeline-ruler.loop-mode, #waveform.loop-mode { cursor: crosshair; }
 
       /* Middle-drag pans the ruler, waveform and lanes as one surface. */
       #arrangement-scroll.panning,

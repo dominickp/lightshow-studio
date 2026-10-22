@@ -1355,6 +1355,20 @@
 
       #loading[hidden] { display: none; }
 
+      /* A startup failure is real prose, not a status label: undo the
+         uppercase/letter-spacing treatment so the reason is readable. */
+      #loading[data-state='error'] {
+        padding: 24px;
+        text-align: center;
+        text-transform: none;
+        letter-spacing: normal;
+        align-content: center;
+        gap: 8px;
+        color: var(--txt);
+      }
+      #loading[data-state='error'] strong { color: #ff8a7a; font-weight: 600; }
+      #loading[data-state='error'] span { color: var(--dim); max-width: 60ch; }
+
       @media (max-width: 1000px) {
         :root { --dock-height: 50vh; --side-panel-width: 244px; }
         #clip-inspector { gap: 6px; padding: 5px 8px; }

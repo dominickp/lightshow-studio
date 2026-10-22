@@ -1,0 +1,59 @@
+name: Deploy studio to GitHub Pages
+
+# Builds `apps/studio` and publishes it as a project site at
+# https://<owner>.github.io/dmx-sim/
+#
+# One-time setup: Settings → Pages → Build and deployment → Source:
+# "GitHub Actions". After that every push to `main` redeploys.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deploy finish instead of cancelling it mid-publish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # `vite build` does not typecheck; keep the deployed app honest.
+      - run: npm run typecheck
+
+      - run: npm run build
+
+      # `base` in vite.config.ts is derived from GITHUB_REPOSITORY, so no
+      # extra configuration is needed here.
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          # ~135 MB: the JS/CSS plus the sample project, song and LED loops.
+          path: apps/studio/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

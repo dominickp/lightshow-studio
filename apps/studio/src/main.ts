@@ -1,29 +1,21 @@
 import * as THREE from 'three/webgpu';
 import {
   CLUB_STAGE,
-  DEFAULT_AIM,
   DEFAULT_LASER_SETUP,
-  EASINGS,
   DEFAULT_VENUE_ID,
-  defaultLedLook,
   evaluateFixture,
   findAnchor,
   ledSurfaceFromFeature,
   nextFixtureId,
   readProjectBundle,
   resolveMount,
-  strobeGate,
-  sweepWave,
   timeToBeat,
   venueById,
-  type Easing,
   type FixtureDefaults,
   type FixturePlacement,
   type FixtureState,
   type LaserPattern,
-  type LedMediaRef,
   type LaserSetup,
-  type LedLookState,
   type LedSurface,
   type ProjectBundle,
   type ProjectFile,
@@ -31,18 +23,8 @@ import {
   type ProjectSettings,
 } from '@dmxsim/show-model';
 import type { LedPlaybackLayer } from './led/led-wall';
-import {
-  BUNDLED_MEDIA,
-  LedMediaLibrary,
-  mediaPoster,
-  mediaRef,
-  type LedMediaAsset,
-} from './led/media';
-import {
-  LOOK_DEFINITIONS,
-  PALETTE_PRESETS,
-  lookDefinition,
-} from './led/look-definitions';
+import { LedMediaLibrary } from './led/media';
+import { lookDefinition } from './led/look-definitions';
 import { PROFILE_LIBRARY } from '@dmxsim/fixtures';
 import {
   BENCH_SCENARIO,
@@ -74,13 +56,11 @@ import {
 } from './project-file';
 import {
   Arrangement,
-  CUE_COLORS,
   MAX_PIXELS_PER_SECOND,
   MIN_PIXELS_PER_SECOND,
   PIXELS_PER_SECOND,
   TRACK_LABEL_WIDTH,
   type Cue,
-  type CueColorOverride,
   type CueTimeline,
   type TimelineMode,
   createRuler,
@@ -101,21 +81,7 @@ import {
   latestActiveEndSec,
   type CueIndex,
 } from './arrangement/active';
-import {
-  SWEEP_RATE_BOUNDS,
-  FALLBACK_PAN_TILT,
-  cueLength,
-  degFromNorm,
-  formatHz,
-  normFromDeg,
-  rateBounds,
-  strobeRateFor,
-  sweepFor,
-  sweepRateFor,
-  timingSummary,
-} from './arrangement/clip-timing';
 import { wallPlaybackLayers } from './led/playback';
-import { kelvinToCss, kelvinToRgb } from './kelvin';
 import { clamp } from './lib/math';
 import { PerfMonitor } from './app/perf';
 import { buildProjectFile } from './project/build';
@@ -128,15 +94,34 @@ import {
   writePreference,
 } from './ui/preferences';
 import { collectUi } from './ui/elements';
+import {
+  bootFailed,
+  readWithProgress,
+  setBootStatus,
+} from './ui/boot-status';
 import { installKeyboardShortcuts } from './ui/keyboard';
 import { enhanceSlider, parseNumericText } from './ui/slider';
 import { setupPhotosensitivityNotice } from './ui/photosensitivity';
+import { createTimingEditor } from './ui/timing-editor';
+import { createColorPicker } from './ui/color-picker';
+import { installLookEditor } from './ui/look-editor';
 import { Stage } from './stage';
 import { Post } from './post';
 
 // Shown before the async startup below so a first visit sees the notice
 // immediately rather than after the renderer and project bundle are ready.
 setupPhotosensitivityNotice();
+
+/* Startup is a chain of top-level awaits, so an unhandled rejection or a thrown
+ * error would leave the `#loading` overlay up with stale text and no hint about
+ * what broke. On a hosted build the common cases are a browser without WebGPU
+ * or WebGL2, and a failed asset request. */
+window.addEventListener('error', (event) => {
+  bootFailed('Could not start Lightshow Studio', event.error ?? event.message);
+});
+window.addEventListener('unhandledrejection', (event) => {
+  bootFailed('Could not start Lightshow Studio', event.reason);
+});
 
 /**
  * The demo is a project bundle, not generated code: the app loads
@@ -146,9 +131,10 @@ setupPhotosensitivityNotice();
  */
 const loadBundledProject = async (): Promise<ProjectBundle | null> => {
   try {
+    setBootStatus('Loading demo project…');
     const response = await fetch(demoProjectUrl);
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-    return await readProjectBundle(new Uint8Array(await response.arrayBuffer()));
+    return await readProjectBundle(await readWithProgress(response, 'Loading demo project'));
   } catch (error) {
     console.warn('could not load the bundled project; using the generated demo rig', error);
     return null;
@@ -212,6 +198,7 @@ renderer.toneMappingExposure = 1.0;
 renderer.info.autoReset = false;
 container.appendChild(renderer.domElement);
 
+setBootStatus('Starting renderer…');
 await renderer.init();
 
 const stage = new Stage(renderer.domElement, show, activeVenue);
@@ -533,14 +520,14 @@ const syncCueInspector = (
   ui.cueAction.value = mixed ? '' : cue?.action ?? arrangement.suggestedAction;
 
   /* One compact button carries the summary; the popover does the editing. */
-  syncTimingEditor(isSurface ? null : cue, fixture);
+  timingEditor.sync(isSurface ? null : cue, fixture);
 
   const colorEnabled = !isSurface && fixture !== null && Boolean(fixture.profile.capabilities.color);
   // Do not show a disabled colour picker for fixtures that cannot mix colour.
   ui.cueColorField.hidden = !colorEnabled;
-  if (!colorEnabled) closeColorPicker();
+  if (!colorEnabled) colorPicker.close();
   const override = cue?.colorOverride ?? (cue === null ? arrangement.suggestedColorOverride ?? undefined : undefined);
-  syncColorSwatches(cue?.colorIndex ?? arrangement.suggestedColorIndex, override, colorEnabled);
+  colorPicker.sync(cue?.colorIndex ?? arrangement.suggestedColorIndex, override, colorEnabled);
   ui.cueDelete.disabled = count === 0;
   ui.cueDelete.hidden = count === 0;
   ui.cueDelete.textContent = count > 1 ? `Delete ${count} clips` : 'Delete clip';
@@ -562,172 +549,6 @@ const syncActiveFixture = (): void => {
   arrangement.setActiveFixture(activeId);
 };
 
-/**
- * The bar keeps only the current color swatch plus the picker button; the
- * palette and recent colors live inside the popover, so the bar stays one row
- * no matter how many colors the user collects.
- */
-const currentSwatch = document.createElement('button');
-currentSwatch.type = 'button';
-currentSwatch.className = 'color-swatch current';
-currentSwatch.style.setProperty('--swatch', CUE_COLORS[0]!.css);
-currentSwatch.setAttribute('role', 'radio');
-currentSwatch.setAttribute('aria-checked', 'true');
-currentSwatch.setAttribute('aria-label', 'Current clip color');
-currentSwatch.disabled = true;
-currentSwatch.tabIndex = -1;
-currentSwatch.title = CUE_COLORS[0]!.name;
-const CUSTOM_COLOR_INDEX = CUE_COLORS.length;
-const customSwatch = document.createElement('button');
-customSwatch.type = 'button';
-customSwatch.className = 'color-swatch custom';
-customSwatch.dataset.colorIndex = String(CUSTOM_COLOR_INDEX);
-customSwatch.title = 'Custom color…';
-customSwatch.setAttribute('role', 'radio');
-customSwatch.setAttribute('aria-label', 'Custom color');
-customSwatch.setAttribute('aria-checked', 'false');
-customSwatch.setAttribute('aria-haspopup', 'dialog');
-customSwatch.disabled = true;
-customSwatch.tabIndex = -1;
-
-/** CSS for an override, used by the swatch, preview and hex field. */
-const toHexByte = (value: number): string =>
-  Math.round(value * 255).toString(16).padStart(2, '0');
-const colorOverrideCss = (override: CueColorOverride): string => {
-  if (override.kind === 'white') return kelvinToCss(override.cct);
-  return `#${toHexByte(override.r)}${toHexByte(override.g)}${toHexByte(override.b)}`;
-};
-
-/**
- * Recent colors learned from custom picks, shown as a row inside the picker
- * popover (most recent first) so frequent custom colors become one click.
- * Persisted per browser.
- */
-const USER_COLORS_KEY = STORAGE_KEYS.userColors;
-const USER_COLORS_MAX = 7;
-const sameColor = (a: CueColorOverride, b: CueColorOverride): boolean =>
-  JSON.stringify(a) === JSON.stringify(b);
-const loadUserColors = (): CueColorOverride[] => {
-  try {
-    const raw = readPreference(USER_COLORS_KEY);
-    if (raw === null) return [];
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item): item is CueColorOverride => {
-      if (typeof item !== 'object' || item === null) return false;
-      const c = item as Record<string, unknown>;
-      return (c.kind === 'rgb' && ['r', 'g', 'b'].every((k) => typeof c[k] === 'number'))
-        || (c.kind === 'white' && typeof c.cct === 'number');
-    }).slice(0, USER_COLORS_MAX);
-  } catch {
-    return [];
-  }
-};
-let userColors: CueColorOverride[] = loadUserColors();
-const paletteSwatches: HTMLButtonElement[] = CUE_COLORS.map((color, index) => {
-  const swatch = document.createElement('button');
-  swatch.type = 'button';
-  swatch.className = 'color-swatch';
-  swatch.dataset.colorIndex = String(index);
-  swatch.style.setProperty('--swatch', color.css);
-  swatch.title = color.name[0]!.toUpperCase() + color.name.slice(1);
-  swatch.setAttribute('role', 'radio');
-  swatch.setAttribute('aria-label', `${swatch.title} color`);
-  swatch.setAttribute('aria-checked', 'false');
-  swatch.tabIndex = -1;
-  return swatch;
-});
-ui.cueColor.replaceChildren(currentSwatch, customSwatch);
-const userSwatches: HTMLButtonElement[] = [];
-const renderUserSwatches = (): void => {
-  userSwatches.length = 0;
-  for (const [index, override] of userColors.entries()) {
-    const swatch = document.createElement('button');
-    swatch.type = 'button';
-    swatch.className = 'color-swatch user';
-    swatch.dataset.userIndex = String(index);
-    swatch.style.setProperty('--swatch', colorOverrideCss(override));
-    swatch.title = override.kind === 'white'
-      ? `White · ${Math.round(override.cct)} K`
-      : colorOverrideCss(override).toUpperCase();
-    swatch.setAttribute('role', 'radio');
-    swatch.setAttribute('aria-label', `Recent color ${index + 1}: ${swatch.title}`);
-    swatch.setAttribute('aria-checked', 'false');
-    swatch.tabIndex = -1;
-    userSwatches.push(swatch);
-  }
-  ui.colorPalette.replaceChildren(...paletteSwatches, ...userSwatches);
-};
-renderUserSwatches();
-const rememberUserColor = (override: CueColorOverride): void => {
-  userColors = [override, ...userColors.filter((c) => !sameColor(c, override))].slice(0, USER_COLORS_MAX);
-  writePreference(USER_COLORS_KEY, JSON.stringify(userColors));
-  renderUserSwatches();
-};
-
-/** Which color the bar's current swatch reflects, with its label. */
-type CurrentColor = { override?: CueColorOverride; colorIndex: number; label: string };
-let currentColor: CurrentColor = { colorIndex: 0, label: CUE_COLORS[0]!.name };
-
-/** Reflect the selected color on the bar's current swatch and the picker. */
-function syncColorSwatches(
-  selectedIndex: number,
-  override: CueColorOverride | undefined,
-  enabled: boolean,
-): void {
-  ui.cueColor.dataset.disabled = String(!enabled);
-  const selected = Math.min(Math.max(0, selectedIndex), CUE_COLORS.length - 1);
-  const userIndex = override === undefined ? -1 : userColors.findIndex((c) => sameColor(c, override));
-  for (const [index, swatch] of paletteSwatches.entries()) {
-    const isSelected = override === undefined && index === selected;
-    swatch.classList.toggle('selected', isSelected);
-    swatch.setAttribute('aria-checked', String(isSelected));
-  }
-  for (const [index, swatch] of userSwatches.entries()) {
-    const isSelected = index === userIndex;
-    swatch.classList.toggle('selected', isSelected);
-    swatch.setAttribute('aria-checked', String(isSelected));
-  }
-  const customSelected = override !== undefined && userIndex === -1;
-  customSwatch.classList.toggle('selected', customSelected);
-  customSwatch.setAttribute('aria-checked', String(customSelected));
-  if (override === undefined || userIndex !== -1) {
-    customSwatch.removeAttribute('data-has-custom');
-    customSwatch.removeAttribute('style');
-    customSwatch.title = 'Custom color…';
-  } else {
-    const css = colorOverrideCss(override);
-    customSwatch.dataset.hasCustom = 'true';
-    customSwatch.style.setProperty('--swatch', css);
-    customSwatch.title = override.kind === 'white'
-      ? `Custom white · ${Math.round(override.cct)} K`
-      : `Custom color · ${css.toUpperCase()}`;
-  }
-  // The bar's current swatch always mirrors what a new/selected clip uses.
-  currentColor = override === undefined
-    ? { colorIndex: selected, label: CUE_COLORS[selected]!.name }
-    : { override, colorIndex: CUSTOM_COLOR_INDEX, label: customSwatch.title };
-  const [cr, cg, cb] = override === undefined
-    ? CUE_COLORS[selected]!.rgb
-    : override.kind === 'rgb'
-      ? [override.r, override.g, override.b]
-      : kelvinToRgb(override.cct);
-  currentSwatch.style.setProperty('--swatch', `#${toHexByte(cr)}${toHexByte(cg)}${toHexByte(cb)}`);
-  currentSwatch.title = currentColor.label;
-  currentSwatch.disabled = !enabled;
-  customSwatch.disabled = !enabled;
-  currentSwatch.tabIndex = enabled ? 0 : -1;
-  customSwatch.tabIndex = enabled ? 0 : -1;
-  if (!ui.colorPicker.hidden) syncColorPicker(override);
-}
-
-/** Keep the popover's preview and color input in step with the override. */
-function syncColorPicker(override: CueColorOverride | undefined): void {
-  const css = override === undefined ? undefined : colorOverrideCss(override);
-  ui.colorPreview.style.background = css ?? 'conic-gradient(#ff2f2f, #ff8a18, #16d9cc, #397cff, #8c35ff, #ff3380, #ff2f2f)';
-  if (override?.kind === 'rgb') ui.colorInput.value = css!.toUpperCase();
-}
-
 let cuesByFixture: CueIndex = new Map();
 const indexCues = (): void => {
   cuesByFixture = indexCuesByLane(cues);
@@ -747,6 +568,18 @@ arrangement = new Arrangement(ui.arrangement, ui.arrangementScroll, show.fixture
   if (fixture !== null) toggleSidePanel(fixture.id);
   else if (surface !== null) toggleSurfacePanel(surface.id);
 }, surfaces);
+
+/**
+ * The inspector popovers own their markup and wiring; they are created here,
+ * before the first selection fires, so `syncCueInspector` can call into them.
+ */
+const timingEditor = createTimingEditor({
+  ui,
+  arrangement,
+  getTimeline: () => currentTimeline,
+});
+const colorPicker = createColorPicker({ ui, arrangement });
+installLookEditor({ ui, arrangement, media });
 
 // --- Timeline modes (drop / select) ---------------------------------------
 
@@ -1979,1030 +1812,6 @@ ui.cueAction.addEventListener('change', () => {
   arrangement.setSelectedAction(action);
 });
 
-/* --- Clip timing / strobe popover ---------------------------------------- */
-
-const setSliderValue = (input: HTMLInputElement, value: number): void => {
-  // Do not fight the thumb while the user is dragging it.
-  if (document.activeElement === input) return;
-  input.value = String(value);
-};
-
-/**
- * Draw the clip's actual dimmer output across its full duration.
- *
- * The x axis is the clip, so the fade ramps are visible where they really
- * happen. Pulse/strobe cycles are capped to keep a dense clip readable; the
- * caption reports the true count.
- */
-function drawTimingPreview(cue: Cue, fixture: FixturePlacement | null): void {
-  const ctx = ui.sePreview.getContext('2d');
-  if (ctx === null) return;
-  const width = ui.sePreview.width;
-  const height = ui.sePreview.height;
-  ctx.clearRect(0, 0, width, height);
-
-  const len = cueLength(cue);
-  const isStrobe = cue.action === 'strobe';
-  const isPulse = cue.action === 'pulse';
-  const isSweep = cue.action === 'sweep';
-  const isAim = cue.action === 'aim';
-  const rate = isStrobe
-    ? strobeRateFor(cue, fixture)
-    : isPulse
-      ? cue.pulseHz ?? 4 / len
-      : isSweep
-        ? sweepRateFor(cue)
-        : 0;
-  const trueCycles = rate > 0 ? len * rate : 0;
-  // A sweep is about movement, not light: keep a few cycles readable.
-  const cycles = clamp(trueCycles, 1, isSweep ? 4 : 6);
-  const phase = isSweep ? cue.sweep?.phase ?? 0 : 0;
-
-  const fadeInSec = clamp(cue.fadeInSec ?? (cue.action === 'fade' ? 0 : 0.04), 0, len);
-  const fadeOutSec = clamp(cue.fadeOutSec ?? 0.08, 0, len);
-
-  const shapeAt = (u: number): number => {
-    if (isStrobe) return strobeGate(u * cycles, cue.strobe);
-    if (isPulse) return (u * cycles) % 1 < 0.5 ? 0.9 : 0.08;
-    // Pan position across the movement cycle, so rate and offset are visible.
-    if (isSweep) return 0.5 + 0.5 * sweepWave(u * cycles + phase);
-    /* An aim shows its tilt, so the descent is visible as a ramp that then
-     * holds flat for the rest of the clip. */
-    if (isAim) {
-      const aim = cue.aim ?? DEFAULT_AIM;
-      const travel = clamp(aim.travelSec ?? len, 0.0001, len);
-      const eased = (EASINGS[aim.easing ?? 'sine'])(clamp((u * len) / travel, 0, 1));
-      const tilt = aim.tilt;
-      return tilt + ((aim.toTilt ?? tilt) - tilt) * eased;
-    }
-    if (cue.action === 'fade') return u;
-    if (cue.action === 'fire') {
-      if (u < 0.04) return 0.15 + (u / 0.04) * 0.85;
-      if (u < 0.6) return 0.9;
-      return 0.9 * (1 - (u - 0.6) / 0.4);
-    }
-    return 0.9;
-  };
-  const envelopeAt = (u: number): number => {
-    const sec = u * len;
-    let env = 1;
-    if (fadeInSec > 0) env = Math.min(env, sec / fadeInSec);
-    if (fadeOutSec > 0) env = Math.min(env, (len - sec) / fadeOutSec);
-    return clamp(env, 0, 1);
-  };
-  // Movement is geometric, not a dimmer level, so fades do not scale it.
-  const levelAt = (u: number): number => isSweep || isAim
-    ? shapeAt(u)
-    : clamp(shapeAt(u) * envelopeAt(u), 0, 1);
-
-  const steps = 300;
-  const top = 6;
-  const bottom = height - 6;
-  const path = new Path2D();
-  for (let index = 0; index <= steps; index += 1) {
-    const u = index / steps;
-    const x = u * width;
-    const y = bottom - levelAt(u) * (bottom - top);
-    if (index === 0) path.moveTo(x, y);
-    else path.lineTo(x, y);
-  }
-
-  const fill = new Path2D(path);
-  fill.lineTo(width, bottom);
-  fill.lineTo(0, bottom);
-  fill.closePath();
-  ctx.fillStyle = 'rgba(255, 138, 92, 0.16)';
-  ctx.fill(fill);
-
-  ctx.strokeStyle = '#ff8a5c';
-  ctx.lineWidth = 3;
-  ctx.lineJoin = 'round';
-  ctx.stroke(path);
-
-  if (!isSweep && !isAim && fadeInSec > 0) {
-    ctx.fillStyle = 'rgba(122, 209, 255, 0.55)';
-    ctx.fillRect(0, 0, (fadeInSec / len) * width, 2);
-  }
-  if (!isSweep && !isAim && fadeOutSec > 0) {
-    ctx.fillStyle = 'rgba(122, 209, 255, 0.55)';
-    ctx.fillRect(width - (fadeOutSec / len) * width, 0, (fadeOutSec / len) * width, 2);
-  }
-
-  const parts = [`${len.toFixed(2)} s clip`];
-  if (trueCycles > 0) {
-    parts.push(`${formatHz(rate)} · ${Math.max(1, Math.round(trueCycles))} cycle${Math.round(trueCycles) === 1 ? '' : 's'}`);
-  }
-  if (cue.action === 'sweep') parts.push(`offset ${Math.round(phase * 100)}%`);
-  if (isAim) {
-    const travel = clamp(cue.aim?.travelSec ?? len, 0, len);
-    parts.push(`travel ${travel.toFixed(2)} s`);
-  }
-  if (!isSweep && !isAim && (fadeInSec > 0 || fadeOutSec > 0)) parts.push('fades shown');
-  ui.sePreviewCaption.textContent = parts.join(' · ');
-}
-
-/** Musical rate chips: one, two or four hits per beat. */
-function renderRateChips(rate: number, cue: Cue, fixture: FixturePlacement | null): void {
-  ui.seRateChips.replaceChildren();
-  const bpm = currentTimeline?.bpm ?? null;
-  if (bpm === null || bpm <= 0) return;
-  const limits = rateBounds(cue, fixture);
-  for (const [label, hits] of [['1/4', 1], ['1/8', 2], ['1/16', 4]] as const) {
-    // One decimal keeps the slider, the readout and the stored rate identical.
-    const hz = Math.round(clamp((bpm / 60) * hits, limits[0], limits[1]) * 10) / 10;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = label;
-    button.title = `${formatHz(hz)} · ${hits} hit${hits === 1 ? '' : 's'} per beat`;
-    button.setAttribute('aria-pressed', String(Math.abs(hz - rate) < 0.05));
-    button.addEventListener('click', () => {
-      beginTimingEdit();
-      ensureTimingHistory();
-      applyTimingPatch({ rate: hz });
-      endTimingEdit();
-    });
-    ui.seRateChips.append(button);
-  }
-}
-
-/**
- * Movement-period chips. Unlike strobes, a sweep is slow enough to talk bars:
- * one full pan/tilt cycle per 1, 2 or 4 bars keeps groups in step with the song.
- */
-function renderSweepChips(rate: number): void {
-  ui.seMoveChips.replaceChildren();
-  const bpm = currentTimeline?.bpm ?? null;
-  if (bpm === null || bpm <= 0) return;
-  const barSec = (60 / bpm) * Math.max(1, currentTimeline?.beatsPerBar ?? 4);
-  for (const [label, bars] of [['1 bar', 1], ['2 bars', 2], ['4 bars', 4]] as const) {
-    const hz = Math.round(clamp(1 / (barSec * bars), SWEEP_RATE_BOUNDS[0], SWEEP_RATE_BOUNDS[1]) * 100) / 100;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = label;
-    button.title = `${formatHz(hz)} · one cycle every ${bars} bar${bars === 1 ? '' : 's'}`;
-    button.setAttribute('aria-pressed', String(Math.abs(hz - rate) < 0.005));
-    button.addEventListener('click', () => {
-      beginTimingEdit();
-      ensureTimingHistory();
-      applyTimingPatch({ rate: hz });
-      endTimingEdit();
-    });
-    ui.seMoveChips.append(button);
-  }
-}
-
-/** Start-angle presets: aligned, or deliberately out of step with each other. */
-function renderPhaseChips(phase: number): void {
-  ui.seMovePhaseChips.replaceChildren();
-  for (const [label, value, hint] of [
-    ['0%', 0, 'All heads start together'],
-    ['25%', 0.25, 'Quarter-cycle offset'],
-    ['50%', 0.5, 'Half-cycle offset — mirrored'],
-    ['75%', 0.75, 'Three-quarter offset'],
-  ] as const) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = label;
-    button.title = hint;
-    button.setAttribute('aria-pressed', String(Math.abs(value - phase) < 0.005));
-    button.addEventListener('click', () => {
-      beginTimingEdit();
-      ensureTimingHistory();
-      applyTimingPatch({ phase: value });
-      endTimingEdit();
-    });
-    ui.seMovePhaseChips.append(button);
-  }
-
-  // Selecting several clips and spreading them is the fast way to stop a row
-  // of identical heads from moving in lockstep.
-  const spread = document.createElement('button');
-  spread.type = 'button';
-  spread.textContent = 'Spread';
-  spread.title = `Offset the ${arrangement.selectionCount} selected sweep clips evenly across the cycle`;
-  spread.disabled = arrangement.selectionCount < 2;
-  spread.addEventListener('click', () => {
-    arrangement.spreadSelectedSweepPhase();
-  });
-  ui.seMovePhaseChips.append(spread);
-}
-
-/** Refresh the button and popover from the current selection. */
-function syncTimingEditor(cue: Cue | null, fixture: FixturePlacement | null): void {
-  ui.clipTiming.hidden = cue === null;
-  if (cue === null) {
-    closeTimingEditor();
-    return;
-  }
-
-  const isStrobe = cue.action === 'strobe';
-  const isPulse = cue.action === 'pulse';
-  const isSweep = cue.action === 'sweep';
-  const isAim = cue.action === 'aim';
-  const len = cueLength(cue);
-  ui.clipTiming.textContent = timingSummary(cue, fixture);
-  ui.clipTiming.title = isStrobe || isPulse
-    ? 'Strobe / pulse rate and shape, plus clip fades'
-    : isAim
-      ? 'Fixed pan/tilt aim, plus clip fades'
-      : isSweep
-        ? 'Movement speed, start angle and pan/tilt range, plus clip fades'
-        : 'Clip fades';
-
-  ui.sePulseSection.hidden = !(isStrobe || isPulse);
-  ui.seShapeSection.hidden = !isStrobe;
-  ui.seMoveSection.hidden = !isSweep;
-  ui.seAimSection.hidden = !isAim;
-  ui.seGlyph.textContent = isStrobe ? '⚡' : isPulse ? '≈' : isAim ? '⌖' : isSweep ? '↔' : '⏱';
-  ui.seTitle.textContent = isStrobe
-    ? 'Strobe'
-    : isPulse
-      ? 'Pulse'
-      : isAim
-        ? 'Aim'
-        : isSweep
-          ? 'Sweep'
-          : 'Clip timing';
-  ui.seRateLabel.textContent = isStrobe ? 'Strobe rate' : 'Pulse rate';
-
-  const [rateMin, rateMax] = rateBounds(cue, fixture);
-  ui.seRate.min = String(rateMin);
-  ui.seRate.max = String(rateMax);
-  const rate = isStrobe ? strobeRateFor(cue, fixture) : cue.pulseHz ?? 4 / len;
-  setSliderValue(ui.seRate, rate);
-  ui.seRateValue.textContent = formatHz(rate);
-  renderRateChips(rate, cue, fixture);
-
-  const attackPct = Math.round((cue.strobe?.attack ?? 0.05) * 100);
-  const releasePct = Math.round((cue.strobe?.release ?? 0.18) * 100);
-  const depthPct = Math.round((cue.strobe?.depth ?? 0) * 100);
-  setSliderValue(ui.seAttack, attackPct);
-  setSliderValue(ui.seRelease, releasePct);
-  setSliderValue(ui.seDepth, depthPct);
-  ui.seAttackValue.textContent = `${attackPct}%`;
-  ui.seReleaseValue.textContent = `${releasePct}%`;
-  ui.seDepthValue.textContent = `${depthPct}%`;
-
-  if (isSweep) {
-    const sweep = sweepFor(cue);
-    const limits = fixture?.profile.limits ?? FALLBACK_PAN_TILT;
-    const sweepRate = sweepRateFor(cue);
-    setSliderValue(ui.seMoveRate, sweepRate);
-    ui.seMoveRateValue.textContent = formatHz(sweepRate);
-    renderSweepChips(sweepRate);
-
-    const phasePct = Math.round(sweep.phase * 100);
-    setSliderValue(ui.seMovePhase, phasePct);
-    ui.seMovePhaseValue.textContent = `${phasePct}%`;
-    renderPhaseChips(sweep.phase);
-
-    const panSpan = limits.panDeg[1] - limits.panDeg[0];
-    const tiltSpan = limits.tiltDeg[1] - limits.tiltDeg[0];
-    ui.sePanCenter.min = String(limits.panDeg[0]);
-    ui.sePanCenter.max = String(limits.panDeg[1]);
-    ui.sePanRange.max = String(Math.round(panSpan / 2));
-    ui.seTiltCenter.min = String(limits.tiltDeg[0]);
-    ui.seTiltCenter.max = String(limits.tiltDeg[1]);
-    ui.seTiltRange.max = String(Math.round(tiltSpan / 2));
-
-    const panCenterDeg = Math.round(degFromNorm(sweep.panCenter, limits.panDeg));
-    const panRangeDeg = Math.round(sweep.panRange * panSpan);
-    const tiltCenterDeg = Math.round(degFromNorm(sweep.tiltCenter, limits.tiltDeg));
-    const tiltRangeDeg = Math.round(sweep.tiltRange * tiltSpan);
-    setSliderValue(ui.sePanCenter, panCenterDeg);
-    setSliderValue(ui.sePanRange, panRangeDeg);
-    setSliderValue(ui.seTiltCenter, tiltCenterDeg);
-    setSliderValue(ui.seTiltRange, tiltRangeDeg);
-    ui.sePanCenterValue.textContent = `${panCenterDeg}°`;
-    ui.sePanRangeValue.textContent = `±${panRangeDeg}°`;
-    ui.seTiltCenterValue.textContent = `${tiltCenterDeg}°`;
-    ui.seTiltRangeValue.textContent = `±${tiltRangeDeg}°`;
-  }
-
-  if (isAim) {
-    const aim = cue.aim ?? DEFAULT_AIM;
-    const limits = fixture?.profile.limits ?? FALLBACK_PAN_TILT;
-    for (const slider of [ui.seAimPan, ui.seAimPanTo]) {
-      slider.min = String(limits.panDeg[0]);
-      slider.max = String(limits.panDeg[1]);
-    }
-    for (const slider of [ui.seAimTilt, ui.seAimTiltTo]) {
-      slider.min = String(limits.tiltDeg[0]);
-      slider.max = String(limits.tiltDeg[1]);
-    }
-    const panDeg = Math.round(degFromNorm(aim.pan, limits.panDeg));
-    const tiltDeg = Math.round(degFromNorm(aim.tilt, limits.tiltDeg));
-    const toPanDeg = Math.round(degFromNorm(aim.toPan ?? aim.pan, limits.panDeg));
-    const toTiltDeg = Math.round(degFromNorm(aim.toTilt ?? aim.tilt, limits.tiltDeg));
-    setSliderValue(ui.seAimPan, panDeg);
-    setSliderValue(ui.seAimTilt, tiltDeg);
-    setSliderValue(ui.seAimPanTo, toPanDeg);
-    setSliderValue(ui.seAimTiltTo, toTiltDeg);
-    ui.seAimPanValue.textContent = `${panDeg}°`;
-    ui.seAimTiltValue.textContent = `${tiltDeg}°`;
-    ui.seAimPanToValue.textContent = `${toPanDeg}°`;
-    ui.seAimTiltToValue.textContent = `${toTiltDeg}°`;
-
-    // The travel cannot outlast the clip it lives in; no travel means the
-    // head jumps straight to the end pose.
-    ui.seAimTravel.max = String(Math.max(0.05, len));
-    const travelSec = Math.min(aim.travelSec ?? len, len);
-    setSliderValue(ui.seAimTravel, Math.round(travelSec * 20) / 20);
-    ui.seAimTravelValue.textContent = `${travelSec.toFixed(2)} s`;
-    ui.seAimEasing.value = aim.easing ?? 'sine';
-  }
-
-  const fadeInSec = cue.fadeInSec ?? (cue.action === 'fade' ? 0 : 0.04);
-  const fadeOutSec = cue.fadeOutSec ?? 0.08;
-  // Fades cannot be longer than the clip they belong to.
-  ui.seFadeIn.max = String(Math.max(0.02, len));
-  ui.seFadeOut.max = String(Math.max(0.02, len));
-  setSliderValue(ui.seFadeIn, Math.min(fadeInSec, len));
-  setSliderValue(ui.seFadeOut, Math.min(fadeOutSec, len));
-  ui.seFadeInValue.textContent = `${Math.min(fadeInSec, len).toFixed(2)} s`;
-  ui.seFadeOutValue.textContent = `${Math.min(fadeOutSec, len).toFixed(2)} s`;
-
-  if (!ui.strobeEditor.hidden) drawTimingPreview(cue, fixture);
-}
-
-/**
- * Apply the popover's current controls to the selection.
- *
- * `history: false` is used during a drag; the matching undo step is opened by
- * `beginTimingEdit` on pointer-down (and on arrow-key nudges).
- */
-function applyTimingPatch(overrides: { rate?: number; phase?: number } = {}): void {
-  const cue = arrangement.selectedCue;
-  if (cue === null) return;
-  const fixture = arrangement.selectedFixture;
-  const len = cueLength(cue);
-  const [rateMin, rateMax] = rateBounds(cue, fixture);
-  const rate = clamp(overrides.rate ?? Number(ui.seRate.value), rateMin, rateMax);
-  const attack = clamp(Number(ui.seAttack.value) / 100, 0, 0.5);
-  const release = clamp(Number(ui.seRelease.value) / 100, 0, 0.5);
-  const depth = clamp(Number(ui.seDepth.value) / 100, 0, 1);
-  const fadeInSec = clamp(Number(ui.seFadeIn.value), 0, len);
-  const fadeOutSec = clamp(Number(ui.seFadeOut.value), 0, len);
-
-  const sweepRate = clamp(
-    overrides.rate ?? Number(ui.seMoveRate.value),
-    SWEEP_RATE_BOUNDS[0],
-    SWEEP_RATE_BOUNDS[1],
-  );
-  const phase = clamp(overrides.phase ?? Number(ui.seMovePhase.value) / 100, 0, 1);
-  const limits = fixture?.profile.limits ?? FALLBACK_PAN_TILT;
-  const panSpan = limits.panDeg[1] - limits.panDeg[0];
-  const tiltSpan = limits.tiltDeg[1] - limits.tiltDeg[0];
-
-  arrangement.setSelectedClipSettings({
-    fadeInSec,
-    fadeOutSec,
-    ...(cue.action === 'strobe'
-      ? { strobe: { ...cue.strobe, hz: rate, attack, release, depth } }
-      : cue.action === 'pulse'
-        ? { pulseHz: rate }
-        : {}),
-    ...(cue.action === 'sweep'
-      ? {
-          sweep: {
-            ...cue.sweep,
-            hz: sweepRate,
-            phase,
-            panCenter: normFromDeg(Number(ui.sePanCenter.value), limits.panDeg),
-            panRange: clamp(Number(ui.sePanRange.value) / panSpan, 0, 0.5),
-            tiltCenter: normFromDeg(Number(ui.seTiltCenter.value), limits.tiltDeg),
-            tiltRange: clamp(Number(ui.seTiltRange.value) / tiltSpan, 0, 0.5),
-          },
-        }
-      : {}),
-    ...(cue.action === 'aim'
-      ? {
-          aim: {
-            pan: normFromDeg(Number(ui.seAimPan.value), limits.panDeg),
-            tilt: normFromDeg(Number(ui.seAimTilt.value), limits.tiltDeg),
-            toPan: normFromDeg(Number(ui.seAimPanTo.value), limits.panDeg),
-            toTilt: normFromDeg(Number(ui.seAimTiltTo.value), limits.tiltDeg),
-            travelSec: clamp(Number(ui.seAimTravel.value), 0, len),
-            easing: ui.seAimEasing.value as Easing,
-          },
-        }
-      : {}),
-  }, { history: false });
-}
-
-let timingEditPending = false;
-const beginTimingEdit = (): void => {
-  timingEditPending = true;
-};
-/** Open the undo step on the first real change of a gesture. */
-const ensureTimingHistory = (): void => {
-  if (!timingEditPending) return;
-  timingEditPending = false;
-  arrangement.beginClipEdit();
-};
-const endTimingEdit = (): void => {
-  timingEditPending = false;
-};
-
-/* A select has no drag gesture, so it opens and closes its own undo step. */
-ui.seAimEasing.addEventListener('change', () => {
-  arrangement.beginClipEdit();
-  applyTimingPatch();
-});
-
-function openTimingEditor(): void {
-  const cue = arrangement.selectedCue;
-  if (cue === null) return;
-  syncTimingEditor(cue, arrangement.selectedFixture);
-  ui.strobeEditor.hidden = false;
-  ui.clipTiming.setAttribute('aria-expanded', 'true');
-  drawTimingPreview(cue, arrangement.selectedFixture);
-}
-
-function closeTimingEditor(): void {
-  if (ui.strobeEditor.hidden) return;
-  ui.strobeEditor.hidden = true;
-  ui.clipTiming.setAttribute('aria-expanded', 'false');
-}
-
-ui.clipTiming.addEventListener('click', () => {
-  if (ui.strobeEditor.hidden) openTimingEditor();
-  else closeTimingEditor();
-});
-ui.seClose.addEventListener('click', () => {
-  closeTimingEditor();
-  ui.clipTiming.focus();
-});
-ui.strobeEditor.addEventListener('keydown', (event) => {
-  if (event.key !== 'Escape') return;
-  event.preventDefault();
-  closeTimingEditor();
-  ui.clipTiming.focus();
-});
-document.addEventListener('pointerdown', (event) => {
-  const target = event.target;
-  if (ui.strobeEditor.hidden || !(target instanceof Node)) return;
-  if (ui.strobeEditor.contains(target) || ui.clipTiming.contains(target)) return;
-  closeTimingEditor();
-});
-
-for (const [slider, readout] of [
-  [ui.seRate, ui.seRateValue],
-  [ui.seAttack, ui.seAttackValue],
-  [ui.seRelease, ui.seReleaseValue],
-  [ui.seDepth, ui.seDepthValue],
-  [ui.seMoveRate, ui.seMoveRateValue],
-  [ui.seMovePhase, ui.seMovePhaseValue],
-  [ui.sePanCenter, ui.sePanCenterValue],
-  [ui.sePanRange, ui.sePanRangeValue],
-  [ui.seTiltCenter, ui.seTiltCenterValue],
-  [ui.seTiltRange, ui.seTiltRangeValue],
-  [ui.seAimPan, ui.seAimPanValue],
-  [ui.seAimTilt, ui.seAimTiltValue],
-  [ui.seAimPanTo, ui.seAimPanToValue],
-  [ui.seAimTiltTo, ui.seAimTiltToValue],
-  [ui.seAimTravel, ui.seAimTravelValue],
-  [ui.seFadeIn, ui.seFadeInValue],
-  [ui.seFadeOut, ui.seFadeOutValue],
-] as Array<[HTMLInputElement, HTMLElement]>) {
-  enhanceSlider(slider, readout, { beforeEdit: beginTimingEdit });
-  slider.addEventListener('pointerdown', beginTimingEdit);
-  slider.addEventListener('pointerup', endTimingEdit);
-  slider.addEventListener('keydown', (event) => {
-    if (event.repeat) return;
-    if (!/^(Arrow|Home|End|Page)/.test(event.key)) return;
-    beginTimingEdit();
-  });
-  slider.addEventListener('input', () => {
-    ensureTimingHistory();
-    applyTimingPatch();
-  });
-  slider.addEventListener('change', () => {
-    ensureTimingHistory();
-    applyTimingPatch();
-    endTimingEdit();
-  });
-}
-const chooseColor = (colorIndex: number, override?: CueColorOverride): void => {
-  arrangement.setPendingColor(colorIndex, override);
-  arrangement.setSelectedColor(colorIndex, override);
-};
-// The bar's current swatch opens the picker (it doubles as the palette entry
-// point); the custom swatch does too, and clicking either one again closes it.
-ui.cueColor.addEventListener('click', (event) => {
-  const target = (event.target as HTMLElement).closest<HTMLElement>('.color-swatch');
-  if (target === null || target.hasAttribute('disabled')) return;
-  if (ui.colorPicker.hidden) openColorPicker();
-  else closeColorPicker();
-});
-ui.colorPalette.addEventListener('click', (event) => {
-  const target = (event.target as HTMLElement).closest<HTMLElement>('.color-swatch');
-  if (target === null) return;
-  const userIndex = target.dataset.userIndex;
-  if (userIndex !== undefined) {
-    const override = userColors[Number(userIndex)];
-    if (override !== undefined) chooseColor(CUSTOM_COLOR_INDEX, override);
-    return;
-  }
-  chooseColor(Number(target.dataset.colorIndex));
-});
-// Arrow keys move within the popover's palette, matching a select's keyboard
-// behaviour; Escape closes back to the bar.
-ui.colorPalette.addEventListener('keydown', (event) => {
-  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-  const list = [...paletteSwatches, ...userSwatches];
-  const currentElement = list.find((swatch) => swatch.classList.contains('selected')) ?? list[0]!;
-  const current = list.indexOf(currentElement);
-  const step = event.key === 'ArrowRight' ? 1 : -1;
-  const next = (current + step + list.length) % list.length;
-  event.preventDefault();
-  const target = list[next]!;
-  const userIndex = target.dataset.userIndex;
-  if (userIndex !== undefined) {
-    const override = userColors[Number(userIndex)];
-    if (override !== undefined) chooseColor(CUSTOM_COLOR_INDEX, override);
-  } else {
-    chooseColor(Number(target.dataset.colorIndex));
-  }
-  target.focus();
-});
-
-function openColorPicker(): void {
-  if (customSwatch.disabled) return;
-  if (!ui.colorPicker.hidden) return;
-  const selected = arrangement.selectedCue ?? null;
-  const override = selected?.colorOverride ?? arrangement.suggestedColorOverride ?? undefined;
-  syncColorPicker(override);
-  ui.colorPicker.hidden = false;
-  customSwatch.setAttribute('aria-expanded', 'true');
-  ui.colorInput.focus();
-}
-
-function closeColorPicker(): void {
-  if (ui.colorPicker.hidden) return;
-  ui.colorPicker.hidden = true;
-  customSwatch.removeAttribute('aria-expanded');
-}
-ui.colorPickerClose.addEventListener('click', () => {
-  closeColorPicker();
-  customSwatch.focus();
-});
-// Clicking elsewhere in the app dismisses the popover, as a menu would.
-document.addEventListener('pointerdown', (event) => {
-  const target = event.target;
-  if (ui.colorPicker.hidden || !(target instanceof Node)) return;
-  if (ui.colorPicker.contains(target) || ui.cueColor.contains(target)) return;
-  closeColorPicker();
-});
-ui.colorPicker.addEventListener('keydown', (event) => {
-  if (event.key !== 'Escape') return;
-  event.preventDefault();
-  closeColorPicker();
-  customSwatch.focus();
-});
-
-/** Hex string (`#rrggbb`) to a 0..1 rgb override. */
-const parseHex = (value: string): CueColorOverride | null => {
-  const match = /^#?([0-9a-f]{6})$/i.exec(value.trim());
-  if (match === null) return null;
-  const hex = match[1]!;
-  return {
-    kind: 'rgb',
-    r: parseInt(hex.slice(0, 2), 16) / 255,
-    g: parseInt(hex.slice(2, 4), 16) / 255,
-    b: parseInt(hex.slice(4, 6), 16) / 255,
-  };
-};
-const applyHex = (hex: string): void => {
-  const override = parseHex(hex);
-  if (override === null) return;
-  rememberUserColor(override);
-  chooseColor(CUSTOM_COLOR_INDEX, override);
-};
-/** Quick swatches compute to `rgb(...)`; normalise to hex for the override. */
-const rgbTextToHex = (text: string): string => {
-  const [r, g, b] = text.match(/\d+/g)?.slice(0, 3).map(Number) ?? [0, 0, 0];
-  return `#${[r, g, b].map((v) => (v ?? 0).toString(16).padStart(2, '0')).join('')}`;
-};
-// The browser's HSV picker does the visual work. Dragging previews live but
-// only commits on `change`, so one pick is one undo step.
-ui.colorInput.addEventListener('input', () => {
-  ui.colorPreview.style.background = ui.colorInput.value;
-});
-ui.colorInput.addEventListener('change', () => applyHex(ui.colorInput.value));
-ui.hueGrid.addEventListener('click', (event) => {
-  const target = (event.target as HTMLElement).closest<HTMLElement>('button');
-  if (target === null) return;
-  const hex = rgbTextToHex(getComputedStyle(target).backgroundColor);
-  ui.colorInput.value = hex;
-  applyHex(hex);
-});
-// --- LED look editor -------------------------------------------------------
-
-/** A surface is the current target when its lane or one of its clips is selected. */
-const surfaceTargeted = (): boolean =>
-  arrangement.selectedSurface !== null || arrangement.selectedCue?.surfaceId !== undefined;
-
-const currentLook = (): LedLookState | null =>
-  surfaceTargeted() ? arrangement.selectedLook ?? arrangement.suggestedLook : null;
-
-const patchLook = (patch: Partial<LedLookState>): void => {
-  const look = currentLook();
-  if (look === null) return;
-  arrangement.setSelectedLook({ ...look, ...patch });
-  if (!ui.lookEditor.hidden) renderLookEditor();
-};
-
-/** The popover shows one section at a time so it never needs a scrollbar. */
-type LookEditorTab = 'look' | 'choose' | 'upload';
-let lookEditorTab: LookEditorTab = 'look';
-
-const setLookEditorTab = (tab: LookEditorTab): void => {
-  lookEditorTab = tab;
-  ui.lookTabLook.setAttribute('aria-selected', String(tab === 'look'));
-  ui.lookTabChoose.setAttribute('aria-selected', String(tab === 'choose'));
-  ui.lookTabUpload.setAttribute('aria-selected', String(tab === 'upload'));
-  ui.lookPanelLook.hidden = tab !== 'look';
-  ui.lookPanelChoose.hidden = tab !== 'choose';
-  ui.lookPanelUpload.hidden = tab !== 'upload';
-  // The footer belongs to the media tabs, and only once a clip is selected.
-  ui.lookMediaFooter.hidden = tab === 'look' || currentLook()?.media === undefined;
-};
-
-ui.lookTabLook.addEventListener('click', () => setLookEditorTab('look'));
-ui.lookTabChoose.addEventListener('click', () => setLookEditorTab('choose'));
-ui.lookTabUpload.addEventListener('click', () => setLookEditorTab('upload'));
-
-/** Rebuild the popover from the current look and its generator's param list. */
-function renderLookEditor(): void {
-  const look = currentLook();
-  if (look === null) return;
-  setLookEditorTab(lookEditorTab);
-  const definition = lookDefinition(look.kind);
-  ui.lookGlyph.textContent = definition.glyph;
-  ui.lookTitle.textContent = definition.label;
-  ui.lookGrid.replaceChildren(...LOOK_DEFINITIONS.map((entry) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'le-tile';
-    button.setAttribute('aria-pressed', String(entry.kind === look.kind));
-    button.title = entry.hint;
-    button.innerHTML = `<b>${entry.glyph}</b><span>${entry.label}</span>`;
-    button.addEventListener('click', () => {
-      arrangement.setPendingLookKind(entry.kind);
-      arrangement.setSelectedLook({ ...defaultLedLook(entry.kind), colors: [...look.colors] });
-      renderLookEditor();
-    });
-    return button;
-  }));
-
-  const controls = definition.params.map((param) => {
-    if (param.kind === 'palette') {
-      const field = document.createElement('label');
-      field.className = 'le-field';
-      field.innerHTML = `<span>${param.label}</span>`;
-      const row = document.createElement('div');
-      row.className = 'le-colors';
-      for (const [index, css] of look.colors.entries()) {
-        const input = document.createElement('input');
-        input.type = 'color';
-        input.value = css;
-        input.setAttribute('aria-label', `Colour ${index + 1}`);
-        input.addEventListener('change', () => {
-          const colors = [...look.colors];
-          colors[index] = input.value;
-          patchLook({ colors });
-        });
-        row.appendChild(input);
-      }
-      const add = document.createElement('button');
-      add.type = 'button';
-      add.className = 'le-add';
-      add.textContent = '+';
-      add.title = 'Add a colour stop';
-      add.disabled = look.colors.length >= param.max;
-      add.addEventListener('click', () => {
-        patchLook({ colors: [...look.colors, look.colors.at(-1) ?? '#ffffff'] });
-      });
-      const remove = document.createElement('button');
-      remove.type = 'button';
-      remove.className = 'le-add';
-      remove.textContent = '−';
-      remove.title = 'Remove the last colour stop';
-      remove.disabled = look.colors.length <= param.min;
-      remove.addEventListener('click', () => {
-        patchLook({ colors: look.colors.slice(0, -1) });
-      });
-      row.append(add, remove);
-      field.appendChild(row);
-      return field;
-    }
-    if (param.kind === 'seed') {
-      const field = document.createElement('label');
-      field.className = 'le-field';
-      field.innerHTML = `<span>${param.label}</span>`;
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'sp-btn';
-      button.textContent = `Randomise (${Math.round(look.seed)})`;
-      button.addEventListener('click', () => patchLook({ seed: Math.random() * 1000 }));
-      field.appendChild(button);
-      return field;
-    }
-    if (param.kind === 'select') {
-      const field = document.createElement('label');
-      field.className = 'le-field';
-      field.innerHTML = `<span>${param.label}</span>`;
-      const select = document.createElement('select');
-      select.className = 'le-select';
-      for (const option of param.options) {
-        const element = document.createElement('option');
-        element.value = option.value;
-        element.textContent = option.label;
-        select.appendChild(element);
-      }
-      select.value = look.sync;
-      select.addEventListener('change', () => patchLook({ sync: select.value as LedLookState['sync'] }));
-      field.appendChild(select);
-      return field;
-    }
-    const field = document.createElement('label');
-    field.className = 'le-field';
-    const value = look[param.key];
-    field.innerHTML = `<span>${param.label}</span><output>${formatParam(param.key, value, param.unit)}</output>`;
-    const input = document.createElement('input');
-    input.type = 'range';
-    input.min = String(param.min);
-    input.max = String(param.max);
-    input.step = String(param.step);
-    input.value = String(value);
-    input.setAttribute('aria-label', param.label);
-    const readout = field.querySelector<HTMLElement>('output')!;
-    // Intensity and softness are 0..1 numbers shown as percentages.
-    const percentParam = param.key === 'intensity' || param.key === 'softness';
-    enhanceSlider(input, readout, {
-      beforeEdit: () => arrangement.beginLookEdit(),
-      ...(percentParam
-        ? {
-            parse: (text) => {
-              const value = parseNumericText(text);
-              return value === null ? null : value / 100;
-            },
-          }
-        : {}),
-    });
-    input.addEventListener('pointerdown', () => arrangement.beginLookEdit());
-    input.addEventListener('keydown', (event) => {
-      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight'
-        || event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-        arrangement.beginLookEdit();
-      }
-    });
-    input.addEventListener('input', () => {
-      const numeric = Number(input.value);
-      field.querySelector('output')!.textContent = formatParam(param.key, numeric, param.unit);
-      const target = currentLook();
-      if (target === null) return;
-      arrangement.previewSelectedLook({ ...target, [param.key]: numeric });
-    });
-    input.addEventListener('change', () => arrangement.commitLookEdit());
-    field.appendChild(input);
-    return field;
-  });
-  ui.lookControls.replaceChildren(...controls);
-
-  ui.lookPresets.replaceChildren(...PALETTE_PRESETS.map((preset) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'le-preset';
-    button.title = preset.name;
-    button.style.background = `linear-gradient(90deg, ${preset.colors.join(', ')})`;
-    button.addEventListener('click', () => patchLook({ colors: [...preset.colors] }));
-    return button;
-  }));
-
-  renderMediaTabs(look);
-}
-
-/** Uploaded assets are read from IndexedDB once per session. */
-let localMediaAssets: LedMediaAsset[] = [];
-let localMediaRequested = false;
-
-const ensureLocalMedia = (): void => {
-  if (localMediaRequested) return;
-  localMediaRequested = true;
-  void media.listLocalAssets().then((assets) => {
-    localMediaAssets = assets;
-    if (!ui.lookEditor.hidden) {
-      const look = currentLook();
-      if (look !== null) renderMediaTabs(look);
-    }
-  }).catch((error: unknown) => {
-    console.warn('could not list uploaded wall media', error);
-  });
-};
-
-/** Replace the selected look with a media look using `asset`. */
-const applyMediaLook = (asset: LedMediaAsset): void => {
-  const look = currentLook();
-  const fit = look?.media?.fit ?? 'cover';
-  mediaNotice = '';
-  arrangement.setSelectedLook({ ...defaultLedLook('media'), media: mediaRef(asset, fit) });
-  setLookEditorTab(asset.source.startsWith('local:') ? 'upload' : 'choose');
-  renderLookEditor();
-};
-
-/** Shown in the Upload tab when a dropped file is not image or video. */
-let mediaNotice = '';
-
-const mediaKindLabel = (kind: LedMediaAsset['kind']): string =>
-  kind === 'video' ? 'Video' : 'Image';
-
-/** One gallery tile: a cached poster frame plus the asset label. */
-function mediaTile(
-  asset: LedMediaAsset,
-  selectedSource: string | undefined,
-  onPick: (asset: LedMediaAsset) => void,
-): HTMLElement {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'le-media-tile';
-  button.title = `${asset.label} · ${mediaKindLabel(asset.kind)}`;
-  button.setAttribute('aria-pressed', String(selectedSource === asset.source));
-
-  const frame = document.createElement('span');
-  frame.className = 'le-media-frame';
-  frame.textContent = asset.kind === 'video' ? '▶' : '▣';
-  void mediaPoster(asset).then((src) => {
-    if (src === '' || !button.isConnected) return;
-    const image = document.createElement('img');
-    image.src = src;
-    image.alt = '';
-    image.draggable = false;
-    frame.replaceChildren(image);
-    if (asset.kind === 'video') {
-      const badge = document.createElement('b');
-      badge.textContent = '▶';
-      frame.appendChild(badge);
-    }
-  });
-
-  const label = document.createElement('span');
-  // Every bundled clip is a Mantissa loop, so the prefix is noise in a narrow
-  // tile. Keep the full name in the tooltip.
-  label.textContent = asset.source.startsWith('bundled:')
-    ? asset.label.replace(/^Mantissa\s+/i, 'Loop ')
-    : asset.label;
-  button.append(frame, label);
-  button.addEventListener('click', () => onPick(asset));
-  return button;
-}
-
-/**
- * Gallery + current-selection footer for the Choose and Upload tabs.
- *
- * Thumbnails are cached poster frames rather than live `<video>` tiles: ten
- * decoders (and a new burst on every re-render) made the popover stutter and
- * filled the console with aborted requests.
- */
-function renderMediaTabs(look: LedLookState): void {
-  ensureLocalMedia();
-  const selected = look.kind === 'media' ? look.media : undefined;
-  const selectedSource = selected?.source;
-  const pick = (asset: LedMediaAsset): void => applyMediaLook(asset);
-
-  ui.lookChooseGrid.replaceChildren(...BUNDLED_MEDIA.map((asset) => mediaTile(asset, selectedSource, pick)));
-  ui.lookUploadGrid.replaceChildren(...localMediaAssets.map((asset) => mediaTile(asset, selectedSource, pick)));
-  ui.lookUploadEmpty.hidden = localMediaAssets.length > 0 || mediaNotice === '';
-  ui.lookUploadEmpty.textContent = mediaNotice !== ''
-    ? mediaNotice
-    : 'Nothing uploaded yet.';
-
-  const isMedia = selected !== undefined;
-  ui.lookMediaFooter.hidden = !isMedia || lookEditorTab === 'look';
-  if (!isMedia) return;
-  const local = selected.source.startsWith('local:');
-  ui.lookMediaCurrent.replaceChildren();
-  const name = document.createElement('b');
-  name.textContent = selected.label ?? selected.source;
-  const origin = document.createElement('em');
-  origin.textContent = ` · ${mediaKindLabel(selected.kind)} · ${local ? 'upload' : 'bundled'}`;
-  ui.lookMediaCurrent.append(name, origin);
-  ui.lookMediaFit.value = selected.fit;
-  ui.lookMediaRemove.hidden = !local;
-}
-
-/** Import files from the upload button or a drop and select the first one. */
-function importWallMedia(files: File[]): void {
-  if (files.length === 0) return;
-  void media.importFiles(files).then((refs) => {
-    const first = refs[0];
-    if (first === undefined) {
-      mediaNotice = 'Only image and video files can be used on the wall.';
-      setLookEditorTab('upload');
-      renderLookEditor();
-      return;
-    }
-    mediaNotice = '';
-    // Force the library to re-list so the new uploads appear in the gallery.
-    localMediaAssets = [];
-    localMediaRequested = false;
-    arrangement.setSelectedLook({ ...defaultLedLook('media'), media: first });
-    setLookEditorTab('upload');
-    renderLookEditor();
-  }).catch((error: unknown) => {
-    console.warn('could not import wall media', error);
-  });
-}
-
-ui.lookMediaFit.addEventListener('change', () => {
-  const look = currentLook();
-  if (look?.media === undefined) return;
-  patchLook({ media: { ...look.media, fit: ui.lookMediaFit.value as LedMediaRef['fit'] } });
-});
-
-ui.lookMediaRemove.addEventListener('click', () => {
-  const look = currentLook();
-  if (look?.media === undefined) return;
-  const source = look.media.source;
-  void media.removeAsset(source).then(() => {
-    localMediaAssets = [];
-    localMediaRequested = false;
-    const current = currentLook();
-    if (current?.kind === 'media' && current.media?.source === source) {
-      arrangement.setSelectedLook({ ...defaultLedLook('gradient'), colors: [...current.colors] });
-    }
-    renderLookEditor();
-  });
-});
-
-ui.lookUpload.addEventListener('click', () => ui.lookFile.click());
-ui.lookFile.addEventListener('change', () => {
-  const files = [...(ui.lookFile.files ?? [])];
-  ui.lookFile.value = '';
-  importWallMedia(files);
-});
-ui.lookPanelUpload.addEventListener('dragover', (event) => {
-  event.preventDefault();
-  ui.lookPanelUpload.classList.add('dragging');
-});
-ui.lookPanelUpload.addEventListener('dragleave', () => {
-  ui.lookPanelUpload.classList.remove('dragging');
-});
-ui.lookPanelUpload.addEventListener('drop', (event) => {
-  event.preventDefault();
-  ui.lookPanelUpload.classList.remove('dragging');
-  importWallMedia([...(event.dataTransfer?.files ?? [])]);
-});
-
-const formatParam = (key: string, value: number, unit?: string): string => {
-  if (key === 'intensity' || key === 'softness') return `${Math.round(value * 100)}%`;
-  if (key === 'speed') {
-    const sync = currentLook()?.sync;
-    const unit = sync === 'beat' ? 'cycles/beat' : sync === 'bar' ? 'cycles/bar' : 'Hz';
-    return `${value.toFixed(2)} ${unit}`;
-  }
-  return `${value.toFixed(key === 'scale' ? 2 : 0)}${unit ?? ''}`;
-};
-
-function openLookEditor(): void {
-  if (!surfaceTargeted()) return;
-  const look = currentLook();
-  lookEditorTab = look?.kind !== 'media'
-    ? 'look'
-    : look.media?.source.startsWith('local:') ? 'upload' : 'choose';
-  renderLookEditor();
-  ui.lookEditor.hidden = false;
-  ui.lookEdit.setAttribute('aria-expanded', 'true');
-}
-
-function closeLookEditor(): void {
-  if (ui.lookEditor.hidden) return;
-  ui.lookEditor.hidden = true;
-  ui.lookEdit.removeAttribute('aria-expanded');
-}
-
-ui.lookEdit.addEventListener('click', () => {
-  if (ui.lookEditor.hidden) openLookEditor();
-  else closeLookEditor();
-});
-ui.lookClose.addEventListener('click', () => {
-  closeLookEditor();
-  ui.lookEdit.focus();
-});
-ui.lookEditor.addEventListener('keydown', (event) => {
-  if (event.key !== 'Escape') return;
-  event.preventDefault();
-  closeLookEditor();
-  ui.lookEdit.focus();
-});
-document.addEventListener('pointerdown', (event) => {
-  const target = event.target;
-  if (ui.lookEditor.hidden || !(target instanceof Node)) return;
-  if (ui.lookEditor.contains(target) || ui.lookEdit.contains(target)) return;
-  closeLookEditor();
-});
-
 // --- LED wall calibration (side panel) -------------------------------------
 
 const wallById = (id: string | null): LedSurface | null =>
@@ -3374,6 +2183,9 @@ const runBenchmark = async (options: BenchmarkOptions = {}): Promise<BenchmarkRe
  * endpoint, where the returned result is still the source of truth.
  */
 const postBenchmarkResult = async (result: BenchmarkResult): Promise<void> => {
+  // `/__bench` is a dev-server middleware; a static build has no such endpoint
+  // and would log a 404 per run. Guard on DEV rather than on the response.
+  if (!import.meta.env.DEV) return;
   try {
     await fetch('/__bench', {
       method: 'POST',
@@ -3387,6 +2199,7 @@ const postBenchmarkResult = async (result: BenchmarkResult): Promise<void> => {
 
 /** Read the persisted run history (already-appended runs, oldest first). */
 const fetchBenchmarkHistory = async (): Promise<BenchmarkResult[]> => {
+  if (!import.meta.env.DEV) return [];
   try {
     const response = await fetch('/__bench');
     if (!response.ok) return [];
@@ -3747,7 +2560,7 @@ ui.projectFile.addEventListener('change', () => {
   if (file !== undefined) void openProject(file);
 });
 
-ui.loading.textContent = 'loading audio…';
+setBootStatus('Loading audio…');
 
 try {
   /* The demo bundle carries its song; the sample track on disk is the fallback

@@ -85,7 +85,21 @@ function perfHistoryPlugin(): Plugin {
   };
 }
 
+/**
+ * Public base path for the built app.
+ *
+ * GitHub Pages serves a project site from `https://<owner>.github.io/<repo>/`,
+ * so every emitted asset URL has to carry that prefix; with the default `/`
+ * the JS/CSS/audio/video all 404. `GITHUB_REPOSITORY` is set by Actions, so CI
+ * derives the path without extra config, while local `dev`, `build` and
+ * `preview` keep the root base. Override with `VITE_BASE` for a custom domain
+ * or a rename (`VITE_BASE=/ npm run build`).
+ */
+const repositoryName = process.env.GITHUB_REPOSITORY?.split('/')[1];
+const base = process.env.VITE_BASE ?? (repositoryName === undefined ? '/' : `/${repositoryName}/`);
+
 export default defineConfig({
+  base,
   plugins: [perfHistoryPlugin()],
   resolve: {
     alias: {

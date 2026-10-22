@@ -3,6 +3,8 @@
 A browser-based stage-lighting simulator: design lighting effects in time to music, the way a nightclub or DJ rig runs through DMX-controlled fixtures. I made this because I like stage lighting effects but I don't have access to real hardware.
 
 
+<img src="docs/img/screenshot.png">
+
 ## Features
 
 ## Venue customization

@@ -3,7 +3,6 @@ import {
   CLUB_STAGE,
   DEFAULT_AIM,
   DEFAULT_LASER_SETUP,
-  DEFAULT_SWEEP,
   EASINGS,
   DEFAULT_VENUE_ID,
   defaultLedLook,
@@ -30,7 +29,6 @@ import {
   type ProjectFile,
   type ProjectMediaFile,
   type ProjectSettings,
-  type SweepSettings,
 } from '@dmxsim/show-model';
 import type { LedPlaybackLayer } from './led/led-wall';
 import {
@@ -95,6 +93,28 @@ import {
   snapTimeToBar,
   snapTimeToGrid,
 } from './arrangement/time';
+import {
+  activeCuesAt,
+  activeFixtureCuesAt,
+  cuesForLane,
+  indexCuesByLane,
+  latestActiveEndSec,
+  type CueIndex,
+} from './arrangement/active';
+import {
+  SWEEP_RATE_BOUNDS,
+  FALLBACK_PAN_TILT,
+  cueLength,
+  degFromNorm,
+  formatHz,
+  normFromDeg,
+  rateBounds,
+  strobeRateFor,
+  sweepFor,
+  sweepRateFor,
+  timingSummary,
+} from './arrangement/clip-timing';
+import { wallPlaybackLayers } from './led/playback';
 import { kelvinToCss, kelvinToRgb } from './kelvin';
 import { clamp } from './lib/math';
 import { PerfMonitor } from './app/perf';
@@ -317,11 +337,9 @@ const renderPanelCapabilities = (fixture: (typeof show.fixtures)[number] | null)
 
 const refreshPanelClipStats = (): void => {
   const fixture = arrangement.selectedFixture;
-  const trackCues = fixture === null ? [] : cuesByFixture.get(fixture.id) ?? [];
-  const now = clock.time;
-  const active = trackCues.filter((cue) => now >= cue.startSec && now <= cue.endSec).length;
+  const trackCues = fixture === null ? [] : cuesForLane(cuesByFixture, fixture.id);
   ui.panelClipCount.textContent = String(trackCues.length);
-  ui.panelClipActive.textContent = String(active);
+  ui.panelClipActive.textContent = String(activeCuesAt(trackCues, clock.time).length);
 };
 
 /**
@@ -710,15 +728,9 @@ function syncColorPicker(override: CueColorOverride | undefined): void {
   if (override?.kind === 'rgb') ui.colorInput.value = css!.toUpperCase();
 }
 
-let cuesByFixture = new Map<string, readonly Cue[]>();
+let cuesByFixture: CueIndex = new Map();
 const indexCues = (): void => {
-  const next = new Map<string, Cue[]>();
-  for (const cue of cues) {
-    const list = next.get(cue.fixtureId);
-    if (list === undefined) next.set(cue.fixtureId, [cue]);
-    else list.push(cue);
-  }
-  cuesByFixture = next;
+  cuesByFixture = indexCuesByLane(cues);
 };
 
 arrangement = new Arrangement(ui.arrangement, ui.arrangementScroll, show.fixtures, (nextCues) => {
@@ -1969,66 +1981,6 @@ ui.cueAction.addEventListener('change', () => {
 
 /* --- Clip timing / strobe popover ---------------------------------------- */
 
-/** One decimal only when the rate is not a whole number, so 8 Hz stays "8". */
-const formatHz = (hz: number): string => {
-  const rounded = Math.round(hz * 10) / 10;
-  return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)} Hz`;
-};
-
-/** The rate a strobe cue plays at, including the legacy channel fallback. */
-const strobeRateFor = (cue: Cue, fixture: FixturePlacement | null): number => {
-  const [min, max] = fixture?.profile.limits.strobeHz ?? [1, 30];
-  return cue.strobe?.hz ?? min + (max - min) * 0.78;
-};
-
-const cueLength = (cue: Cue): number => Math.max(0.001, cue.endSec - cue.startSec);
-
-/** Normalized 0..1 <-> degrees within a profile's physical limits. */
-const normFromDeg = (deg: number, range: readonly [number, number]): number =>
-  clamp((deg - range[0]) / Math.max(1e-9, range[1] - range[0]), 0, 1);
-const degFromNorm = (norm: number, range: readonly [number, number]): number =>
-  range[0] + clamp(norm, 0, 1) * (range[1] - range[0]);
-
-/** Pan/tilt limits used when no fixture is selected. */
-const FALLBACK_PAN_TILT = { panDeg: [-270, 270], tiltDeg: [-135, 135] } as const;
-
-/** Fully resolved sweep settings for a cue; absent fields use the defaults. */
-const sweepFor = (cue: Cue): Required<Omit<SweepSettings, 'hz'>> & { hz?: number } =>
-  ({ ...DEFAULT_SWEEP, ...(cue.sweep ?? {}) });
-
-/** Movement rate: explicit Hz, else the legacy one cycle across the clip. */
-const sweepRateFor = (cue: Cue): number => cue.sweep?.hz ?? 1 / cueLength(cue);
-
-/** Rate range: strobes follow the profile; a pulse is just a dimmer pattern. */
-const rateBounds = (cue: Cue, fixture: FixturePlacement | null): [number, number] =>
-  cue.action === 'strobe' ? fixture?.profile.limits.strobeHz ?? [1, 30] : [0.5, 20];
-
-/** Sweep rate bounds, in cycles per second. */
-const SWEEP_RATE_BOUNDS: [number, number] = [0.05, 4];
-
-/** Summary shown on the single toolbar button. */
-const timingSummary = (cue: Cue, fixture: FixturePlacement | null): string => {
-  if (cue.action === 'strobe') return `Strobe ${formatHz(strobeRateFor(cue, fixture))} ▾`;
-  if (cue.action === 'pulse') return `Pulse ${formatHz(cue.pulseHz ?? 4 / cueLength(cue))} ▾`;
-  if (cue.action === 'aim') {
-    const aim = cue.aim ?? DEFAULT_AIM;
-    const limits = fixture?.profile.limits ?? FALLBACK_PAN_TILT;
-    const panDeg = Math.round(degFromNorm(aim.pan, limits.panDeg));
-    const tiltDeg = Math.round(degFromNorm(aim.tilt, limits.tiltDeg));
-    const toPanDeg = Math.round(degFromNorm(aim.toPan ?? aim.pan, limits.panDeg));
-    const toTiltDeg = Math.round(degFromNorm(aim.toTilt ?? aim.tilt, limits.tiltDeg));
-    const travels = toPanDeg !== panDeg || toTiltDeg !== tiltDeg;
-    return travels
-      ? `Aim ${panDeg}° / ${tiltDeg}° → ${toPanDeg}° / ${toTiltDeg}°`
-      : `Aim ${panDeg}° / ${tiltDeg}° ▾`;
-  }
-  if (cue.action === 'sweep') {
-    const phase = Math.round((cue.sweep?.phase ?? 0) * 100);
-    return `Sweep ${formatHz(sweepRateFor(cue))}${phase > 0 ? ` · ${phase}%` : ''} ▾`;
-  }
-  return 'Fades ▾';
-};
-
 const setSliderValue = (input: HTMLInputElement, value: number): void => {
   // Do not fight the thumb while the user is dragging it.
   if (document.activeElement === input) return;
@@ -3088,12 +3040,9 @@ function syncSurfacePanel(): void {
   ui.surfaceEmit.value = String(Math.round(surface.emit * 100));
   ui.surfaceEmitValue.textContent = `${Math.round(surface.emit * 100)}%`;
 
-  const wallCues = cuesByFixture.get(surface.id) ?? [];
-  const now = clock.time;
+  const wallCues = cuesForLane(cuesByFixture, surface.id);
   ui.panelSurfaceCount.textContent = String(wallCues.length);
-  ui.panelSurfaceActive.textContent = String(
-    wallCues.filter((cue) => now >= cue.startSec && now <= cue.endSec).length,
-  );
+  ui.panelSurfaceActive.textContent = String(activeCuesAt(wallCues, clock.time).length);
   syncPanelHeader(arrangement.selectedFixture, surface);
 }
 
@@ -3526,9 +3475,7 @@ const frame = (now: number): void => {
   }
   const showAt = showTime(loopRegion, songTime);
   const states = show.fixtures.map((fixture) => {
-    const trackClips = (cuesByFixture.get(fixture.id) ?? [])
-      .filter((cue) => cue.surfaceId === undefined)
-      .filter((cue) => songTime >= cue.startSec && songTime <= cue.endSec)
+    const trackClips = activeFixtureCuesAt(cuesForLane(cuesByFixture, fixture.id), songTime)
       .map((cue) => arrangement.toClip(cue));
     const state = evaluateFixture(fixture, trackClips, songTime);
     return fixture.profile.kind === 'strobe' && !strobesOn
@@ -3536,46 +3483,13 @@ const frame = (now: number): void => {
       : state;
   });
 
-  cryoAudio.update(states, songTime, clock.playing, (fixtureId) => {
-    let endSec: number | null = null;
-    for (const cue of cuesByFixture.get(fixtureId) ?? []) {
-      if (songTime < cue.startSec || songTime > cue.endSec) continue;
-      if (endSec === null || cue.endSec > endSec) endSec = cue.endSec;
-    }
-    return endSec;
-  });
+  cryoAudio.update(states, songTime, clock.playing, (fixtureId) =>
+    latestActiveEndSec(cuesForLane(cuesByFixture, fixtureId), songTime));
 
-  /**
-   * Resolve each wall's content: the active clip is the newest one, and a
-   * short crossfade hands over from the clip underneath. Two additive layers
-   * in `LedWall` do the blend, so this stays a pure function of song time.
-   */
   const wallPlayback = new Map<string, LedPlaybackLayer[]>();
   for (const surface of surfaces) {
-    const wallCues = (cuesByFixture.get(surface.id) ?? [])
-      .filter((cue) => cue.look !== undefined)
-      .slice()
-      .sort((a, b) => a.startSec - b.startSec);
-    const current = wallCues
-      .filter((cue) => songTime >= cue.startSec && songTime < cue.endSec)
-      .at(-1);
-    if (current === undefined) continue;
-    const earlier = wallCues.filter((cue) => cue.startSec < current.startSec).at(-1);
-    const previous = earlier !== undefined && earlier.endSec >= current.startSec - 0.001
-      ? earlier
-      : undefined;
-    // A crossfade needs something to fade *from*. With no adjacent earlier
-    // clip the wall cuts to this look, so pausing at its start is never blank.
-    const fade = Math.max(0.001, current.fadeInSec ?? 0.35);
-    const ramp = previous === undefined
-      ? 1
-      : Math.min(1, Math.max(0, (songTime - current.startSec) / fade));
-    const layers: LedPlaybackLayer[] = [];
-    if (previous?.look !== undefined && ramp < 1) {
-      layers.push({ look: previous.look, opacity: (1 - ramp) * (previous.opacity ?? 1) });
-    }
-    layers.push({ look: current.look!, opacity: ramp * (current.opacity ?? 1) });
-    wallPlayback.set(surface.id, layers);
+    const layers = wallPlaybackLayers(cuesForLane(cuesByFixture, surface.id), songTime);
+    if (layers !== null) wallPlayback.set(surface.id, layers);
   }
   stage.setLedPlayback(wallPlayback);
   stage.update(states, showAt, { volumetrics, playing: clock.playing });

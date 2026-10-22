@@ -631,6 +631,10 @@
         gap: 5px;
         min-width: 0;
       }
+      /* The bar hides clip-scoped tools in select mode with nothing selected;
+         the authored `display: flex` would otherwise beat `[hidden]`. */
+      #clip-inspector .inspector-target[hidden],
+      #clip-inspector .clip-actions[hidden] { display: none; }
       #selected-fixture {
         max-width: 135px;
         overflow: hidden;

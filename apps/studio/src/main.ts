@@ -490,7 +490,13 @@ const syncCueInspector = (
   // Surface clips speak "look", not "action/colour". The look itself is the
   // editor entry point; the color/palette controls remain inside the popover.
   const surfaceLook = isSurface ? cue?.look ?? arrangement.suggestedLook : null;
-  (ui.cueAction.parentElement as HTMLElement).hidden = isSurface;
+  /* Select mode edits existing clips only, so with an empty selection every
+     clip-scoped control here is inert. Drop mode is different: action and
+     colour are the defaults the next drawn clip inherits, so they stay. */
+  const selectModeEmpty = arrangement.timelineMode === 'select' && count === 0;
+  (ui.selectedFixture.parentElement as HTMLElement).hidden = selectModeEmpty;
+  (ui.cueAction.parentElement as HTMLElement).hidden = isSurface || selectModeEmpty;
+  (ui.cueCopy.parentElement as HTMLElement).hidden = selectModeEmpty;
   ui.cueLookField.hidden = !isSurface;
   ui.lookEdit.hidden = !isSurface;
   if (surfaceLook !== null) {
@@ -524,8 +530,9 @@ const syncCueInspector = (
   timingEditor.sync(isSurface ? null : cue, fixture);
 
   const colorEnabled = !isSurface && fixture !== null && Boolean(fixture.profile.capabilities.color);
-  // Do not show a disabled colour picker for fixtures that cannot mix colour.
-  ui.cueColorField.hidden = !colorEnabled;
+  // Do not show a disabled colour picker for fixtures that cannot mix colour,
+  // or one that would edit nothing while select mode has nothing selected.
+  ui.cueColorField.hidden = !colorEnabled || selectModeEmpty;
   if (!colorEnabled) colorPicker.close();
   const override = cue?.colorOverride ?? (cue === null ? arrangement.suggestedColorOverride ?? undefined : undefined);
   colorPicker.sync(cue?.colorIndex ?? arrangement.suggestedColorIndex, override, colorEnabled);
@@ -586,6 +593,13 @@ installLookEditor({ ui, arrangement, media });
 
 const TIMELINE_MODE_KEY = STORAGE_KEYS.timelineMode;
 
+/**
+ * Re-syncs the tools bar after a mode switch. `applyTimelineMode` also runs
+ * during module boot, before `syncCueInspector`'s dependencies (for example
+ * `renderRigList`) are initialised, so the call is installed later.
+ */
+let syncInspectorForMode: (() => void) | null = null;
+
 const applyTimelineMode = (mode: TimelineMode, persist = true): void => {
   arrangement.setMode(mode);
   const dropMode = mode === 'drop';
@@ -595,6 +609,9 @@ const applyTimelineMode = (mode: TimelineMode, persist = true): void => {
   ui.modeSelect.classList.toggle('on', !dropMode);
   if (!dropMode) ui.arrangementScroll.classList.remove('loop-mode');
   if (persist) writePreference(TIMELINE_MODE_KEY, mode);
+  // Select mode hides the clip-scoped tools while nothing is selected, so the
+  // bar has to be rebuilt for the new mode rather than waiting for a click.
+  syncInspectorForMode?.();
 };
 
 ui.modeDrop.addEventListener('click', () => applyTimelineMode('drop'));
@@ -2922,6 +2939,18 @@ const openProject = async (file: File): Promise<void> => {
     setStatus: setProjectStatus,
   });
 };
+
+/* Every UI function the mode switch needs now exists, so the tools bar can be
+ * refreshed on mode changes — and once here, because a stored "select" mode
+ * would otherwise show the clip tools until the first interaction. */
+syncInspectorForMode = (): void => {
+  syncCueInspector(
+    arrangement.selectedFixture,
+    arrangement.selectedCues,
+    arrangement.selectedSurface,
+  );
+};
+syncInspectorForMode();
 
 installKeyboardShortcuts({
   ui,

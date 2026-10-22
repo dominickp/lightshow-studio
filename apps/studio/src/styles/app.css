@@ -832,7 +832,9 @@
       .track-name {
         position: sticky;
         left: 0;
-        z-index: 3;
+        /* Above .arrangement-playhead.global (z-index 4) so the playhead's glow
+           does not spill over the sticky labels when scrolling. */
+        z-index: 5;
         width: var(--track-width);
         height: var(--row-height);
         display: flex;
@@ -1070,12 +1072,17 @@
       .fixture-row:nth-of-type(even) .fixture-lane { background-color: #0e141d; }
       .fixture-row.selected .fixture-lane { background-color: #111c28; }
 
+      /* Outside the loop the lanes are at their normal dark tone. The loop
+         region is the inverted treatment: slightly deeper black with accent
+         edges, rather than brighter/tinted. */
       .lane-outside {
         position: absolute;
         top: 0;
         bottom: 0;
         z-index: 0;
-        background: rgba(0, 0, 0, 0.42);
+        /* A faint lift outside the loop so the deeper-black loop region
+           reads as recessed rather than just shadowed. */
+        background: rgba(255, 255, 255, 0.03);
         pointer-events: none;
       }
       .lane-loop {
@@ -1085,7 +1092,7 @@
         z-index: 0;
         border-left: 1px solid rgba(122, 209, 255, 0.45);
         border-right: 1px solid rgba(122, 209, 255, 0.45);
-        background: rgba(122, 209, 255, 0.035);
+        background: rgba(0, 0, 0, 0.32);
         pointer-events: none;
       }
 

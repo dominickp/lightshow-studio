@@ -43,10 +43,14 @@ export function computePeaks(buffer: AudioBuffer, buckets: number): Peaks {
   return { min, max };
 }
 
-const LOOP_FILL = 'rgba(122, 209, 255, 0.07)';
-const LOOP_EDGE = 'rgba(122, 209, 255, 0.55)';
-const WAVE = 'rgba(122, 209, 255, 0.42)';
-const WAVE_OUTSIDE = 'rgba(122, 209, 255, 0.16)';
+// The strip is at its normal dark tone everywhere; the loop region uses the
+// inverted treatment: a deeper-black fill and slightly dimmer waveform,
+// marked by accent edge lines.
+const LOOP_FILL = 'rgba(0, 0, 0, 0.3)';
+const LOOP_EDGE = 'rgba(122, 209, 255, 0.75)';
+const WAVE = 'rgba(122, 209, 255, 0.26)';
+const WAVE_IN_LOOP = 'rgba(122, 209, 255, 0.16)';
+const OUTSIDE_LIFT = 'rgba(255, 255, 255, 0.025)';
 const BEAT_TICK = 'rgba(255, 255, 255, 0.05)';
 const BAR_TICK = 'rgba(255, 255, 255, 0.13)';
 
@@ -149,6 +153,11 @@ export class WaveformStrip {
     ctx.fillStyle = LOOP_FILL;
     ctx.fillRect(loopX0, 0, Math.max(1, loopX1 - loopX0), height);
 
+    // Faint lift outside the loop so the loop band reads as recessed.
+    ctx.fillStyle = OUTSIDE_LIFT;
+    ctx.fillRect(0, 0, Math.max(0, loopX0), height);
+    ctx.fillRect(Math.max(0, loopX1), 0, Math.max(0, width - loopX1), height);
+
     this.paintTicks(ctx, timeline);
 
     const peaks = this.peaks;
@@ -164,7 +173,7 @@ export class WaveformStrip {
         const top = mid - hi * scale;
         const bottom = mid - lo * scale;
         const inLoop = x >= loopX0 && x <= loopX1;
-        ctx.fillStyle = inLoop ? WAVE : WAVE_OUTSIDE;
+        ctx.fillStyle = inLoop ? WAVE_IN_LOOP : WAVE;
         ctx.fillRect(x, top, 1, Math.max(1, bottom - top));
       }
     }

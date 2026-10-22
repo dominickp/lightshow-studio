@@ -1916,9 +1916,13 @@ export function createRuler(
   if (loopStart !== undefined && loopEnd !== undefined && loopEnd > loopStart) {
     const loopX0 = Math.max(0, loopStart * pixelsPerSecond);
     const loopX1 = Math.min(width, loopEnd * pixelsPerSecond);
-    ctx.fillStyle = 'rgba(122, 209, 255, 0.07)';
-    ctx.fillRect(loopX0, 0, Math.max(0, loopX1 - loopX0), 28);
+    // The ruler is at its normal dark tone everywhere; the loop region is
+    // the inverted treatment: a deeper-black band with accent edges and
+    // drag handles, instead of a brighter/tinted region.
     ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.fillRect(loopX0, 0, Math.max(0, loopX1 - loopX0), 28);
+    // Slight lift outside the loop so the loop band reads as recessed.
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
     ctx.fillRect(0, 0, loopX0, 28);
     ctx.fillRect(loopX1, 0, Math.max(0, width - loopX1), 28);
     ctx.fillStyle = 'rgba(122, 209, 255, 0.6)';

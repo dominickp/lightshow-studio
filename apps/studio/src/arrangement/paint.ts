@@ -1,6 +1,6 @@
 import type { FixturePlacement, LedLookState, LedSurface } from '@dmxsim/show-model';
 import { lookSummary } from '../led/look-definitions';
-import { resolveCueColor, textOnColor, toneClipColor, truncateLabel } from './colors';
+import { resolveCueColor, textOnColor, toneClipColor, toneCssColor, truncateLabel } from './colors';
 import { cueCardLabel } from './markup';
 import type { Cue, TimelineMode } from './types';
 
@@ -87,16 +87,17 @@ function paintLookCard(
   hovered: boolean,
 ): void {
   const colors = look.colors.length > 0 ? look.colors : ['#101018'];
+  // Opaque but muted: the gradient stops are tone-mixed toward the dock
+  // background instead of being drawn translucent, so cards never let the
+  // lane background bleed through.
   const gradient = ctx.createLinearGradient(x, y, x + Math.max(2, width), y + height);
   colors.forEach((css, index) => {
-    gradient.addColorStop(colors.length === 1 ? 0 : index / (colors.length - 1), css);
+    gradient.addColorStop(colors.length === 1 ? 0 : index / (colors.length - 1), toneCssColor(css));
   });
   ctx.beginPath();
   ctx.roundRect(x, y, Math.max(2, width), height, 4);
-  ctx.globalAlpha *= 0.55 + look.intensity * 0.45;
   ctx.fillStyle = gradient;
   ctx.fill();
-  ctx.globalAlpha = 1;
   if (hovered) {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
     ctx.fill();

@@ -50,17 +50,33 @@ export const textOnColor = (rgb: readonly [number, number, number] | readonly nu
 };
 
 /**
- * Tone a clip fill down for the timeline: blend ~25% toward the dock
- * background so a wall of saturated cards doesn't vibrate against the UI.
+ * Tone a clip fill down for the timeline: blend ~45% toward the dock
+ * background so saturated cards stay muted against the dark UI.
  * Swatches and the 3D rendering keep the full-intensity color.
  */
 const TONE_BG: readonly [number, number, number] = [0x0e / 255, 0x14 / 255, 0x1c / 255];
-const TONE_STRENGTH = 0.25;
+const TONE_STRENGTH = 0.45;
 export const toneClipColor = (rgb: readonly [number, number, number] | readonly number[]): string => {
   const mix = (channel: number, bg: number): number =>
     Math.round((channel * (1 - TONE_STRENGTH) + bg * TONE_STRENGTH) * 255);
   const [r, g, b] = rgb;
   return `rgb(${mix(r, TONE_BG[0])}, ${mix(g, TONE_BG[1])}, ${mix(b, TONE_BG[2])})`;
+};
+
+/**
+ * Same tone-down for a CSS `#rrggbb` color, for gradient stops in painted
+ * look cards: opaque fills with muted colors instead of translucent fills.
+ */
+export const toneCssColor = (css: string): string => {
+  const hex = /^#([0-9a-f]{6})$/i.exec(css.trim());
+  if (hex === null) return css;
+  const value = Number.parseInt(hex[1] ?? '000000', 16);
+  const mix = (channel: number, bg: number): number =>
+    Math.round(channel * (1 - TONE_STRENGTH) + bg * TONE_STRENGTH);
+  const r = mix((value >> 16) & 0xff, TONE_BG[0] * 255);
+  const g = mix((value >> 8) & 0xff, TONE_BG[1] * 255);
+  const b = mix(value & 0xff, TONE_BG[2] * 255);
+  return `rgb(${r}, ${g}, ${b})`;
 };
 
 /**

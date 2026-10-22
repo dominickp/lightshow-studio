@@ -1,17 +1,34 @@
-# dmx-sim (working title)
+# Lightshow Studio
 
-A browser-based stage-lighting simulator: design lighting effects in time to music, the way a nightclub or DJ rig runs through DMX-controlled fixtures. Built for people who don't have access to real hardware.
+A browser-based stage-lighting simulator: design lighting effects in time to music, the way a nightclub or DJ rig runs through DMX-controlled fixtures. I made this because I like stage lighting effects but I don't have access to real hardware.
 
-- **Plan**: [docs/agent_docs/roadmap.md](./docs/agent_docs/roadmap.md)
-- **Decisions (ADRs)**: [docs/agent_docs/decisions.md](./docs/agent_docs/decisions.md)
-- **Architecture / repo layout**: [docs/agent_docs/repo-shape.md](./docs/agent_docs/repo-shape.md)
-- **Risks**: [docs/agent_docs/risks.md](./docs/agent_docs/risks.md)
-- **Renderer notes**: [docs/agent_docs/renderer-notes.md](./docs/agent_docs/renderer-notes.md)
-- **Original concept**: [docs/user_docs/project_idea.md](./docs/user_docs/project_idea.md)
 
-## Status
+## Features
 
-Phase 0 — the studio app ([apps/studio](./apps/studio)) is working and the core show model ([packages/show-model](./packages/show-model)) is tested. The timeline/editor product app is not started yet.
+## Venue customization
+- Add/remove lights
+- Move lights around different parts of the stage
+- Lights can have the direction, beam angle, and other settings adjusted
+
+### Lights supported
+- Moving heads
+- Par/wash
+- Strobes
+    - 
+- LED walls
+    - Supports simple generated patterns, pre-generated video loops, or custom images/videos uploaded into the app
+- Lasers
+    - Control tilt/pan direction, with a couple different array shapes
+- Cryo-jets
+
+
+## Coming soon
+- Fire effects
+- Gobos
+
+
+## Use of AI
+This codebase is completely written with AI, using OpenRouter via VSCode Copilot. It was mainly Deepseek 4.1 Flash 1017 but glm-5.3-flash also contributed a few bugs along the way. 
 
 ## Development
 

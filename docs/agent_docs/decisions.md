@@ -34,11 +34,13 @@ Short form: context → decision → consequence. Update or supersede rather tha
 
 **Context.** Beat/onset analysis requires the raw audio samples. YouTube's IFrame Player exposes no sample data, and ripping it violates the platform's terms.
 
-**Decision.** Users upload an audio file. The app analyzes it on import (in a Worker) and stores the resulting beat grid in the show document. YouTube is not a supported audio source.
+**Decision.** Users upload an audio file. The app analyzes it on import and stores the resulting beat grid in the show document. YouTube is not a supported audio source.
 
 **Consequences.**
-- Analysis (BPM, offset, onsets, waveform peaks) is a first-class import step.
-- Auto-detection must always be correctable: tap tempo, BPM field, offset nudge, grid editing.
+- Analysis (BPM, offset, waveform peaks) is a first-class import step (`apps/studio/src/audio-analysis.ts`). It runs on the main thread from the already-decoded `AudioBuffer`; moving it to a Worker is still worthwhile for very long tracks.
+- Auto-detection must always be correctable, and it must never dead-end. The analyser always returns a best guess plus its metrical relatives (`candidates`), which the import dialog renders as one-click buttons (×2 / ÷2 / ×3 / ÷3 / 3:2 and so on), alongside editable BPM, first-beat offset and beats-per-bar. Tap tempo and grid editing after import remain open.
+- Tempo is genuinely ambiguous in audio: a half-time feel is both 90 and 180 BPM, and a busy triplet subdivision supports 3:2 as well as 1:1. A single-number detector therefore cannot be "right" on every track; offering the relatives is part of the answer, not a fallback for a weak algorithm.
+- Detection is regression-tested against real recordings, not only synthetic clicks. `apps/studio/src/audio-analysis.corpus.test.ts` runs on short mono WAV excerpts in `apps/studio/src/audio-analysis.fixtures/`, whose tempos come from chart data and span 50–240 BPM. Rationale: an earlier version searched only 60–200 BPM and could not represent a 200 BPM track at all, which tuning against one hand-measured song had hidden. To extend the set, take a 12 s excerpt, convert with `ffmpeg -ac 1 -ar 22050 -c:a pcm_s16le`, and add an entry to `corpus.json`.
 - No cloud upload, share links, or audio distribution are planned. A local show file can reference the audio by filename/hash; moving it to another machine requires the owner to provide the audio separately.
 - Local playback and locally rendered video export may include the imported audio.
 

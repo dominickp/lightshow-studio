@@ -40,6 +40,7 @@ import {
 import { createDemoRig } from './demo-rig';
 import { createDemoCues, createDemoSurfaceCues } from './demo-arrangement';
 import { AudioClock } from './audio-clock';
+import { analyzeAudioBuffer, type TempoCandidate } from './audio-analysis';
 import { CryoJetAudio } from './cryo-jet-audio';
 import cryoJetSfxUrl from './assets/cryo-jet.ogg?url';
 import { loopEndSec, loopStartSec, TRACK, TRACK_URL } from './track';
@@ -1928,68 +1929,394 @@ ui.hideUnfiltered.addEventListener('click', () => {
   hideUnfiltered = !hideUnfiltered;
   applyTrackFilter();
 });
-ui.chooseAudio.addEventListener('click', () => ui.audioFile.click());
-ui.audioFile.addEventListener('change', () => {
-  const file = ui.audioFile.files?.[0];
-  ui.audioFile.value = '';
-  if (file === undefined) return;
+/** Audio chosen in the import dialog, kept until the dialog is confirmed. */
+interface PendingAudio {
+  buffer: AudioBuffer;
+  bytes: Uint8Array;
+  fileName: string;
+  mime: string;
+}
 
-  ui.chooseAudio.disabled = true;
-  ui.audioStatus.textContent = `Loading ${file.name}…`;
+type ImportMode = 'new' | 'edit';
+
+let importMode: ImportMode = 'new';
+let pendingAudio: PendingAudio | null = null;
+/** Candidate tempos from the last analysis, in the order they were found. */
+let pendingCandidates: TempoCandidate[] = [];
+/** Bumped on every file choice so a slow decode cannot overwrite a newer one. */
+let analysisToken = 0;
+
+/**
+ * The dialog is used for two things: creating a project (a song is required)
+ * and editing the open one (the song is optional, and leaving it alone keeps
+ * the arrangement). Only replacing the song of an existing project loses work,
+ * so that warning has its own line and is shown only then.
+ */
+const updateImportWarning = (): void => {
+  const replacingSong = importMode === 'edit' && pendingAudio !== null;
+  ui.newProjectWarning.hidden = !replacingSong;
+  ui.newProjectWarning.textContent = replacingSong
+    ? 'Replacing the song clears the clips in the open project.'
+    : '';
+};
+
+/**
+ * Preview the loop the values above will create.
+ *
+ * Duration, tempo, offset and beats-per-bar are already on screen (in the
+ * analysis line and in the fields themselves), so repeating them here only
+ * made the dialog read like a log dump. The loop region is the one derived
+ * result the user cannot see yet.
+ */
+const updateNewProjectSummary = (): void => {
+  const audio = pendingAudio;
+  const durationSec = audio?.buffer.duration ?? currentTimeline?.durationSec ?? 0;
+  const bpm = Number(ui.newProjectBpm.value);
+  const offset = Number(ui.newProjectOffset.value);
+  const beats = ui.newProjectBeats.value === '3' ? 3 : 4;
+  if (!(Number.isFinite(bpm) && bpm > 0) || durationSec <= 0) {
+    ui.newProjectSummary.textContent = 'No beat grid — clips are placed by time only.';
+    updateImportWarning();
+    return;
+  }
+  const barSec = (60 / bpm) * beats;
+  const firstBeat = Number.isFinite(offset) ? offset : 0;
+  const bars = Math.min(16, Math.max(1, Math.floor((durationSec - firstBeat) / barSec)));
+  const loopStart = Math.max(0, Math.min(firstBeat, durationSec - barSec));
+  const loopEnd = Math.min(durationSec, loopStart + bars * barSec);
+  ui.newProjectSummary.textContent = bars === 1
+    ? `Loop: 1 bar (${formatClock(loopStart)}–${formatClock(loopEnd)}).`
+    : `Loop: ${bars} bars (${formatClock(loopStart)}–${formatClock(loopEnd)}).`;
+  updateImportWarning();
+};
+
+/**
+ * Show the analysed tempos as one-click buttons.
+ *
+ * Tempo detection is genuinely ambiguous (half time, double time, 3:2), so the
+ * dialog never forces the user to type a number when a relative is the answer.
+ * The button matching the current BPM field is marked pressed, which also makes
+ * the ÷2 / ×2 state obvious after a correction.
+ */
+const renderCandidates = (): void => {
+  const container = ui.newProjectCandidates;
+  const current = Number(ui.newProjectBpm.value);
+  container.replaceChildren();
+  if (pendingCandidates.length === 0) {
+    container.hidden = true;
+    return;
+  }
+  container.hidden = false;
+  const label = document.createElement('span');
+  label.className = 'np-candidates-label';
+  label.textContent = 'Tempo options';
+  container.append(label);
+  for (const candidate of pendingCandidates) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = candidate.bpm.toFixed(candidate.bpm < 100 ? 2 : 1);
+    button.title = describeCandidate(candidate);
+    button.setAttribute(
+      'aria-pressed',
+      String(Number.isFinite(current) && Math.abs(current - candidate.bpm) < 0.05),
+    );
+    button.addEventListener('click', () => {
+      ui.newProjectBpm.value = candidate.bpm.toFixed(2);
+      ui.newProjectOffset.value = candidate.offsetSec.toFixed(3);
+      renderCandidates();
+      updateNewProjectSummary();
+    });
+    container.append(button);
+  }
+};
+
+/** Tooltip text for a candidate: how it relates to the best guess. */
+const describeCandidate = (candidate: TempoCandidate): string => {
+  if (candidate.relation === 1) return 'Best guess';
+  if (candidate.relation === 2) return 'Double time';
+  if (candidate.relation === 0.5) return 'Half time';
+  if (candidate.relation === 3) return 'Triple time';
+  if (candidate.relation === 1 / 3) return 'One third time';
+  if (candidate.relation === 4) return 'Quadruple time';
+  if (candidate.relation === 0.25) return 'Quarter time';
+  if (candidate.relation === 1.5) return 'Three against two';
+  if (candidate.relation === 0.75) return 'Three quarters';
+  if (candidate.relation === 2 / 3) return 'Two thirds';
+  return 'Also fits the audio';
+};
+
+const openProjectDialog = (mode: ImportMode): void => {
+  importMode = mode;
+  analysisToken += 1;
+  pendingAudio = null;
+  pendingCandidates = [];
+  renderCandidates();
+  ui.newProjectDialog.returnValue = 'cancel';
+  ui.newProjectAudio.value = '';
+
+  const editing = mode === 'edit';
+  const timeline = currentTimeline;
+  ui.newProjectDialog.setAttribute('aria-label', editing ? 'Edit project' : 'New project');
+  ui.newProjectTitle.textContent = editing ? 'Edit project' : 'New project';
+  ui.newProjectNameRow.hidden = false;
+  ui.newProjectName.value = editing ? projectName : 'Untitled project';
+  ui.newProjectAudioLabel.textContent = editing ? 'Replace song (optional)' : 'Audio file';
+  ui.newProjectBpm.value = editing && timeline?.bpm != null ? timeline.bpm.toFixed(2) : '';
+  ui.newProjectOffset.value = editing ? (timeline?.firstBeatSec ?? 0).toFixed(3) : '0';
+  ui.newProjectBeats.value = editing && timeline?.beatsPerBar === 3 ? '3' : '4';
+  ui.newProjectAnalysis.textContent = editing
+    ? `Current song: ${describeAudio(projectAudio, timeline?.bpm ?? null)}. Choose a file to replace it.`
+    : 'Choose an audio file to detect its beat grid.';
+  ui.newProjectCreate.textContent = editing ? 'Save changes' : 'Create project';
+  // Editing needs no new file, so the action is available immediately.
+  ui.newProjectCreate.disabled = !editing;
+  updateNewProjectSummary();
+  ui.newProjectDialog.showModal();
+};
+
+ui.projectEdit.addEventListener('click', () => openProjectDialog('edit'));
+ui.projectNew.addEventListener('click', () => openProjectDialog('new'));
+
+ui.newProjectAudio.addEventListener('change', () => {
+  const file = ui.newProjectAudio.files?.[0];
+  if (file === undefined) return;
+  const token = analysisToken + 1;
+  analysisToken = token;
+  pendingAudio = null;
+  ui.newProjectCreate.disabled = true;
+  ui.newProjectAnalysis.textContent = `Decoding ${file.name}…`;
+  ui.newProjectSummary.textContent = '';
+  updateImportWarning();
+
   void (async () => {
     try {
       const data = await file.arrayBuffer();
+      // `decodeAudioData` detaches its input, so keep the bytes for saving.
+      const bytes = new Uint8Array(data.slice(0));
       const buffer = await clock.decode(data);
-      clock.load(buffer);
-      clock.setLoop({ startSec: 0, endSec: buffer.duration }, true);
-      clock.seek(0);
-      projectAudio = { source: 'external', fileName: file.name };
-      projectAudioFile = {
-        bytes: new Uint8Array(data),
-        kind: 'audio',
-        mime: file.type === '' ? 'application/octet-stream' : file.type,
+      if (token !== analysisToken) return;
+      pendingAudio = {
+        buffer,
+        bytes,
         fileName: file.name,
+        mime: file.type === '' ? 'application/octet-stream' : file.type,
       };
-      loadedAudioSha = null;
-      ui.transportTrack.textContent = file.name;
-      ui.transportTime.textContent = `${formatClock(0)} / ${formatClock(buffer.duration)}`;
-      ui.audioStatus.textContent = 'Local audio loaded · beat grid not set';
-      waveform.setTimeline({
-        durationSec: buffer.duration,
-        loopStartSec: 0,
-        loopEndSec: buffer.duration,
-        firstBeatSec: 0,
-        bpm: null,
-        beatsPerBar: TRACK.beatsPerBar,
-      });
-      waveform.setPeaks(computePeaks(buffer, 1600));
-      const timeline: CueTimeline = {
-        durationSec: buffer.duration,
-        firstBeatSec: 0,
-        bpm: null,
-        beatsPerBar: TRACK.beatsPerBar,
-        loopStartSec: 0,
-        loopEndSec: buffer.duration,
-      };
-      currentTimeline = timeline;
-      loopRegion = { startSec: 0, endSec: buffer.duration };
-      waveform.setTimeline({ ...timeline, loopStartSec: 0, loopEndSec: buffer.duration });
-      ui.waveform.style.width = `${buffer.duration * arrangement.zoomLevel}px`;
-      createRuler(ui.ruler, timeline, buffer.duration * arrangement.zoomLevel, arrangement.zoomLevel);
-      arrangement.setTimeline(timeline);
-      ui.arrangementScroll.scrollLeft = 0;
-      enableTimelineControls();
-      setZoom(PIXELS_PER_SECOND);
-      applyLoop();
-      setProjectStatus('Local audio attached · use Save project to keep the reference');
+
+      ui.newProjectAnalysis.textContent = 'Analysing beat grid…';
+      const analysis = analyzeAudioBuffer(buffer);
+      if (token !== analysisToken) return;
+
+      const duration = formatClock(buffer.duration);
+      pendingCandidates = analysis.candidates;
+      if (analysis.bpm === null) {
+        ui.newProjectBpm.value = '';
+        ui.newProjectOffset.value = '0';
+        /*
+         * Only silence or a clip too short to frame gets here. Wording matches
+         * the real reason, because the usual cause (a tempo outside the search
+         * range, or a weak pulse) no longer produces a null result.
+         */
+        ui.newProjectAnalysis.textContent =
+          `${duration} · no pulse found in this audio; enter the BPM by hand.`;
+      } else {
+        ui.newProjectBpm.value = analysis.bpm.toFixed(2);
+        ui.newProjectOffset.value = analysis.offsetSec.toFixed(3);
+        const confidence = analysis.confidence < 0.35 ? ' · low confidence, please check' : '';
+        const others =
+          analysis.candidates.length > 1 ? ' · other tempos fit this audio' : '';
+        ui.newProjectAnalysis.textContent =
+          `${duration} · detected ${analysis.bpm.toFixed(1)} BPM, first beat ${analysis.offsetSec.toFixed(3)} s${confidence}${others}`;
+      }
+      renderCandidates();
+
+      if (importMode === 'new' && ui.newProjectName.value === 'Untitled project') {
+        const title = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim();
+        if (title !== '') ui.newProjectName.value = title;
+      }
+      ui.newProjectCreate.disabled = false;
+      updateNewProjectSummary();
     } catch (error) {
-      console.error(`could not load audio file "${file.name}"`, error);
-      ui.audioStatus.textContent = `Could not load ${file.name}; previous audio is unchanged`;
-    } finally {
-      ui.chooseAudio.disabled = false;
-      syncButtons();
+      if (token !== analysisToken) return;
+      console.error(`could not analyse audio file "${file.name}"`, error);
+      ui.newProjectAnalysis.textContent = `Could not read ${file.name}; choose another file.`;
     }
   })();
+});
+
+for (const control of [ui.newProjectBpm, ui.newProjectOffset, ui.newProjectBeats]) {
+  control.addEventListener('input', updateNewProjectSummary);
+  control.addEventListener('change', updateNewProjectSummary);
+}
+// Typing a BPM by hand should also update which tempo option reads as active.
+ui.newProjectBpm.addEventListener('input', renderCandidates);
+ui.newProjectBpm.addEventListener('change', renderCandidates);
+
+/**
+ * Apply freshly imported audio: replace the song, set its beat grid and start
+ * a clean arrangement. Used both for New project and for replacing the song in
+ * the current project, so the two paths cannot drift apart.
+ */
+const importAudio = (
+  audio: PendingAudio,
+  options: {
+    name: string;
+    /** A new project also resets surfaces; editing keeps the current stage. */
+    fresh: boolean;
+    bpm: number | null;
+    offsetSec: number;
+    beatsPerBar: number;
+  },
+): void => {
+  const { buffer } = audio;
+  const bpm = options.bpm;
+  const durationSec = buffer.duration;
+  const hadClips = cues.length > 0;
+
+  clock.pause();
+  clock.load(buffer);
+  clock.setLoopEnabled(true);
+  projectAudio = { source: 'external', fileName: audio.fileName };
+  projectAudioFile = {
+    bytes: audio.bytes,
+    kind: 'audio',
+    mime: audio.mime,
+    fileName: audio.fileName,
+  };
+  loadedAudioSha = null;
+
+  projectName = options.name;
+  if (options.fresh) {
+    projectDescription = undefined;
+    // A new project starts on the venue's own wall rather than the previous
+    // project's custom surfaces.
+    surfaces = venueSurfaces(activeVenue);
+    arrangement.setSurfaces(surfaces);
+    stage.setLedSurfaces(surfaces);
+  }
+
+  const firstBeatSec = bpm === null ? 0 : options.offsetSec;
+  const barSec = bpm === null ? 0 : (60 / bpm) * options.beatsPerBar;
+  const loopStartSec = bpm === null ? 0 : Math.min(firstBeatSec, Math.max(0, durationSec - MIN_LOOP_SEC));
+  const loopEndSec = Math.min(
+    durationSec,
+    bpm === null
+      ? durationSec
+      : Math.max(loopStartSec + MIN_LOOP_SEC, loopStartSec + barSec * 16),
+  );
+  const timeline: CueTimeline = {
+    durationSec,
+    firstBeatSec,
+    bpm,
+    beatsPerBar: options.beatsPerBar,
+    loopStartSec,
+    loopEndSec,
+  };
+
+  currentTimeline = timeline;
+  loopRegion = { startSec: loopStartSec, endSec: loopEndSec };
+  waveform.setPeaks(computePeaks(buffer, 1600));
+  waveform.setTimeline({
+    durationSec,
+    loopStartSec,
+    loopEndSec: loopRegion.endSec,
+    firstBeatSec,
+    bpm,
+    beatsPerBar: options.beatsPerBar,
+  });
+  waveform.requestPaint();
+  // `setTimeline` clears the clips: the old arrangement belonged to the old song.
+  arrangement.setTimeline(timeline);
+
+  ui.transportTrack.textContent = describeAudio(projectAudio, bpm);
+  ui.transportTime.textContent = `${formatClock(loopStartSec)} / ${formatClock(durationSec)}`;
+  ui.audioStatus.textContent = '';
+  clock.setLoop({ startSec: loopStartSec, endSec: loopRegion.endSec }, true);
+  clock.seek(loopStartSec);
+  ui.waveform.style.width = `${durationSec * arrangement.zoomLevel}px`;
+  createRuler(ui.ruler, timeline, durationSec * arrangement.zoomLevel, arrangement.zoomLevel);
+  enableTimelineControls();
+  setZoom(PIXELS_PER_SECOND);
+  applyLoop();
+  ui.arrangementScroll.scrollLeft = Math.max(0, loopStartSec * arrangement.zoomLevel);
+  syncButtons();
+
+  const grid = bpm === null ? 'no beat grid' : `${bpm.toFixed(1)} BPM · ${options.beatsPerBar}/4`;
+  if (options.fresh) {
+    setProjectStatus(`New project “${options.name}” · ${grid}`);
+  } else {
+    setProjectStatus(`Updated “${options.name}” · song replaced · ${grid}${hadClips ? ' · clips cleared' : ''}`);
+  }
+};
+
+/**
+ * Rename the project and/or correct its beat grid without touching the clips.
+ *
+ * Clips keep their absolute song times; only the grid they snap to and the
+ * bar labels change. That makes it safe to fix a wrong BPM after authoring.
+ */
+const applyProjectEdit = (options: {
+  name: string;
+  bpm: number | null;
+  offsetSec: number;
+  beatsPerBar: number;
+}): void => {
+  const previous = currentTimeline;
+  if (previous === null) return;
+  projectName = options.name;
+  const durationSec = previous.durationSec;
+  const loopStartSec = Math.min(loopRegion.startSec, Math.max(0, durationSec - MIN_LOOP_SEC));
+  const loopEndSec = Math.max(loopStartSec + MIN_LOOP_SEC, Math.min(durationSec, loopRegion.endSec));
+  const timeline: CueTimeline = {
+    durationSec,
+    firstBeatSec: options.bpm === null ? 0 : options.offsetSec,
+    bpm: options.bpm,
+    beatsPerBar: options.beatsPerBar,
+    loopStartSec,
+    loopEndSec,
+  };
+  currentTimeline = timeline;
+  loopRegion = { startSec: loopStartSec, endSec: loopEndSec };
+  arrangement.setBeatGrid(timeline);
+  ui.transportTrack.textContent = describeAudio(projectAudio, options.bpm);
+  setZoom(arrangement.zoomLevel);
+  applyLoop();
+  syncButtons();
+  const grid = options.bpm === null ? 'no beat grid' : `${options.bpm.toFixed(1)} BPM · ${options.beatsPerBar}/4`;
+  setProjectStatus(`Updated “${options.name}” · ${grid}`);
+};
+
+ui.newProjectDialog.addEventListener('close', () => {
+  if (ui.newProjectDialog.returnValue !== 'create') {
+    pendingAudio = null;
+    return;
+  }
+  const audio = pendingAudio;
+  pendingAudio = null;
+  if (importMode === 'new' && audio === null) {
+    setProjectStatus('Choose an audio file before creating a project');
+    return;
+  }
+  const rawBpm = Number(ui.newProjectBpm.value);
+  const bpm = Number.isFinite(rawBpm) && rawBpm > 0
+    ? Math.max(40, Math.min(300, rawBpm))
+    : null;
+  const rawOffset = Number(ui.newProjectOffset.value);
+  const offsetSec = bpm === null
+    ? 0
+    : Math.max(0, Number.isFinite(rawOffset) ? rawOffset : 0) % (60 / bpm);
+  const beatsPerBar = ui.newProjectBeats.value === '3' ? 3 : 4;
+  const name = ui.newProjectName.value.trim() === '' ? 'Untitled project' : ui.newProjectName.value.trim();
+  if (audio === null) {
+    applyProjectEdit({ name, bpm, offsetSec, beatsPerBar });
+    return;
+  }
+  importAudio(audio, {
+    name,
+    fresh: importMode === 'new',
+    bpm,
+    offsetSec,
+    beatsPerBar,
+  });
 });
 ui.vol.addEventListener('click', () => {
   volumetrics = !volumetrics;
@@ -2334,17 +2661,30 @@ const frame = (now: number): void => {
 
 // --- Project files --------------------------------------------------------
 
+let projectStatusTimer: number | null = null;
+
+/**
+ * Project feedback (saved, opened, renamed) is transient: the transport has no
+ * permanent status row, so the message takes over the audio line for a few
+ * seconds and then clears. Failures are also logged so they stay diagnosable.
+ */
 const setProjectStatus = (message: string): void => {
-  ui.projectStatus.textContent = message;
+  if (/could not|cannot|missing|before/i.test(message)) console.warn(message);
+  ui.audioStatus.textContent = message;
+  if (projectStatusTimer !== null) window.clearTimeout(projectStatusTimer);
+  projectStatusTimer = window.setTimeout(() => {
+    ui.audioStatus.textContent = '';
+    projectStatusTimer = null;
+  }, 5000);
 };
 
 const describeAudio = (audio: ProjectFile['audio'], bpm: number | null): string => {
+  const tempo = bpm === null ? '' : ` · ${Math.round(bpm)} BPM`;
   if (audio.title !== undefined) {
     const artist = audio.artist === undefined ? '' : ` — ${audio.artist}`;
-    const tempo = bpm === null ? '' : ` · ${Math.round(bpm)} BPM`;
     return `${audio.title}${artist}${tempo}`;
   }
-  return audio.fileName ?? 'Local audio';
+  return `${audio.fileName ?? 'Local audio'}${tempo}`;
 };
 
 const enableTimelineControls = (): void => {
@@ -2412,7 +2752,6 @@ const applyProject = (project: ProjectFile, source: 'project' | 'default' = 'pro
   projectName = project.name;
   projectDescription = project.description;
   projectAudio = project.audio;
-  ui.projectStatus.title = project.description ?? '';
   const timeline = cueTimelineFromProject(project);
   currentTimeline = timeline;
   loopRegion = {

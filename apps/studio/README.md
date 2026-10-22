@@ -19,9 +19,13 @@ open its calibration panel (pixel pitch, pixel gap, brightness, black level,
 gamma, and approximate room spill). The built-in generators are Solid, Gradient drift, Linear wave, Radial pulse,
 Noise field, Grid / tunnel, Scan bars, and Blackout.
 
-## Audio
+## Projects and audio
 
-The demo loads `resources/sample_projects/koto-chill/The Koto Chill.ogg` (zircon, third-party music). Vite bundles it into production output; confirm distribution rights before publishing. Its beat grid was measured offline, not detected at import time: **130.00 BPM**, first beat at 0.02 s, default loop bars 41–56. Those constants live in [src/track.ts](src/track.ts) and are a placeholder for the real import-time analysis described in ADR-003.
+The demo loads `resources/sample_projects/koto-chill/The Koto Chill.ogg` (zircon, third-party music). Vite bundles it into production output; confirm distribution rights before publishing. The bundled project carries its own measured grid: **130.00 BPM**, first beat at 0.02 s, default loop bars 41–56.
+
+**New project** asks for a project name and an audio file, decodes the track, and estimates the beat grid from the samples ([src/audio-analysis.ts](src/audio-analysis.ts)). The dialog shows the detected BPM, first beat, and a 16-bar loop start; every value is editable, including ×2 / ÷2 for half/double-time mistakes. Confirming starts an empty arrangement on the current rig, with the song and its grid ready for clips. **Edit project** opens the same dialog for the current project: rename it, correct the BPM/offset/beats-per-bar, and optionally replace the song. Changing only the name or grid keeps every clip (they keep their absolute song times and snap to the new grid); choosing a new song clears them, because the old arrangement was authored against the old song. The dialog says so before you confirm.
+
+The analysis is a compact onset-envelope + autocorrelation estimator, not a general music analyser. It runs on the already-decoded `AudioBuffer` (main thread; a Worker is still worthwhile for very long tracks), uses a low-passed envelope to lock the phase to the kick rather than the hi-hats, and leaves the result correctable in the dialog.
 
 ## Run
 

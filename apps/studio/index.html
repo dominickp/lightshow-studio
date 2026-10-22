@@ -119,12 +119,12 @@
     <section id="timeline-dock" aria-label="Lighting arrangement">
       <div id="dock-resizer" role="separator" aria-label="Resize timeline dock" title="Drag to resize timeline"></div>
       <div class="panel" id="transport">
-        <button id="btn-play" disabled>▶ Play</button>
-        <button id="btn-audio" type="button">Load audio</button>
+        <button id="btn-project-new" type="button" title="Start a new project from an audio file">New project</button>
+        <button id="btn-project-edit" type="button" title="Edit the project name and beat grid, or replace its song">Edit project</button>
         <button id="btn-project-open" type="button" title="Open a .dmxsim project file">Open project</button>
         <button id="btn-project-save" type="button" title="Save the rig, timeline and settings as a .dmxsim file (Ctrl+S / Cmd+S)">Save project</button>
-        <input id="audio-file" type="file" accept="audio/*" aria-label="Choose an audio file" />
         <input id="project-file" type="file" accept=".dmxsim,.json,application/json" aria-label="Choose a project file" />
+        <button id="btn-play" disabled>▶ Play</button>
         <div id="volume-control">
           <input id="volume" type="range" min="0" max="100" step="1" value="100" aria-label="Playback volume" title="Playback volume (M mutes)" />
         </div>
@@ -132,7 +132,6 @@
           <b id="transport-time">–</b>
           <span id="transport-track">The Koto Chill — zircon · 130 BPM</span>
           <span id="audio-status" role="status" aria-live="polite">Loading default track…</span>
-          <span id="project-status" role="status" aria-live="polite"></span>
         </div>
         <button id="btn-dock" type="button" title="Collapse or expand the timeline dock">Collapse timeline</button>
       </div>
@@ -571,6 +570,46 @@
           <menu>
             <button value="cancel">Cancel</button>
             <button value="add" class="sp-primary">Add lights</button>
+          </menu>
+        </form>
+      </dialog>
+
+      <dialog id="new-project-dialog" aria-label="New project">
+        <form method="dialog" id="new-project-form">
+          <h3 id="new-project-title">New project</h3>
+          <label id="new-project-name-row"><span>Project name</span>
+            <input id="new-project-name" type="text" maxlength="80" value="Untitled project" />
+          </label>
+          <label><span id="new-project-audio-label">Audio file</span>
+            <input id="new-project-audio" type="file" accept="audio/*" />
+          </label>
+          <p id="new-project-analysis" class="panel-note">Choose a track to detect its beat grid.</p>
+          <div class="np-row">
+            <label><span>BPM</span>
+              <input id="new-project-bpm" type="number" min="40" max="300" step="0.01" placeholder="—" />
+            </label>
+            <label><span>First beat (s)</span>
+              <input id="new-project-offset" type="number" min="0" step="0.001" placeholder="0" />
+            </label>
+            <label><span>Beats / bar</span>
+              <select id="new-project-beats">
+                <option value="4">4</option>
+                <option value="3">3</option>
+              </select>
+            </label>
+          </div>
+          <div
+            id="new-project-candidates"
+            class="np-candidates"
+            role="group"
+            aria-label="Detected tempos"
+            hidden
+          ></div>
+          <p id="new-project-summary" class="panel-note"></p>
+          <p id="new-project-warning" class="np-warning" role="alert" hidden></p>
+          <menu>
+            <button value="cancel">Cancel</button>
+            <button value="create" class="sp-primary" id="new-project-create">Create project</button>
           </menu>
         </form>
       </dialog>

@@ -552,6 +552,18 @@ export class Arrangement {
     this.notifySelection();
   }
 
+  /**
+   * Replace the beat grid and loop while keeping the authored clips.
+   *
+   * Used by **Edit project** when the tempo or first beat is corrected: clips
+   * keep their absolute times, they just snap to a different grid.
+   */
+  setBeatGrid(timeline: CueTimeline): void {
+    this.timeline = timeline;
+    this.renderRows();
+    this.setSongTime(this.songTime);
+  }
+
   /** Replace the authored clips, e.g. with a seeded demo arrangement. */
   setCues(cues: readonly Cue[]): void {
     // Cue ids are the identity used by selection, gestures and delete, so two

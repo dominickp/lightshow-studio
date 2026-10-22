@@ -1,0 +1,57 @@
+[
+  {
+    "file": "identity-50.wav",
+    "bpm": 49.5,
+    "song": "Identity"
+  },
+  {
+    "file": "nanairo-nico-nico-douga-house-remix-64.wav",
+    "bpm": 64.0,
+    "song": "Nanairo Nico Nico Douga House Remix"
+  },
+  {
+    "file": "regenesis-88.wav",
+    "bpm": 87.5,
+    "song": "ReGenesis"
+  },
+  {
+    "file": "o-holy-night-100.wav",
+    "bpm": 100.0,
+    "song": "O Holy Night"
+  },
+  {
+    "file": "we-three-kings-120.wav",
+    "bpm": 120.0,
+    "song": "We Three Kings"
+  },
+  {
+    "file": "deck-the-halls-135.wav",
+    "bpm": 135.0,
+    "song": "Deck the Halls"
+  },
+  {
+    "file": "light-emitting-diode-m-162.wav",
+    "bpm": 162.132,
+    "song": "Light Emitting Diode M"
+  },
+  {
+    "file": "air-178.wav",
+    "bpm": 178.0,
+    "song": "Air"
+  },
+  {
+    "file": "gloria-200.wav",
+    "bpm": 200.0,
+    "song": "Gloria"
+  },
+  {
+    "file": "i-hate-jimmy-page-239.wav",
+    "bpm": 238.517,
+    "song": "I Hate Jimmy Page"
+  },
+  {
+    "file": "afronova-primeval-200.wav",
+    "bpm": 200.0,
+    "song": "Afronova Primeval"
+  }
+]

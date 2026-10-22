@@ -1808,15 +1808,33 @@ ui.arrangementScroll.addEventListener('auxclick', (event) => {
 window.addEventListener('blur', () => endTimelinePan());
 
 const ZOOM_SLIDER_STEPS = 1000;
-const ZOOM_RANGE = MAX_PIXELS_PER_SECOND / MIN_PIXELS_PER_SECOND;
+
+/** Zoom that fits the whole current timeline into the scroll viewport. */
+const fitZoom = (): number => {
+  if (currentTimeline === null) return MIN_PIXELS_PER_SECOND;
+  const trackWidth = labelWidth();
+  const availableWidth = Math.max(1, ui.arrangementScroll.clientWidth - trackWidth - 18);
+  return availableWidth / currentTimeline.durationSec;
+};
+
+/** Smallest useful zoom: below it the whole show is already visible. */
+const minZoom = (): number => Math.max(MIN_PIXELS_PER_SECOND, fitZoom());
+
+/** Zoom out one step, but never further than the fit zoom. */
+const zoomOut = (zoom: number): number => Math.max(minZoom(), zoom);
+
+/** Log slider range, recomputed per call so the low end tracks the fit zoom. */
+const zoomRange = (): number => MAX_PIXELS_PER_SECOND / minZoom();
 const zoomToSlider = (zoom: number): number =>
-  Math.round((Math.log(zoom / MIN_PIXELS_PER_SECOND) / Math.log(ZOOM_RANGE)) * ZOOM_SLIDER_STEPS);
+  Math.round((Math.log(zoom / minZoom()) / Math.log(zoomRange())) * ZOOM_SLIDER_STEPS);
 const sliderToZoom = (value: number): number =>
-  MIN_PIXELS_PER_SECOND * Math.pow(ZOOM_RANGE, value / ZOOM_SLIDER_STEPS);
+  minZoom() * Math.pow(zoomRange(), value / ZOOM_SLIDER_STEPS);
 
 const setZoom = (nextZoom: number, anchorClientX?: number): void => {
   if (currentTimeline === null) return;
   const previousZoom = arrangement.zoomLevel;
+  // Only the explicit zoom-out paths clamp to the fit zoom; loading a
+  // project at its stored zoom must not be pushed around by a stale layout.
   const zoom = Math.max(MIN_PIXELS_PER_SECOND, Math.min(MAX_PIXELS_PER_SECOND, nextZoom));
   const trackWidth = labelWidth();
   const bounds = ui.arrangementScroll.getBoundingClientRect();
@@ -1844,13 +1862,13 @@ const setWaveformPlayhead = (x: number): void => {
   ui.waveformPlayhead.style.transform = `translate3d(${x}px, 0, 0)`;
 };
 ui.zoomIn.addEventListener('click', () => setZoom(arrangement.zoomLevel * 1.25));
-ui.zoomOut.addEventListener('click', () => setZoom(arrangement.zoomLevel * 0.8));
+ui.zoomOut.addEventListener('click', () => setZoom(zoomOut(arrangement.zoomLevel * 0.8)));
 ui.zoomLevel.addEventListener('input', () => setZoom(sliderToZoom(Number(ui.zoomLevel.value))));
 ui.zoomFit.addEventListener('click', () => {
   if (currentTimeline === null) return;
   const trackWidth = labelWidth();
   const availableWidth = Math.max(1, ui.arrangementScroll.clientWidth - trackWidth - 18);
-  setZoom(availableWidth / currentTimeline.durationSec, trackWidth + availableWidth / 2);
+  setZoom(fitZoom(), trackWidth + availableWidth / 2);
   ui.arrangementScroll.scrollLeft = 0;
 });
 ui.follow.addEventListener('click', () => {
@@ -1862,7 +1880,7 @@ ui.arrangementScroll.addEventListener('wheel', (event) => {
   if (!event.ctrlKey && !event.metaKey) return;
   event.preventDefault();
   const factor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
-  setZoom(arrangement.zoomLevel * factor, event.clientX);
+  setZoom(factor < 1 ? zoomOut(arrangement.zoomLevel * factor) : arrangement.zoomLevel * factor, event.clientX);
 }, { passive: false });
 
 const MIN_LOOP_SEC = 0.25;
@@ -2212,7 +2230,7 @@ window.addEventListener('keydown', (event) => {
     setZoom(arrangement.zoomLevel * 1.25);
   } else if (event.key === '-') {
     event.preventDefault();
-    setZoom(arrangement.zoomLevel * 0.8);
+    setZoom(zoomOut(arrangement.zoomLevel * 0.8));
   } else if (event.key === '0') {
     event.preventDefault();
     ui.zoomFit.click();

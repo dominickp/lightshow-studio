@@ -47,10 +47,41 @@ export function gridModeFor(
   return barWidth >= 12 ? 'bars' : 'none';
 }
 
-function gridStyleFor(timeline: CueTimeline, pixelsPerSecond: number): string {
+/** Zoom-dependent grid variables, baked into each lane's inline style. */
+export function gridStyleFor(timeline: CueTimeline, pixelsPerSecond: number): string {
   const beatWidth = beatWidthFor(timeline, pixelsPerSecond);
   if (beatWidth === null) return '';
   return `--sixteenth-width:${beatWidth / 4}px;--beat-width:${beatWidth}px;--bar-width:${beatWidth * timeline.beatsPerBar}px;--grid-offset-x:${timeline.firstBeatSec * pixelsPerSecond}px;`;
+}
+
+export interface LoopGeometry {
+  /** Lane-relative pixel x of the loop band, or `null` when there is no loop. */
+  left: number | null;
+  loopWidth: number;
+  beforeWidth: number;
+  afterWidth: number;
+}
+
+/** Pixel geometry of the loop band, clamped to the lane width. Shared by the
+ * markup builder and the in-place zoom patch so both stay in agreement. */
+export function loopGeometry(
+  timeline: CueTimeline,
+  pixelsPerSecond: number,
+  width: number,
+): LoopGeometry {
+  const start = timeline.loopStartSec;
+  const end = timeline.loopEndSec;
+  if (start === undefined || end === undefined || end <= start) {
+    return { left: null, loopWidth: 0, beforeWidth: 0, afterWidth: 0 };
+  }
+  const left = clamp(start * pixelsPerSecond, 0, width);
+  const right = clamp(end * pixelsPerSecond, 0, width);
+  return {
+    left,
+    loopWidth: Math.max(0, right - left),
+    beforeWidth: left,
+    afterWidth: width - right,
+  };
 }
 
 export function loopMarkup(
@@ -58,14 +89,11 @@ export function loopMarkup(
   pixelsPerSecond: number,
   width: number,
 ): string {
-  const start = timeline.loopStartSec;
-  const end = timeline.loopEndSec;
-  if (start === undefined || end === undefined || end <= start) return '';
-  const left = clamp(start * pixelsPerSecond, 0, width);
-  const right = clamp(end * pixelsPerSecond, 0, width);
-  const before = left > 0 ? `<span class="lane-outside" style="left:0;width:${left}px"></span>` : '';
-  const after = right < width ? `<span class="lane-outside" style="left:${right}px;width:${width - right}px"></span>` : '';
-  return `${before}${after}<span class="lane-loop" style="left:${left}px;width:${Math.max(0, right - left)}px"></span>`;
+  const loop = loopGeometry(timeline, pixelsPerSecond, width);
+  if (loop.left === null) return '';
+  const before = loop.beforeWidth > 0 ? `<span class="lane-outside" style="left:0;width:${loop.beforeWidth}px"></span>` : '';
+  const after = loop.afterWidth > 0 ? `<span class="lane-outside" style="left:${loop.left + loop.loopWidth}px;width:${loop.afterWidth}px"></span>` : '';
+  return `${before}${after}<span class="lane-loop" style="left:${loop.left}px;width:${loop.loopWidth}px"></span>`;
 }
 
 /**

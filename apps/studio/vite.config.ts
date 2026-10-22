@@ -98,9 +98,74 @@ function perfHistoryPlugin(): Plugin {
 const repositoryName = process.env.GITHUB_REPOSITORY?.split('/')[1];
 const base = process.env.VITE_BASE ?? (repositoryName === undefined ? '/' : `/${repositoryName}/`);
 
+/**
+ * Absolute URL the site is served from, used for link-preview metadata.
+ *
+ * Facebook, Slack, Discord and friends will not reliably resolve relative
+ * `og:image` URLs, so the tags need the full origin. CI provides
+ * `GITHUB_REPOSITORY`, which is enough to reconstruct a project page; set
+ * `SITE_URL` for a custom domain (e.g. `SITE_URL=https://lightshow.studio/`).
+ */
+const siteUrl = (() => {
+  const override = process.env.SITE_URL;
+  if (override !== undefined) return `${override.replace(/\/+$/, '')}/`;
+  const [owner, name] = (process.env.GITHUB_REPOSITORY ?? '').split('/');
+  if (owner && name) return `https://${owner}.github.io/${name}/`;
+  return 'http://localhost:5173/';
+})();
+
+const DESCRIPTION =
+  'A browser-based stage-lighting simulator: build a DMX rig out of moving heads, ' +
+  'washes, lasers and LED walls, program clips on a timeline, and play the show back ' +
+  'in sync with your song.';
+
+const IMAGE_ALT =
+  'Lightshow Studio: a 3D club stage lit by laser and moving-head beams, ' +
+  'with a DAW-style lighting timeline underneath.';
+
+/**
+ * Injects Open Graph / Twitter card metadata so shared links render a preview
+ * image, title and description instead of a bare URL.
+ *
+ * The image lives in `public/`, so it ships with the build and is reachable at
+ * `${siteUrl}social-card.jpg`. Bump the filename when the image changes: social
+ * platforms cache previews by URL and will otherwise keep showing the old one.
+ */
+function socialMetaPlugin(): Plugin {
+  const tags = [
+    { name: 'description', content: DESCRIPTION },
+    { property: 'og:type', content: 'website' },
+    { property: 'og:site_name', content: 'Lightshow Studio' },
+    { property: 'og:title', content: 'Lightshow Studio' },
+    { property: 'og:description', content: DESCRIPTION },
+    { property: 'og:url', content: siteUrl },
+    { property: 'og:image', content: `${siteUrl}social-card.jpg` },
+    { property: 'og:image:type', content: 'image/jpeg' },
+    { property: 'og:image:width', content: '1200' },
+    { property: 'og:image:height', content: '630' },
+    { property: 'og:image:alt', content: IMAGE_ALT },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:title', content: 'Lightshow Studio' },
+    { name: 'twitter:description', content: DESCRIPTION },
+    { name: 'twitter:image', content: `${siteUrl}social-card.jpg` },
+    { name: 'twitter:image:alt', content: IMAGE_ALT },
+  ];
+
+  return {
+    name: 'dmxsim-social-meta',
+    transformIndexHtml() {
+      return tags.map((tag) => ({
+        tag: 'meta',
+        attrs: tag,
+        injectTo: 'head' as const,
+      }));
+    },
+  };
+}
+
 export default defineConfig({
   base,
-  plugins: [perfHistoryPlugin()],
+  plugins: [perfHistoryPlugin(), socialMetaPlugin()],
   resolve: {
     alias: {
       '@dmxsim/show-model': fileURLToPath(

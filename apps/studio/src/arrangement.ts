@@ -445,6 +445,23 @@ export class Arrangement {
     else this.selectedCueIds.add(cueId);
   }
 
+  /**
+   * Select a single cue by id, as a plain pointer click would.
+   *
+   * Touch cannot use the lane gesture handlers (a finger drag must pan), so a
+   * tap on a card is resolved in the shell and applied here. Behaviour matches
+   * clicking the card on desktop: the fixture's row and the card become
+   * selected, and the inspector follows.
+   */
+  selectCueById(cueId: string): void {
+    const cue = this.cues.find((item) => item.id === cueId);
+    if (cue === undefined) return;
+    this.selectCue(cue.id, false, false);
+    this.selectedFixtureId = cue.fixtureId;
+    this.renderRows();
+    this.notifySelection();
+  }
+
   get selectedActions(): CueAction[] {
     const fixture = this.selectedFixture;
     return fixture === null ? [] : actionsFor(fixture);

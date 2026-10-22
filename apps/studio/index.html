@@ -134,11 +134,24 @@
     <section id="timeline-dock" aria-label="Lighting arrangement">
       <div id="dock-resizer" role="separator" aria-label="Resize timeline dock" title="Drag to resize timeline"></div>
       <div class="panel" id="transport">
-        <button id="btn-project-new" type="button" title="Start a new project from an audio file">New project</button>
-        <button id="btn-project-edit" type="button" title="Edit the project name and beat grid, or replace its song">Edit project</button>
-        <button id="btn-project-open" type="button" title="Open a .dmxsim project file">Open project</button>
-        <button id="btn-project-save" type="button" title="Save the rig, timeline and settings as a .dmxsim file (Ctrl+S / Cmd+S)">Save project</button>
-        <input id="project-file" type="file" accept=".dmxsim,.json,application/json" aria-label="Choose a project file" />
+        <!-- Phone widths collapse the four project commands behind this menu
+             button; on desktop it is display:none and #project-actions is a
+             transparent (display:contents) wrapper, so the row is unchanged. -->
+        <button id="btn-project-menu" type="button" aria-haspopup="menu" aria-expanded="false"
+          aria-controls="project-menu" title="Project actions">Project ▾</button>
+        <div id="project-actions">
+          <button id="btn-project-new" type="button" title="Start a new project from an audio file">New project</button>
+          <button id="btn-project-edit" type="button" title="Edit the project name and beat grid, or replace its song">Edit project</button>
+          <button id="btn-project-open" type="button" title="Open a .dmxsim project file">Open project</button>
+          <button id="btn-project-save" type="button" title="Save the rig, timeline and settings as a .dmxsim file (Ctrl+S / Cmd+S)">Save project</button>
+          <input id="project-file" type="file" accept=".dmxsim,.json,application/json" aria-label="Choose a project file" />
+        </div>
+        <div id="project-menu" role="menu" aria-label="Project actions" hidden>
+          <button type="button" role="menuitem" data-project-action="new">New project</button>
+          <button type="button" role="menuitem" data-project-action="edit">Edit project</button>
+          <button type="button" role="menuitem" data-project-action="open">Open project</button>
+          <button type="button" role="menuitem" data-project-action="save">Save project</button>
+        </div>
         <button id="btn-play" disabled>▶ Play</button>
         <div id="volume-control">
           <input id="volume" type="range" min="0" max="100" step="1" value="100" aria-label="Playback volume" title="Playback volume (M mutes)" />

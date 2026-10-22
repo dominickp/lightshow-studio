@@ -50,6 +50,8 @@ export function collectUi() {
     projectOpen: element<HTMLButtonElement>('btn-project-open'),
     projectSave: element<HTMLButtonElement>('btn-project-save'),
     projectFile: element<HTMLInputElement>('project-file'),
+    projectMenu: element<HTMLElement>('project-menu'),
+    projectMenuToggle: element<HTMLButtonElement>('btn-project-menu'),
     volume: element<HTMLInputElement>('volume'),
     vol: element<HTMLButtonElement>('btn-vol'),
     bloom: element<HTMLButtonElement>('btn-bloom'),

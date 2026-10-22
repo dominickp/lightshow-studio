@@ -528,7 +528,11 @@
         top: -4px;
         left: 0;
         right: 0;
-        z-index: 9;
+        /* Above #transport: the transport now stacks higher than the ruler so
+           its dropdown is not painted under the timeline. Without this the
+           resizer's lower half sits underneath the transport bar and the dock
+           can no longer be dragged. */
+        z-index: 15;
         height: 8px;
         cursor: ns-resize;
         touch-action: none;
@@ -571,6 +575,13 @@
 
       #transport button { min-width: 78px; cursor: pointer; white-space: nowrap; }
       #transport button:disabled, #clip-inspector select:disabled { opacity: 0.45; cursor: not-allowed; }
+
+      /* The project commands keep one source of truth in the DOM. On desktop
+         the wrapper is transparent to the flex row and the phone-only
+         disclosure menu does not exist visually. */
+      #project-actions { display: contents; }
+      #btn-project-menu,
+      #project-menu { display: none; }
 
       #volume-control { display: flex; align-items: center; gap: 6px; }
       #volume { width: 92px; accent-color: var(--accent); cursor: pointer; }
@@ -898,6 +909,10 @@
         overscroll-behavior: contain;
         scrollbar-color: #394455 #10151d;
         scrollbar-width: thin;
+        /* Vertical drags scroll natively; horizontal drags are claimed by the
+           touch-pan handler in main.ts so a finger can pan the whole surface
+           like middle-drag on desktop. */
+        touch-action: pan-y;
       }
 
       #arrangement-content { width: max-content; min-width: 100%; padding-bottom: 44px; }
@@ -1020,7 +1035,7 @@
         left: 0;
         will-change: transform;
       }
-      #timeline-ruler { display: block; height: 28px; cursor: ew-resize; touch-action: none; }
+      #timeline-ruler { display: block; height: 28px; cursor: ew-resize; touch-action: pan-y; }
 
       #zoom-tools {
         /* Anchored to the dock's right edge; the panel-open offset below keeps
@@ -1089,7 +1104,7 @@
         display: block;
         height: var(--wave-height);
         cursor: ew-resize;
-        touch-action: none;
+        touch-action: pan-y;
       }
       #waveform-resizer {
         position: absolute;
@@ -1129,7 +1144,7 @@
         /* Grid lines follow the beat offset, so they line up with the ruler. */
         background-position: var(--grid-offset-x, 0px) 0;
         cursor: crosshair;
-        touch-action: none;
+        touch-action: pan-y;
       }
 
       #arrangement-rows[data-grid="beats"] .fixture-lane {
@@ -1205,7 +1220,7 @@
         box-shadow: none;
         color: transparent;
         cursor: grab;
-        touch-action: none;
+        touch-action: pan-y;
       }
 
       /* Select mode turns the timeline into a clipboard surface: cards can be
@@ -1483,14 +1498,130 @@
         #transport-meta { column-gap: 8px; }
       }
 
+      /* Compact chrome for phone-width windows. The desktop rows are single
+         non-wrapping flex lines sized for a 1400 px window; here they wrap into
+         stacked rows instead of painting over each other. Nothing is hidden
+         yet — see docs/agent_docs/mobile-playback-plan.md. */
       @media (max-width: 680px) {
         #stats { transform: scale(0.82); transform-origin: top left; }
         #controls { min-width: 150px; gap: 3px; padding: 7px; }
         #controls button { padding: 3px 6px; }
-        :root { --side-panel-width: min(230px, 62vw); }
-        #transport { gap: 5px; padding: 5px; }
-        #transport button { min-width: 0; padding: 5px; }
-        #transport-meta { display: none; }
+        :root {
+          --side-panel-width: min(230px, 62vw);
+          --track-width: 145px;
+          /* The inspector still wraps into two rows, so the dock keeps a larger
+             share of the screen than on desktop. */
+          --dock-height: 58vh;
+        }
+        /* The zoom toolbar is a real fifth row here (see below), so the
+           timeline viewport ends above it instead of running underneath. */
+        #timeline-dock {
+          grid-template-rows: auto auto minmax(0, 1fr) auto;
+        }
+        #timeline-dock.collapsed { grid-template-rows: auto; }
+        #side-panel { grid-row: 2 / span 3; }
+
+        /* --- Transport: big Play, clock, then the Project menu ----------- */
+        #transport {
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 5px 6px;
+          padding: 6px;
+          /* Above the timeline's sticky ruler (z-index 6) so the project
+             dropdown is not painted under it. */
+          z-index: 14;
+        }
+        #transport button { min-width: 0; padding: 7px 9px; }
+
+        /* Play leads the row but keeps the same box as every other transport
+           button; only its tint marks it as primary. A fixed width here made
+           it a different size from its neighbours and shifted on play/pause. */
+        #transport #btn-play {
+          order: 0;
+          flex: 0 0 auto;
+        }
+        #project-actions { display: none; }
+        #btn-project-menu {
+          order: 1;
+          display: inline-flex;
+          align-items: center;
+          flex: 0 0 auto;
+        }
+        #project-menu:not([hidden]) {
+          /* A dropdown, not an in-flow row: opening the menu must not resize
+             the dock or push the timeline around. */
+          display: grid;
+          position: absolute;
+          top: calc(100% - 2px);
+          left: 6px;
+          z-index: 12;
+          width: min(240px, calc(100vw - 12px));
+          gap: 4px;
+          padding: 5px;
+          border: 1px solid var(--edge);
+          border-radius: 8px;
+          background: #0b1017;
+          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+        }
+        #project-menu button {
+          min-height: 36px;
+          padding: 0 9px;
+          text-align: left;
+          border: 1px solid rgba(255, 255, 255, 0.11);
+          border-radius: 5px;
+          background: rgba(255, 255, 255, 0.05);
+          color: var(--ink);
+          font: inherit;
+          cursor: pointer;
+        }
+        #project-menu button:hover { border-color: var(--edge); color: var(--accent); }
+
+        /* The clock takes whatever space is left and ellipsises rather than
+           widening the row. */
+        #transport-meta {
+          order: 3;
+          display: grid;
+          flex: 1 1 0;
+          min-width: 0;
+          overflow: hidden;
+          column-gap: 8px;
+        }
+        /* Only the clock survives at this width; the song name and status line
+           already ellipsise to nothing useful. */
+        #transport-track,
+        #audio-status { display: none; }
+        #volume-control { order: 4; flex: 0 0 auto; }
+        #volume { width: 56px; }
+        /* "Collapse timeline" is far too wide for the playback row. The label
+           is set as textContent by main.ts, so it is hidden with font-size
+           and replaced by a caret; `title` and `aria-expanded` still describe
+           the action. */
+        #transport #btn-dock {
+          order: 5;
+          flex: 0 0 30px;
+          width: 30px;
+          min-width: 30px;
+          min-height: 32px;
+          padding: 0;
+          margin-left: 0;
+          font-size: 0;
+        }
+        #transport #btn-dock::before {
+          content: '⌄';
+          font-size: 13px;
+          line-height: 1;
+        }
+
+        /* --- Clip inspector: mode + action, then timing + colour --------- */
+        #clip-inspector {
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 4px 8px;
+          padding: 5px 8px;
+        }
+        /* The selection readout is already hidden here; the empty wrapper would
+           still contribute a flex gap between the mode switch and the action. */
+        #clip-inspector .inspector-target { display: none; }
         #clip-inspector #btn-cue-delete,
         #clip-inspector #btn-cue-copy,
         #clip-inspector #btn-cue-paste { display: none; }
@@ -1498,12 +1629,59 @@
         #clip-inspector .clip-field { gap: 0; }
         .color-swatch { width: 14px; height: 14px; }
         #cue-color .color-swatch { width: 20px; height: 20px; }
-        #zoom-tools { right: 8px; bottom: 8px; gap: 4px; padding: 4px 6px; }
-        #zoom-tools input { width: 64px; }
-        #volume { width: 64px; }
+
+        /* --- Zoom / loop tools ------------------------------------------ */
+        /* Zoom matters most here: pinch-to-zoom on the timeline is not
+           implemented, so − / + / Fit are the only way to change the scale.
+           Rather than floating a pill over the lowest lane, the toolbar
+           becomes the dock's footer: full width, one row, finger-sized
+           controls, with the slider taking all the space left over. Loop
+           controls are playback scaffolding for editing and are hidden. */
+        #zoom-tools {
+          /* `position: relative` with every offset cleared: the base rule is
+             `absolute; right: 14px; bottom: 12px`, which would shift the footer
+             even as a grid item. */
+          position: relative;
+          grid-column: 1 / -1;
+          grid-row: 4;
+          left: auto;
+          right: auto;
+          bottom: auto;
+          flex-wrap: nowrap;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 10px;
+          border: 0;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 0;
+          background: #0a0d13;
+          box-shadow: none;
+          backdrop-filter: none;
+        }
+        /* With the fixture side panel open the timeline column is too narrow
+           for a usable slider, and the panel is the focus anyway. */
+        #timeline-dock.has-panel #zoom-tools { display: none; }
+        #zoom-tools button {
+          flex: 0 0 auto;
+          min-width: 36px;
+          height: 34px;
+          padding: 0 9px;
+          font-size: 13px;
+        }
+        #zoom-tools input {
+          flex: 1 1 auto;
+          width: auto;
+          min-width: 0;
+          height: 34px;
+        }
+        #btn-zoom-fit { min-width: 44px; }
         #zoom-percent { display: none; }
+        #btn-loop-fit,
+        #btn-loop { display: none; }
+        /* No floating bar to clear any more, so the padded tail can go. */
+        #arrangement-content { padding-bottom: 8px; }
+
         #hint { display: none; }
-        :root { --track-width: 145px; }
       }
 
       /* --- LED walls ------------------------------------------------------ */

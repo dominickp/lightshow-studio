@@ -106,6 +106,7 @@ import { setupPhotosensitivityNotice } from './ui/photosensitivity';
 import { createTimingEditor } from './ui/timing-editor';
 import { createColorPicker } from './ui/color-picker';
 import { installLookEditor } from './ui/look-editor';
+import { installProjectMenu } from './ui/project-menu';
 import { Stage } from './stage';
 import { Post } from './post';
 
@@ -1518,6 +1519,99 @@ ui.arrangementScroll.addEventListener('auxclick', (event) => {
   if (event.button === 1) event.preventDefault();
 });
 window.addEventListener('blur', () => endTimelinePan());
+
+// --- Touch panning --------------------------------------------------------
+// On phones the timeline has no middle button, so a horizontal drag on the
+// time axis pans the whole surface the way middle-drag does on desktop, and a
+// tap on the waveform (or ruler) seeks. Lanes keep their mouse gestures; touch
+// never starts a clip create/move/resize, which is the mobile-editing work
+// that is still to be designed.
+//
+// Only `pointerType === 'touch'` is intercepted, so mouse and pen behaviour on
+// desktop is unchanged. The track-name gutter is excluded so tapping a fixture
+// name still opens its panel.
+const TOUCH_PAN_SLOP_PX = 8;
+type TouchPan = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  startScrollLeft: number;
+  /** Set once the finger has travelled past the slop; a tap never pans. */
+  panning: boolean;
+  /** Time-axis tap seeks; a card tap selects instead. */
+  seekOnTap: boolean;
+  /** Card under the finger at touchstart, if any. */
+  cueId: string | null;
+};
+let touchPan: TouchPan | null = null;
+
+const endTouchPan = (event?: PointerEvent): void => {
+  if (touchPan === null) return;
+  if (event !== undefined && event.pointerId !== touchPan.pointerId) return;
+  const { pointerId, panning, seekOnTap, startX, cueId } = touchPan;
+  touchPan = null;
+  ui.arrangementScroll.classList.remove('panning');
+  if (ui.arrangementScroll.hasPointerCapture(pointerId)) {
+    ui.arrangementScroll.releasePointerCapture(pointerId);
+  }
+  if (panning) return;
+  // A tap either selects the card it landed on or seeks the timeline. The
+  // waveform's and lanes' own pointerdown handlers never run because touch is
+  // claimed in the capture phase above.
+  if (cueId !== null) {
+    arrangement.selectCueById(cueId);
+    return;
+  }
+  if (seekOnTap) clock.seek(rulerTimeAt(startX));
+};
+
+ui.arrangementScroll.addEventListener('pointerdown', (event) => {
+  if (event.pointerType !== 'touch' || currentTimeline === null) return;
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+  // Fixture names, the visibility toggle and the venue button are ordinary
+  // taps; leave them to the existing handlers. The waveform's resize grip is a
+  // drag handle, not a pan surface.
+  if (target.closest('.track-name, #waveform-resizer') !== null) return;
+  const onTimeAxis = target.closest('.fixture-lane, .ruler-track') !== null;
+  if (!onTimeAxis) return;
+  endTouchPan();
+  const clip = target.closest<HTMLElement>('.arrangement-clip');
+  touchPan = {
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    startScrollLeft: ui.arrangementScroll.scrollLeft,
+    panning: false,
+    seekOnTap: target.closest('#waveform, #timeline-ruler') !== null,
+    cueId: clip?.dataset.cueId ?? null,
+  };
+  // Keep lane and ruler gestures out of the touch path.
+  event.stopPropagation();
+}, { capture: true });
+
+ui.arrangementScroll.addEventListener('pointermove', (event) => {
+  if (touchPan === null || event.pointerId !== touchPan.pointerId) return;
+  const dx = event.clientX - touchPan.startX;
+  const dy = event.clientY - touchPan.startY;
+  if (!touchPan.panning) {
+    // Vertical intent is left to native scrolling (`touch-action: pan-y`), so
+    // only a mostly-horizontal drag becomes a pan.
+    if (Math.abs(dx) < TOUCH_PAN_SLOP_PX) return;
+    if (Math.abs(dx) <= Math.abs(dy)) {
+      touchPan = null;
+      return;
+    }
+    touchPan.panning = true;
+    ui.arrangementScroll.classList.add('panning');
+    ui.arrangementScroll.setPointerCapture(touchPan.pointerId);
+  }
+  event.preventDefault();
+  ui.arrangementScroll.scrollLeft = touchPan.startScrollLeft - dx;
+}, { capture: true });
+
+ui.arrangementScroll.addEventListener('pointerup', (event) => endTouchPan(event), { capture: true });
+ui.arrangementScroll.addEventListener('pointercancel', (event) => endTouchPan(event), { capture: true });
 
 const ZOOM_SLIDER_STEPS = 1000;
 
@@ -2973,6 +3067,7 @@ installKeyboardShortcuts({
 
 ui.projectSave.addEventListener('click', saveProject);
 ui.projectOpen.addEventListener('click', () => ui.projectFile.click());
+installProjectMenu(ui);
 ui.projectFile.addEventListener('change', () => {
   const file = ui.projectFile.files?.[0];
   ui.projectFile.value = '';

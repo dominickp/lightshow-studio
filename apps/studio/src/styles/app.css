@@ -716,14 +716,23 @@
          and recent colors live in the popover, so the bar never grows. */
       #cue-color { display: flex; align-items: center; gap: 6px; }
       #cue-color[data-disabled='true'] { opacity: 0.4; }
-      /* Both bar swatches share one size/shape so they read as a pair. */
+      /* Both bar swatches share one size/shape so they read as a pair. The
+         palette is intentionally muted here: the toolbar sits next to the
+         neutral copy/paste buttons, and fully saturated swatches read as
+         selection state rather than as the clip's color. Hover restores most
+         of the vibrancy so the choice is still legible up close. The popover
+         palette keeps its full saturation. */
       #cue-color .color-swatch {
         width: 24px;
         height: 24px;
         border-radius: 5px;
-        border-color: rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.22);
+        filter: saturate(0.62) brightness(0.9);
       }
-      #cue-color .color-swatch:not(:disabled):hover { transform: none; filter: brightness(1.15); }
+      #cue-color .color-swatch.selected {
+        border-color: rgba(243, 251, 255, 0.75);
+      }
+      #cue-color .color-swatch:not(:disabled):hover { transform: none; filter: saturate(0.85) brightness(1.05); }
       .cp-palette { display: flex; flex-wrap: wrap; gap: 5px; }
       .cp-palette .color-swatch { width: 20px; height: 20px; border-radius: 50%; }
       .color-swatch {

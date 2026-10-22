@@ -1814,25 +1814,6 @@ const zoomToSlider = (zoom: number): number =>
 const sliderToZoom = (value: number): number =>
   MIN_PIXELS_PER_SECOND * Math.pow(ZOOM_RANGE, value / ZOOM_SLIDER_STEPS);
 
-const rulerFrame = { id: 0, zoom: 0, width: 0 };
-
-/**
- * Repaint the ruler on the next animation frame, coalescing bursts of zoom
- * steps (slider drags, Ctrl+wheel) into one paint. The ruler canvas spans the
- * whole song, so painting it synchronously per zoom step blocked the main
- * thread for 50–125 ms at high zoom.
- */
-const scheduleRuler = (width: number, zoom: number): void => {
-  rulerFrame.zoom = zoom;
-  rulerFrame.width = width;
-  if (rulerFrame.id !== 0) return;
-  rulerFrame.id = requestAnimationFrame(() => {
-    rulerFrame.id = 0;
-    if (currentTimeline === null) return;
-    createRuler(ui.ruler, currentTimeline, rulerFrame.width, rulerFrame.zoom);
-  });
-};
-
 const setZoom = (nextZoom: number, anchorClientX?: number): void => {
   if (currentTimeline === null) return;
   const previousZoom = arrangement.zoomLevel;
@@ -1846,7 +1827,7 @@ const setZoom = (nextZoom: number, anchorClientX?: number): void => {
   arrangement.setZoom(zoom);
   const width = currentTimeline.durationSec * zoom;
   ui.waveform.style.width = `${width}px`;
-  scheduleRuler(width, zoom);
+  createRuler(ui.ruler, currentTimeline, width, zoom);
   ui.zoomLevel.value = String(zoomToSlider(zoom));
   ui.zoomPercent.textContent = `${Math.round((zoom / PIXELS_PER_SECOND) * 100)}%`;
   const nextScroll = Math.max(0, anchorTime * zoom + trackWidth - anchorX);

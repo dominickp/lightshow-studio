@@ -87,6 +87,14 @@ import {
   type TimelineMode,
   createRuler,
 } from './arrangement';
+import {
+  barBeatLabel,
+  barLengthSec,
+  formatClock,
+  showTime,
+  snapTimeToBar,
+  snapTimeToGrid,
+} from './arrangement/time';
 import { kelvinToCss, kelvinToRgb } from './kelvin';
 import { clamp } from './lib/math';
 import { PerfMonitor } from './app/perf';
@@ -99,6 +107,8 @@ import {
   readPreference,
   writePreference,
 } from './ui/preferences';
+import { collectUi } from './ui/elements';
+import { installKeyboardShortcuts } from './ui/keyboard';
 import { enhanceSlider, parseNumericText } from './ui/slider';
 import { setupPhotosensitivityNotice } from './ui/photosensitivity';
 import { Stage } from './stage';
@@ -220,225 +230,7 @@ let activeCount = show.fixtures.length;
 
 stage.setActiveCount(activeCount);
 
-const element = <T extends HTMLElement>(id: string): T => {
-  const found = document.getElementById(id);
-  if (found === null) throw new Error(`missing #${id}`);
-  return found as T;
-};
-
-const ui = {
-  statsPanel: element('stats'),
-  controlsPanel: element('controls'),
-  controlsToggle: element<HTMLButtonElement>('controls-toggle'),
-  hint: element<HTMLDetailsElement>('hint'),
-  fps: element('stat-fps'),
-  ms: element('stat-ms'),
-  calls: element('stat-calls'),
-  tris: element('stat-tris'),
-  res: element('stat-res'),
-  backend: element('stat-backend'),
-  fixtures: element('stat-fixtures'),
-  time: element('stat-time'),
-  latency: element('stat-latency'),
-  loop: element('stat-loop'),
-  transportTime: element('transport-time'),
-  transportTrack: element('transport-track'),
-  audioStatus: element('audio-status'),
-  play: element<HTMLButtonElement>('btn-play'),
-  chooseAudio: element<HTMLButtonElement>('btn-audio'),
-  audioFile: element<HTMLInputElement>('audio-file'),
-  projectOpen: element<HTMLButtonElement>('btn-project-open'),
-  projectSave: element<HTMLButtonElement>('btn-project-save'),
-  projectFile: element<HTMLInputElement>('project-file'),
-  projectStatus: element('project-status'),
-  volume: element<HTMLInputElement>('volume'),
-  vol: element<HTMLButtonElement>('btn-vol'),
-  bloom: element<HTMLButtonElement>('btn-bloom'),
-  grain: element<HTMLButtonElement>('btn-grain'),
-  audience: element<HTMLButtonElement>('btn-audience'),
-  strobe: element<HTMLButtonElement>('btn-strobe'),
-  strobeStatus: element('strobe-status'),
-  haze: element<HTMLInputElement>('haze'),
-  hazeValue: element('haze-value'),
-  view: element<HTMLButtonElement>('btn-view'),
-  orbitPill: element<HTMLElement>('orbit-pill'),
-  orbitPillLabel: element('orbit-pill-label'),
-    stats: element<HTMLButtonElement>('btn-stats'),
-    dock: element('timeline-dock'),
-    dockResizer: element('dock-resizer'),
-    dockToggle: element<HTMLButtonElement>('btn-dock'),
-    waveformResizer: element('waveform-resizer'),
-    sidePanel: element<HTMLElement>('side-panel'),
-    sidePanelResizer: element('side-panel-resizer'),
-    sidePanelClose: element<HTMLButtonElement>('fixture-panel-close'),
-    panelFixtureKind: element('fixture-panel-kind'),
-    panelFixtureName: element('fixture-panel-name'),
-    panelFixtureMeta: element('fixture-panel-meta'),
-    panelCapabilities: element('panel-capabilities'),
-    panelClipCount: element('panel-clip-count'),
-    panelClipActive: element('panel-clip-active'),
-    cueLookField: element('cue-look-field'),
-    lookEdit: element<HTMLButtonElement>('btn-look-edit'),
-    lookEditor: element<HTMLElement>('look-editor'),
-    lookGlyph: element('le-glyph'),
-    lookTitle: element('le-title'),
-    lookGrid: element('le-grid'),
-    lookControls: element('le-controls'),
-    lookChooseGrid: element<HTMLElement>('le-choose-grid'),
-    lookUploadGrid: element<HTMLElement>('le-upload-grid'),
-    lookUploadEmpty: element<HTMLElement>('le-upload-empty'),
-    lookMediaFooter: element<HTMLElement>('le-media-footer'),
-    lookMediaCurrent: element<HTMLElement>('le-media-current'),
-    lookMediaFit: element<HTMLSelectElement>('le-media-fit'),
-    lookMediaRemove: element<HTMLButtonElement>('le-media-remove'),
-    lookUpload: element<HTMLButtonElement>('le-upload'),
-    lookFile: element<HTMLInputElement>('le-file'),
-    lookPresets: element('le-presets'),
-    lookClose: element<HTMLButtonElement>('le-close'),
-    lookTabLook: element<HTMLButtonElement>('le-tab-look'),
-    lookTabChoose: element<HTMLButtonElement>('le-tab-choose'),
-    lookTabUpload: element<HTMLButtonElement>('le-tab-upload'),
-    lookPanelLook: element<HTMLElement>('le-panel-look'),
-    lookPanelChoose: element<HTMLElement>('le-panel-choose'),
-    lookPanelUpload: element<HTMLElement>('le-panel-upload'),
-    surfacePane: element('surface-pane'),
-    surfaceSummary: element('surface-summary'),
-    surfaceWidth: element<HTMLInputElement>('surface-width'),
-    surfaceWidthValue: element('surface-width-value'),
-    surfaceHeight: element<HTMLInputElement>('surface-height'),
-    surfaceHeightValue: element('surface-height-value'),
-    surfacePitch: element<HTMLInputElement>('surface-pitch'),
-    surfacePitchValue: element('surface-pitch-value'),
-    surfaceGap: element<HTMLInputElement>('surface-gap'),
-    surfaceGapValue: element('surface-gap-value'),
-    surfaceBrightness: element<HTMLInputElement>('surface-brightness'),
-    surfaceBrightnessValue: element('surface-brightness-value'),
-    surfaceBlack: element<HTMLInputElement>('surface-black'),
-    surfaceBlackValue: element('surface-black-value'),
-    surfaceGamma: element<HTMLInputElement>('surface-gamma'),
-    surfaceGammaValue: element('surface-gamma-value'),
-    surfaceEmit: element<HTMLInputElement>('surface-emit'),
-    surfaceEmitValue: element('surface-emit-value'),
-    panelSurfaceCount: element('panel-surface-count'),
-    panelSurfaceActive: element('panel-surface-active'),
-  waveform: element<HTMLCanvasElement>('waveform'),
-  waveformPlayhead: element('waveform-playhead'),
-  waveformHover: element('waveform-hover'),
-  tooltip: element('timeline-tooltip'),
-  arrangement: element('arrangement-rows'),
-  arrangementScroll: element('arrangement-scroll'),
-  ruler: element<HTMLCanvasElement>('timeline-ruler'),
-  cueAction: element<HTMLSelectElement>('cue-action'),
-  clipTiming: element<HTMLButtonElement>('btn-clip-timing'),
-  strobeEditor: element<HTMLElement>('strobe-editor'),
-  seClose: element<HTMLButtonElement>('se-close'),
-  seGlyph: element('se-glyph'),
-  seTitle: element('se-title'),
-  sePreview: element<HTMLCanvasElement>('se-preview'),
-  sePreviewCaption: element('se-preview-caption'),
-  sePulseSection: element('se-pulse-section'),
-  seShapeSection: element('se-shape-section'),
-  seRateLabel: element('se-rate-label'),
-  seRate: element<HTMLInputElement>('se-rate'),
-  seRateValue: element('se-rate-value'),
-  seRateChips: element('se-rate-chips'),
-  seAttack: element<HTMLInputElement>('se-attack'),
-  seAttackValue: element('se-attack-value'),
-  seRelease: element<HTMLInputElement>('se-release'),
-  seReleaseValue: element('se-release-value'),
-  seDepth: element<HTMLInputElement>('se-depth'),
-  seDepthValue: element('se-depth-value'),
-  seMoveSection: element('se-move-section'),
-  seMoveRate: element<HTMLInputElement>('se-move-rate'),
-  seMoveRateValue: element('se-move-rate-value'),
-  seMoveChips: element('se-move-chips'),
-  seMovePhase: element<HTMLInputElement>('se-move-phase'),
-  seMovePhaseValue: element('se-move-phase-value'),
-  seMovePhaseChips: element('se-move-phase-chips'),
-  sePanCenter: element<HTMLInputElement>('se-pan-center'),
-  sePanCenterValue: element('se-pan-center-value'),
-  sePanRange: element<HTMLInputElement>('se-pan-range'),
-  sePanRangeValue: element('se-pan-range-value'),
-  seTiltCenter: element<HTMLInputElement>('se-tilt-center'),
-  seTiltCenterValue: element('se-tilt-center-value'),
-  seTiltRange: element<HTMLInputElement>('se-tilt-range'),
-  seTiltRangeValue: element('se-tilt-range-value'),
-  seAimSection: element('se-aim-section'),
-  seAimPan: element<HTMLInputElement>('se-aim-pan'),
-  seAimPanValue: element('se-aim-pan-value'),
-  seAimTilt: element<HTMLInputElement>('se-aim-tilt'),
-  seAimTiltValue: element('se-aim-tilt-value'),
-  seAimPanTo: element<HTMLInputElement>('se-aim-pan-to'),
-  seAimPanToValue: element('se-aim-pan-to-value'),
-  seAimTiltTo: element<HTMLInputElement>('se-aim-tilt-to'),
-  seAimTiltToValue: element('se-aim-tilt-to-value'),
-  seAimTravel: element<HTMLInputElement>('se-aim-travel'),
-  seAimTravelValue: element('se-aim-travel-value'),
-  seAimEasing: element<HTMLSelectElement>('se-aim-easing'),
-  seFadeIn: element<HTMLInputElement>('se-fadein'),
-  seFadeInValue: element('se-fadein-value'),
-  seFadeOut: element<HTMLInputElement>('se-fadeout'),
-  seFadeOutValue: element('se-fadeout-value'),
-  cueColorField: element('cue-color-field'),
-  cueColor: element('cue-color'),
-  cueDelete: element<HTMLButtonElement>('btn-cue-delete'),
-  colorPicker: element<HTMLElement>('color-picker'),
-  colorPalette: element<HTMLElement>('cp-palette'),
-  colorPickerClose: element<HTMLButtonElement>('cp-close'),
-  colorPreview: element('cp-preview'),
-  colorInput: element<HTMLInputElement>('cp-color'),
-  hueGrid: element<HTMLElement>('cp-hue-grid'),
-  trackFilter: element<HTMLSelectElement>('track-filter'),
-  hideUnfiltered: element<HTMLButtonElement>('btn-hide-unfiltered'),
-  zoomIn: element<HTMLButtonElement>('btn-zoom-in'),
-  zoomOut: element<HTMLButtonElement>('btn-zoom-out'),
-  zoomFit: element<HTMLButtonElement>('btn-zoom-fit'),
-  zoomLevel: element<HTMLInputElement>('zoom-level'),
-  zoomPercent: element('zoom-percent'),
-  loopBtn: element<HTMLButtonElement>('btn-loop'),
-  loopFit: element<HTMLButtonElement>('btn-loop-fit'),
-  follow: element<HTMLButtonElement>('btn-follow'),
-  rulerPlayhead: element('ruler-playhead'),
-  selectedFixture: element('selected-fixture'),
-  modeDrop: element<HTMLButtonElement>('btn-mode-drop'),
-  modeSelect: element<HTMLButtonElement>('btn-mode-select'),
-  cueCopy: element<HTMLButtonElement>('btn-cue-copy'),
-  cuePaste: element<HTMLButtonElement>('btn-cue-paste'),
-  loading: element('loading'),
-  setupDimmer: element<HTMLInputElement>('setup-dimmer'),
-  setupDimmerValue: element('setup-dimmer-value'),
-  setupYaw: element<HTMLInputElement>('setup-yaw'),
-  setupYawValue: element('setup-yaw-value'),
-  setupPitch: element<HTMLInputElement>('setup-pitch'),
-  setupPitchValue: element('setup-pitch-value'),
-  setupSpreadRow: element('setup-spread-row'),
-  setupSpread: element<HTMLInputElement>('setup-spread'),
-  setupSpreadValue: element('setup-spread-value'),
-  setupName: element<HTMLInputElement>('setup-name'),
-  setupMount: element<HTMLSelectElement>('setup-mount'),
-  setupPositionRow: element('setup-position-row'),
-  setupPosition: element<HTMLInputElement>('setup-position'),
-  setupPositionValue: element('setup-position-value'),
-  setupLaserGroup: element('setup-laser-group'),
-  setupLaserPattern: element<HTMLSelectElement>('setup-laser-pattern'),
-  setupLaserBeams: element<HTMLInputElement>('setup-laser-beams'),
-  setupLaserBeamsValue: element('setup-laser-beams-value'),
-  setupLaserFan: element<HTMLInputElement>('setup-laser-fan'),
-  setupLaserFanValue: element('setup-laser-fan-value'),
-  rigList: element('rig-list'),
-  rigPane: element('rig-pane'),
-  fixturePane: element('fixture-pane'),
-  rigMenu: element<HTMLButtonElement>('btn-rig-menu'),
-  rigMenuCount: element('rig-menu-count'),
-  addLights: element<HTMLButtonElement>('btn-add-lights'),
-  removeFixture: element<HTMLButtonElement>('btn-remove-fixture'),
-  addDialog: element<HTMLDialogElement>('add-lights-dialog'),
-  addProfile: element<HTMLSelectElement>('add-profile'),
-  addMount: element<HTMLSelectElement>('add-mount'),
-  addCount: element<HTMLInputElement>('add-count'),
-  addSpacing: element<HTMLSelectElement>('add-spacing'),
-  addSummary: element('add-summary'),
-};
+const ui = collectUi();
 
 /**
  * The side panel shows one thing at a time: the rig (opened from the timeline's
@@ -1358,18 +1150,6 @@ ui.setupMount.addEventListener('change', () => {
 
 arrangement.selectFixture(show.fixtures[0]?.id ?? '');
 
-/** Choreography stays on the loop's bar grid even when the audio is not looping. */
-const showTime = (songSec: number): number => {
-  const length = Math.max(0.001, loopRegion.endSec - loopRegion.startSec);
-  return loopRegion.startSec + (((songSec - loopRegion.startSec) % length) + length) % length;
-};
-
-const formatClock = (seconds: number): string => {
-  const safe = Math.max(0, seconds);
-  const minutes = Math.floor(safe / 60);
-  return `${minutes}:${(safe - minutes * 60).toFixed(1).padStart(4, '0')}`;
-};
-
 // --- Render preferences (persisted) ---------------------------------------
 /**
  * View/render preferences are kept in localStorage so a refresh does not undo
@@ -1503,6 +1283,12 @@ const applyVolume = (persist = true): void => {
   ui.volume.classList.toggle('muted', muted);
   ui.volume.title = muted ? 'Muted — press M or move the slider to unmute' : 'Playback volume (M mutes)';
   if (persist) writePreference(VOLUME_KEY, String(volume));
+};
+
+/** M key: flip mute without persisting the change. */
+const toggleMute = (): void => {
+  muted = !muted;
+  applyVolume(false);
 };
 
 ui.volume.addEventListener('input', () => {
@@ -1885,38 +1671,6 @@ ui.arrangementScroll.addEventListener('wheel', (event) => {
 
 const MIN_LOOP_SEC = 0.25;
 
-const snapTime = (timeSec: number): number => {
-  const timeline = currentTimeline;
-  if (timeline === null) return timeSec;
-  if (timeline.bpm === null || timeline.bpm <= 0) {
-    return Math.max(0, Math.min(timeline.durationSec, timeSec));
-  }
-  const divisionSec = 60 / timeline.bpm / 4;
-  return Math.max(0, Math.min(
-    timeline.durationSec,
-    timeline.firstBeatSec + Math.round((timeSec - timeline.firstBeatSec) / divisionSec) * divisionSec,
-  ));
-};
-
-/** One measure in seconds; falls back to a second when the song has no beat grid. */
-const barLengthSec = (): number => {
-  const timeline = currentTimeline;
-  if (timeline === null || timeline.bpm === null || timeline.bpm <= 0) return 1;
-  return (60 / timeline.bpm) * Math.max(1, timeline.beatsPerBar);
-};
-
-/** Loop edges land on measure lines, so a drawn loop is always whole measures. */
-const snapTimeToBar = (timeSec: number): number => {
-  const timeline = currentTimeline;
-  if (timeline === null) return timeSec;
-  const clamped = Math.max(0, Math.min(timeline.durationSec, timeSec));
-  if (timeline.bpm === null || timeline.bpm <= 0) return Math.round(clamped);
-  const barSec = barLengthSec();
-  const snapped = timeline.firstBeatSec
-    + Math.round((clamped - timeline.firstBeatSec) / barSec) * barSec;
-  return Math.max(0, Math.min(timeline.durationSec, snapped));
-};
-
 /** Arrow-key seek: one 1/16 by default, one bar with Shift. */
 const seekBy = (direction: 1 | -1, coarse: boolean): void => {
   const timeline = currentTimeline;
@@ -1925,25 +1679,12 @@ const seekBy = (direction: 1 | -1, coarse: boolean): void => {
   const stepSec = bpm !== null && bpm > 0
     ? (coarse ? (60 / bpm) * timeline.beatsPerBar : 60 / bpm / 4)
     : (coarse ? 5 : 1);
-  clock.seek(snapTime(clock.time) + direction * stepSec);
-};
-
-const barBeatLabel = (timeSec: number): string => {
-  const timeline = currentTimeline;
-  if (timeline === null || timeline.bpm === null || timeline.bpm <= 0) {
-    return formatClock(timeSec);
-  }
-  const beatSec = 60 / timeline.bpm;
-  const beat = (timeSec - timeline.firstBeatSec) / beatSec;
-  const beatsPerBar = Math.max(1, timeline.beatsPerBar);
-  const bar = Math.floor(beat / beatsPerBar) + 1;
-  const beatInBar = Math.floor(((beat % beatsPerBar) + beatsPerBar) % beatsPerBar) + 1;
-  return `${bar}.${beatInBar}`;
+  clock.seek(snapTimeToGrid(timeline, clock.time) + direction * stepSec);
 };
 
 const showTimelineTooltip = (event: PointerEvent, timeSec: number, hint: string): void => {
   ui.tooltip.hidden = false;
-  ui.tooltip.textContent = `${barBeatLabel(timeSec)} · ${formatClock(timeSec)} · ${hint}`;
+  ui.tooltip.textContent = `${barBeatLabel(currentTimeline, timeSec)} · ${formatClock(timeSec)} · ${hint}`;
   ui.tooltip.style.left = `${event.clientX + 14}px`;
   ui.tooltip.style.top = `${event.clientY + 16}px`;
 };
@@ -2067,8 +1808,8 @@ const LOOP_GRIP_PX = 8;
 const beginLoopDraw = (timeSec: number): void => {
   const timeline = currentTimeline;
   if (timeline === null) return;
-  const barSec = barLengthSec();
-  const anchor = Math.min(snapTimeToBar(timeSec), Math.max(0, timeline.durationSec - barSec));
+  const barSec = barLengthSec(currentTimeline);
+  const anchor = Math.min(snapTimeToBar(currentTimeline, timeSec), Math.max(0, timeline.durationSec - barSec));
   loopGesture = { edge: 'new', anchorSec: anchor };
   setLoopRegion(anchor, Math.min(timeline.durationSec, anchor + barSec), false);
 };
@@ -2076,9 +1817,9 @@ const beginLoopDraw = (timeSec: number): void => {
 /** Extend the loop being drawn; both edges stay on measure lines. */
 const updateLoopDraw = (timeSec: number): void => {
   if (loopGesture === null || loopGesture.edge !== 'new' || currentTimeline === null) return;
-  const barSec = barLengthSec();
+  const barSec = barLengthSec(currentTimeline);
   const anchor = loopGesture.anchorSec;
-  const time = snapTimeToBar(timeSec);
+  const time = snapTimeToBar(currentTimeline, timeSec);
   let start = Math.min(anchor, time);
   let end = Math.max(anchor, time);
   if (end - start < barSec - 1e-6) {
@@ -2137,7 +1878,7 @@ ui.ruler.addEventListener('pointerdown', (event) => {
 ui.ruler.addEventListener('pointermove', (event) => {
   if (!ui.ruler.hasPointerCapture(event.pointerId)) return;
   if (currentTimeline === null) return;
-  const time = snapTime(rulerTimeAt(event.clientX));
+  const time = snapTimeToGrid(currentTimeline, rulerTimeAt(event.clientX));
   if (loopGesture === null) {
     clock.seek(time);
     return;
@@ -2217,48 +1958,7 @@ window.addEventListener('keyup', (event) => {
   if (event.key === 'Shift') setLoopMode(false);
 });
 window.addEventListener('blur', () => setLoopMode(false));
-const isTextEntry = (target: EventTarget | null): boolean =>
-  target instanceof HTMLInputElement ||
-  target instanceof HTMLSelectElement ||
-  target instanceof HTMLTextAreaElement;
 
-window.addEventListener('keydown', (event) => {
-  if (!(event.ctrlKey || event.metaKey)) return;
-  if (isTextEntry(event.target)) return;
-  if (event.key === '+' || event.key === '=') {
-    event.preventDefault();
-    setZoom(arrangement.zoomLevel * 1.25);
-  } else if (event.key === '-') {
-    event.preventDefault();
-    setZoom(zoomOut(arrangement.zoomLevel * 0.8));
-  } else if (event.key === '0') {
-    event.preventDefault();
-    ui.zoomFit.click();
-  } else if (event.key === 'z' || event.key === 'Z') {
-    event.preventDefault();
-    if (event.shiftKey) arrangement.redo();
-    else arrangement.undo();
-  } else if (event.key === 'y' || event.key === 'Y') {
-    event.preventDefault();
-    arrangement.redo();
-  } else if (event.key === 'c' || event.key === 'C') {
-    if (arrangement.selectionCount === 0) return;
-    event.preventDefault();
-    arrangement.copySelected();
-    syncCueInspector(arrangement.selectedFixture, arrangement.selectedCues, arrangement.selectedSurface);
-  } else if (event.key === 'v' || event.key === 'V') {
-    event.preventDefault();
-    // Shift pastes at the pointer instead of after the selection, so a copied
-    // block can be dropped exactly where the user is looking.
-    if (event.shiftKey) arrangement.pasteAtPointer();
-    else arrangement.paste();
-  } else if (event.key === 'a' || event.key === 'A') {
-    // Only hijack Select All in select mode; drop mode keeps browser behaviour.
-    if (arrangement.timelineMode !== 'select') return;
-    event.preventDefault();
-    arrangement.selectAll();
-  }
-});
 const selectedAction = () => arrangement.selectedActions.find((action) => action === ui.cueAction.value)
   ?? arrangement.suggestedAction;
 ui.cueAction.addEventListener('change', () => {
@@ -3455,11 +3155,13 @@ enhanceSlider(ui.surfaceGamma, ui.surfaceGammaValue, {
 // Volume has no numeric readout; snapping alone is enough there.
 enhanceSlider(ui.volume);
 
-ui.cueDelete.addEventListener('click', () => arrangement.deleteSelected());
-ui.cueCopy.addEventListener('click', () => {
+const copySelection = (): void => {
   arrangement.copySelected();
   syncCueInspector(arrangement.selectedFixture, arrangement.selectedCues, arrangement.selectedSurface);
-});
+};
+
+ui.cueDelete.addEventListener('click', () => arrangement.deleteSelected());
+ui.cueCopy.addEventListener('click', copySelection);
 ui.cuePaste.addEventListener('click', () => arrangement.paste());
 ui.trackFilter.addEventListener('change', () => {
   applyTrackFilter();
@@ -3560,99 +3262,6 @@ ui.haze.addEventListener('input', () => {
 ui.view.addEventListener('click', () => {
   stage.nextView();
   persistRender();
-});
-
-/* Spaces must always play/pause, whatever control a previous click left
- * focused — an open `<select>` dropdown or a focused button would otherwise
- * swallow it. Listen in the capture phase and stop propagation so neither the
- * native control nor the shortcut handler below sees the key. Text entry
- * fields keep Space for typing. */
-window.addEventListener(
-  'keydown',
-  (event) => {
-    if (event.code !== 'Space' || event.repeat) return;
-    if (event.ctrlKey || event.metaKey || event.altKey) return;
-    const target = event.target;
-    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
-    if (target instanceof HTMLElement && target.isContentEditable) return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (target instanceof HTMLElement) target.blur();
-    togglePlay();
-  },
-  true,
-);
-
-/* Delete/Backspace remove the selected clips the same way: capture phase, so a
- * focused slider, button or `<select>` does not swallow the key. Real text
- * entry still keeps Backspace for editing, and the key is only claimed when
- * there is actually a clip selection (Backspace may otherwise mean "back"). */
-const isTypingTarget = (target: EventTarget | null): boolean => {
-  if (target instanceof HTMLTextAreaElement) return true;
-  if (target instanceof HTMLInputElement) {
-    return !['range', 'checkbox', 'radio', 'button', 'submit', 'reset', 'color', 'file'].includes(target.type);
-  }
-  return target instanceof HTMLElement && target.isContentEditable;
-};
-
-window.addEventListener(
-  'keydown',
-  (event) => {
-    if (event.key !== 'Backspace' && event.key !== 'Delete') return;
-    if (event.ctrlKey || event.metaKey || event.altKey) return;
-    if (isTypingTarget(event.target)) return;
-    if (!arrangement.hasSelection) return;
-    event.preventDefault();
-    event.stopPropagation();
-    arrangement.deleteSelected();
-  },
-  true,
-);
-
-window.addEventListener('keydown', (event) => {
-  if (isTextEntry(event.target)) return;
-  // Bare-letter shortcuts must not fire as Ctrl/Cmd combos: Ctrl+C copies
-  // clips, but it also used to toggle the camera via the `c` shortcut.
-  if (event.ctrlKey || event.metaKey || event.altKey) return;
-  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-    event.preventDefault();
-    seekBy(event.key === 'ArrowRight' ? 1 : -1, event.shiftKey);
-  } else if (event.key === 'd' || event.key === 'D') {
-    applyTimelineMode('drop');
-  } else if (event.key === 's' || event.key === 'S') {
-    applyTimelineMode('select');
-  } else if (event.key === 'Escape') {
-    if (ui.hint.open) ui.hint.open = false;
-    else arrangement.clearSelection();
-  } else if (event.key === '?') {
-    ui.hint.open = !ui.hint.open;
-  } else if (event.key === 'm' || event.key === 'M') {
-    muted = !muted;
-    applyVolume(false);
-  } else if (event.key === 'x' || event.key === 'X') {
-    toggleStats();
-  } else if (event.key === '`' || event.key === '~') {
-    toggleControls();
-  } else if (event.key === 'l' || event.key === 'L') {
-    clearLoop();
-  } else if (event.key === 'c' || event.key === 'C') {
-    stage.nextView();
-  } else if (event.key === 'o' || event.key === 'O') {
-    stage.toggleOrbit();
-  } else if (event.key === 'h' || event.key === 'H') {
-    /* Cycle haze: clear → light → club → heavy, so the beam/pool balance can
-     * be compared without opening the panel. */
-    const next = [0, 0.3, 0.65, 1].find((value) => value > stage.hazeLevel + 0.01) ?? 0;
-    stage.setHaze(next);
-    syncButtons();
-  } else if (event.key === 'g' || event.key === 'G') {
-    post.setGrain(!post.grain);
-    syncButtons();
-  } else if (event.key === 'a' || event.key === 'A') {
-    stage.toggleAudience();
-    syncButtons();
-  }
-  syncButtons();
 });
 
 const resizeViewport = (): void => {
@@ -3881,7 +3490,7 @@ const updateStats = (now: number, states: readonly FixtureState[], songTime: num
   ui.fixtures.textContent = `${active} active / ${activeCount} shown`;
 
   const { beatsPerBar } = show.beatGrid;
-  const beat = timeToBeat(show.beatGrid, showTime(songTime));
+  const beat = timeToBeat(show.beatGrid, showTime(loopRegion, songTime));
   const bar = Math.floor(beat / beatsPerBar) + 1;
   const beatInBar = Math.floor(((beat % beatsPerBar) + beatsPerBar) % beatsPerBar) + 1;
   ui.time.textContent = `${bar}.${beatInBar}`;
@@ -3915,7 +3524,7 @@ const frame = (now: number): void => {
       scrollMetrics.left = next;
     }
   }
-  const showAt = showTime(songTime);
+  const showAt = showTime(loopRegion, songTime);
   const states = show.fixtures.map((fixture) => {
     const trackClips = (cuesByFixture.get(fixture.id) ?? [])
       .filter((cue) => cue.surfaceId === undefined)
@@ -4197,15 +3806,26 @@ const openProject = async (file: File): Promise<void> => {
   });
 };
 
-ui.projectSave.addEventListener('click', saveProject);
-// Browsers map Ctrl+S/Cmd+S to "save page"; take it over so the app saves the
-// project instead, including while a text field has focus.
-window.addEventListener('keydown', (event) => {
-  if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
-  if (event.key !== 's' && event.key !== 'S') return;
-  event.preventDefault();
-  if (!event.repeat) saveProject();
+installKeyboardShortcuts({
+  ui,
+  arrangement,
+  stage,
+  post,
+  syncButtons,
+  togglePlay,
+  toggleMute,
+  toggleStats,
+  toggleControls,
+  seekBy,
+  applyTimelineMode,
+  clearLoop,
+  setZoom,
+  zoomOut,
+  copySelection,
+  saveProject,
 });
+
+ui.projectSave.addEventListener('click', saveProject);
 ui.projectOpen.addEventListener('click', () => ui.projectFile.click());
 ui.projectFile.addEventListener('change', () => {
   const file = ui.projectFile.files?.[0];

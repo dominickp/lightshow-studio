@@ -1,7 +1,7 @@
 name: Deploy studio to GitHub Pages
 
 # Builds `apps/studio` and publishes it as a project site at
-# https://<owner>.github.io/dmx-sim/
+# https://<owner>.github.io/lightshow-studio/
 #
 # One-time setup: Settings → Pages → Build and deployment → Source:
 # "GitHub Actions". After that every push to `main` redeploys.

@@ -403,7 +403,8 @@ participate in DMX fixture evaluation.
   `source` is namespaced:
 
   - `bundled:<id>` resolves to a clip shipped with the app (the Mantissa loops)
-    and is not copied into bundles.
+    and is not copied into bundles. The shipped loops are 480x320, matching the
+    simulated LED grid rather than a full-resolution video source.
   - `local:<uuid>` is a transient reference to a file in the browser's media
     library (IndexedDB). It only exists on the machine that imported it, and
     **Save rewrites it to `embedded:<sha256>`**.

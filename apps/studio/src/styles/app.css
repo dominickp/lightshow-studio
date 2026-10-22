@@ -1586,6 +1586,15 @@
 
       .le-media-empty { margin: 6px 0 0; color: var(--dim); font-size: 10px; line-height: 1.35; }
       .le-media-empty[hidden] { display: none; }
+      /* Attribution for the bundled loops, below the gallery. */
+      .le-media-credit { margin: 6px 0 0; color: var(--dim); font-size: 9px; line-height: 1.35; }
+      .le-media-credit a {
+        color: #cdb2ff;
+        text-decoration: none;
+        border-bottom: 1px solid rgba(205, 178, 255, 0.35);
+      }
+      .le-media-credit a:hover { color: #f3fbff; border-bottom-color: #f3fbff; }
+      .le-media-credit a:focus-visible { outline: 1px solid #a06bff; outline-offset: 1px; }
       .le-upload-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
       #look-editor #le-upload {
         flex: 1 1 auto;

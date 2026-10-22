@@ -47,10 +47,46 @@ export function gridModeFor(
   return barWidth >= 12 ? 'bars' : 'none';
 }
 
-function gridStyleFor(timeline: CueTimeline, pixelsPerSecond: number): string {
+export function gridStyleFor(timeline: CueTimeline, pixelsPerSecond: number): string {
   const beatWidth = beatWidthFor(timeline, pixelsPerSecond);
   if (beatWidth === null) return '';
   return `--sixteenth-width:${beatWidth / 4}px;--beat-width:${beatWidth}px;--bar-width:${beatWidth * timeline.beatsPerBar}px;--grid-offset-x:${timeline.firstBeatSec * pixelsPerSecond}px;`;
+}
+
+/**
+ * Loop-marker geometry shared by `loopMarkup` (initial build) and the
+ * incremental zoom update in `Arrangement.applyZoom`, so the two can never
+ * disagree about where the loop band sits.
+ */
+export interface LoopGeometry {
+  /** Left edge of the loop band in pixels, or `null` when there is no loop. */
+  left: number | null;
+  /** Width of the loop band in pixels (0 when there is no loop). */
+  loopWidth: number;
+  /** Width of the shaded region before the loop, in pixels. */
+  beforeWidth: number;
+  /** Width of the shaded region after the loop, in pixels. */
+  afterWidth: number;
+}
+
+export function loopGeometry(
+  timeline: CueTimeline,
+  pixelsPerSecond: number,
+  width: number,
+): LoopGeometry {
+  const start = timeline.loopStartSec;
+  const end = timeline.loopEndSec;
+  if (start === undefined || end === undefined || end <= start) {
+    return { left: null, loopWidth: 0, beforeWidth: 0, afterWidth: 0 };
+  }
+  const left = clamp(start * pixelsPerSecond, 0, width);
+  const right = clamp(end * pixelsPerSecond, 0, width);
+  return {
+    left,
+    loopWidth: Math.max(0, right - left),
+    beforeWidth: left,
+    afterWidth: width - right,
+  };
 }
 
 export function loopMarkup(

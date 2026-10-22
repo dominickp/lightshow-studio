@@ -15,7 +15,9 @@ import {
   buildRowsMarkup,
   capabilitySummary,
   gridModeFor,
+  gridStyleFor,
   kindLabel,
+  loopGeometry,
 } from './arrangement/markup';
 import { paintClipOverlay } from './arrangement/paint';
 import { defaultClipLength, snapDelta as snapDeltaToGrid, snapTime } from './arrangement/time';
@@ -471,7 +473,71 @@ export class Arrangement {
 
   setZoom(pixelsPerSecond: number): void {
     this.pixelsPerSecond = clamp(pixelsPerSecond, MIN_PIXELS_PER_SECOND, MAX_PIXELS_PER_SECOND);
-    this.renderRows();
+    this.applyZoom();
+  }
+
+  /**
+   * Update zoom-dependent geometry in place instead of rebuilding the row DOM.
+   *
+   * `renderRows` rebuilds every lane from `innerHTML`, which costs 50–125 ms per
+   * zoom step (measured with 18 long tasks across 40 zoom clicks). Only clip
+   * positions, lane widths, the grid background and loop markers actually
+   * depend on the zoom level, so those are patched directly on the existing
+   * elements. Clip *count* never changes during a zoom, so re-querying and
+   * re-measuring is unnecessary; `renderRows` still owns structural changes.
+   */
+  private applyZoom(): void {
+    const timeline = this.timeline;
+    if (timeline === null) return;
+    const pps = this.pixelsPerSecond;
+    this.root.dataset.grid = gridModeFor(timeline, pps);
+    const gridStyle = gridStyleFor(timeline, pps);
+    const secondsWidth = timeline.durationSec * pps;
+    const cueById = new Map(this.cues.map((cue) => [cue.id, cue]));
+    for (const lane of this.root.querySelectorAll<HTMLElement>('.fixture-lane')) {
+      lane.setAttribute('style', `width:${secondsWidth}px;${gridStyle}`);
+    }
+    // Loop markers repeat in every lane; patch them from the shared geometry.
+    const loop = loopGeometry(timeline, pps, secondsWidth);
+    const hasLoop = loop.left !== null;
+    for (const marker of this.root.querySelectorAll<HTMLElement>(
+      '.lane-loop, .lane-outside',
+    )) {
+      if (!hasLoop) {
+        marker.remove();
+        continue;
+      }
+      if (marker.classList.contains('lane-loop')) {
+        marker.style.left = `${loop.left}px`;
+        marker.style.width = `${loop.loopWidth}px`;
+      } else if (marker.style.left === '0px') {
+        marker.style.width = `${loop.beforeWidth}px`;
+      } else {
+        marker.style.left = `${secondsWidth - loop.afterWidth}px`;
+        marker.style.width = `${loop.afterWidth}px`;
+      }
+    }
+    for (const element of this.clipElements) {
+      const cue = cueById.get(element.dataset.cueId ?? '');
+      if (cue === undefined) continue;
+      const left = cue.startSec * pps;
+      const width = (cue.endSec - cue.startSec) * pps;
+      element.style.left = `${left}px`;
+      element.style.width = `${width}px`;
+      element.dataset.startPx = String(left);
+      element.dataset.endPx = String(left + width);
+    }
+    // A hover ghost carries baked-in pixel positions from the old zoom.
+    this.hideHover();
+    this.setSongTime(this.songTime);
+    this.updateClipVisibility();
+    // Defer the canvas paint to the next frame: drawClips reads
+    // scroller.clientWidth and root.offsetHeight, and answering those after
+    // the style writes above would force a synchronous style recalc + layout
+    // of every lane and clip inside the zoom handler (~25 ms + ~15 ms per
+    // step, measured in a DevTools trace). Both sizes are viewport-derived
+    // and unaffected by zoom, so painting one frame later is safe.
+    this.scheduleDraw();
   }
 
   setTimeline(timeline: CueTimeline): void {

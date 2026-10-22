@@ -1959,17 +1959,31 @@ export function cueToClip(fixture: FixturePlacement | undefined, cue: Cue): Clip
   };
 }
 
+/**
+ * Paint the measure ruler for the visible part of the timeline.
+ *
+ * The canvas is one viewport wide and shifted by `scrollLeft`. Sizing it to
+ * the whole song used to exceed the browser's maximum canvas dimension on
+ * long songs at high zoom, which made the ruler (and waveform) paint blank.
+ */
 export function createRuler(
   canvas: HTMLCanvasElement,
   timeline: CueTimeline,
-  width: number,
-  pixelsPerSecond = PIXELS_PER_SECOND,
+  pixelsPerSecond: number,
+  viewportWidth: number,
+  scrollLeft = 0,
 ): void {
+  const width = Math.max(1, Math.round(viewportWidth));
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = Math.round(width * dpr);
-  canvas.height = Math.round(28 * dpr);
+  const pixelWidth = Math.round(width * dpr);
+  const pixelHeight = Math.round(28 * dpr);
+  // Reassigning width/height reallocates the backing store, which is expensive
+  // on every scroll frame. Only do it when the size actually changed.
+  if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
+  if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
   canvas.style.width = `${width}px`;
   canvas.style.height = '28px';
+  canvas.style.transform = `translate3d(${scrollLeft}px, 0, 0)`;
   const ctx = canvas.getContext('2d');
   if (ctx === null) throw new Error('2d canvas unavailable');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1984,6 +1998,11 @@ export function createRuler(
     return;
   }
 
+  /** Screen x inside the canvas for a song time. */
+  const xFor = (sec: number): number => sec * pixelsPerSecond - scrollLeft;
+  const fromSec = scrollLeft / pixelsPerSecond;
+  const toSec = (scrollLeft + width) / pixelsPerSecond;
+
   const beatsPerBar = Math.max(1, timeline.beatsPerBar);
   const barSec = beatSec * beatsPerBar;
   const beatPx = beatSec * pixelsPerSecond;
@@ -1993,8 +2012,8 @@ export function createRuler(
   const loopStart = timeline.loopStartSec;
   const loopEnd = timeline.loopEndSec;
   if (loopStart !== undefined && loopEnd !== undefined && loopEnd > loopStart) {
-    const loopX0 = Math.max(0, loopStart * pixelsPerSecond);
-    const loopX1 = Math.min(width, loopEnd * pixelsPerSecond);
+    const loopX0 = Math.max(0, Math.min(width, xFor(loopStart)));
+    const loopX1 = Math.max(0, Math.min(width, xFor(loopEnd)));
     // The ruler is at its normal dark tone everywhere; the loop region is
     // the inverted treatment: a deeper-black band with accent edges and
     // drag handles, instead of a brighter/tinted region.
@@ -2009,7 +2028,7 @@ export function createRuler(
     ctx.fillRect(Math.round(loopX1) - 1, 0, 1, 28);
     // Grab handles for dragging the loop in/out points.
     ctx.fillStyle = 'rgba(122, 209, 255, 0.95)';
-    for (const x of [loopX0, loopX1]) {
+    for (const x of [xFor(loopStart), xFor(loopEnd)]) {
       if (x < 0 || x > width) continue;
       ctx.beginPath();
       ctx.moveTo(x - 5, 0);
@@ -2025,31 +2044,43 @@ export function createRuler(
     const sixteenthPx = beatPx / 4;
     if (sixteenthPx >= 6) {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
-      for (let i = 0; i * beatSec / 4 + firstBeat <= timeline.durationSec; i += 1) {
-        const x = (firstBeat + (i * beatSec) / 4) * pixelsPerSecond;
-        if (x < 0 || x > width) continue;
+      const sixteenthSec = beatSec / 4;
+      const first = Math.max(0, Math.ceil((fromSec - firstBeat) / sixteenthSec));
+      const last = Math.min(
+        Math.floor((timeline.durationSec - firstBeat) / sixteenthSec),
+        Math.floor((toSec - firstBeat) / sixteenthSec),
+      );
+      for (let i = first; i <= last; i += 1) {
         if (i % 4 === 0) continue;
+        const x = xFor(firstBeat + i * sixteenthSec);
         ctx.fillRect(Math.round(x), 22, 1, 6);
       }
     }
   }
 
   if (beatPx >= 5) {
-    const lastBeat = Math.ceil((timeline.durationSec - firstBeat) / beatSec);
-    for (let index = 0; index <= lastBeat; index += 1) {
-      const x = (firstBeat + index * beatSec) * pixelsPerSecond;
-      if (x < 0 || x > width) continue;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+    const first = Math.max(0, Math.ceil((fromSec - firstBeat) / beatSec));
+    const last = Math.min(
+      Math.ceil((timeline.durationSec - firstBeat) / beatSec),
+      Math.floor((toSec - firstBeat) / beatSec),
+    );
+    for (let index = first; index <= last; index += 1) {
       if (index % beatsPerBar === 0) continue;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+      const x = xFor(firstBeat + index * beatSec);
       ctx.fillRect(Math.round(x), 20, 1, 8);
     }
   }
 
   // Label every Nth bar so numbers never collide, and add a bar tick at each.
   const labelEvery = Math.max(1, Math.ceil(58 / Math.max(1, barPx)));
-  const lastBar = Math.ceil((timeline.durationSec - firstBeat) / barSec);
-  for (let bar = 0; bar <= lastBar; bar += 1) {
-    const x = (firstBeat + bar * barSec) * pixelsPerSecond;
+  const firstBar = Math.max(0, Math.ceil((fromSec - firstBeat) / barSec));
+  const lastBar = Math.min(
+    Math.ceil((timeline.durationSec - firstBeat) / barSec),
+    Math.floor((toSec - firstBeat) / barSec),
+  );
+  for (let bar = firstBar; bar <= lastBar; bar += 1) {
+    const x = xFor(firstBeat + bar * barSec);
     if (x < -2 || x > width + 2) continue;
     ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
     ctx.fillRect(Math.round(x), 14, 1, 14);

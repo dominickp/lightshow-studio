@@ -60,7 +60,7 @@ export function collectUi() {
     haze: element<HTMLInputElement>('haze'),
     hazeValue: element('haze-value'),
     view: element<HTMLButtonElement>('btn-view'),
-    orbitPill: element<HTMLElement>('orbit-pill'),
+    orbitPill: element<HTMLButtonElement>('orbit-pill'),
     orbitPillLabel: element('orbit-pill-label'),
     stats: element<HTMLButtonElement>('btn-stats'),
     dock: element('timeline-dock'),

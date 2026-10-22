@@ -1056,6 +1056,7 @@ const updateOrbitPill = (): void => {
   if (state === orbitPillState) return;
   orbitPillState = state;
   ui.orbitPill.dataset.state = state;
+  ui.orbitPill.setAttribute('aria-pressed', String(state === 'orbit'));
   ui.orbitPillLabel.innerHTML = `<u>O</u>rbit ${state === 'orbit' ? 'on' : 'off'}`;
 };
 
@@ -1087,6 +1088,13 @@ const togglePlay = (): void => {
 
 ui.play.addEventListener('click', togglePlay);
 
+/* The orbit chip is a button as well as a status badge, mirroring the `o`
+ * shortcut. */
+ui.orbitPill.addEventListener('click', () => {
+  stage.toggleOrbit();
+  syncButtons();
+});
+
 /**
  * Mirrors the `--track-width` CSS variable so zoom/fit/follow math stays correct
  * when the responsive breakpoint changes the label column width.
@@ -1113,6 +1121,60 @@ const refreshScrollMetrics = (): void => {
 ui.arrangementScroll.addEventListener('scroll', refreshScrollMetrics, { passive: true });
 new ResizeObserver(refreshScrollMetrics).observe(ui.arrangementScroll);
 refreshScrollMetrics();
+
+/** Timeline world width in CSS px at the current zoom. */
+const timelineWidth = (): number =>
+  currentTimeline === null ? 0 : currentTimeline.durationSec * arrangement.zoomLevel;
+
+/** Visible time-axis width, excluding the sticky track labels. */
+const timeAxisViewportWidth = (): number =>
+  Math.max(1, ui.arrangementScroll.clientWidth - labelWidth());
+
+/**
+ * The ruler/waveform tracks stay full-song wide (so the playheads and layout
+ * hold), while their canvases are only one viewport wide. A full-song canvas
+ * exceeds the browser's maximum canvas dimension on long songs at high zoom,
+ * which used to paint blank.
+ */
+const setTimeAxisWidth = (width: number): void => {
+  const px = `${Math.max(1, Math.round(width))}px`;
+  const rulerTrack = ui.ruler.parentElement;
+  const waveformTrack = ui.waveform.parentElement;
+  // Avoid style writes (and the layout they dirty) when nothing changed.
+  if (rulerTrack !== null && rulerTrack.style.width !== px) rulerTrack.style.width = px;
+  if (waveformTrack !== null && waveformTrack.style.width !== px) waveformTrack.style.width = px;
+};
+
+/** Repaint the visible ruler and waveform at the current zoom/scroll. */
+let timeAxisFrame = 0;
+let timeAxisScrollLeft = -1;
+
+const paintTimeAxis = (): void => {
+  if (currentTimeline === null) return;
+  setTimeAxisWidth(timelineWidth());
+  const scrollLeft = ui.arrangementScroll.scrollLeft;
+  const viewportWidth = timeAxisViewportWidth();
+  timeAxisScrollLeft = scrollLeft;
+  waveform.setViewport(viewportWidth, arrangement.zoomLevel, scrollLeft);
+  waveform.paint();
+  createRuler(ui.ruler, currentTimeline, arrangement.zoomLevel, viewportWidth, scrollLeft);
+};
+
+const requestTimeAxisPaint = (): void => {
+  if (timeAxisFrame !== 0) return;
+  timeAxisFrame = requestAnimationFrame(() => {
+    timeAxisFrame = 0;
+    paintTimeAxis();
+  });
+};
+ui.arrangementScroll.addEventListener('scroll', () => {
+  // Vertical scrolling cannot change the painted window.
+  if (ui.arrangementScroll.scrollLeft === timeAxisScrollLeft) return;
+  requestTimeAxisPaint();
+}, { passive: true });
+// Scrollbar appearance, panel changes and window resizes alter the visible
+// width without moving the scroll offset.
+new ResizeObserver(() => requestTimeAxisPaint()).observe(ui.arrangementScroll);
 
 const VOLUME_KEY = STORAGE_KEYS.volume;
 const storedVolume = readNumberPreference(VOLUME_KEY);
@@ -1146,7 +1208,8 @@ applyVolume(false);
 
 // --- View preferences (persisted) -----------------------------------------
 const STATS_KEY = STORAGE_KEYS.stats;
-let statsVisible = readPreference(STATS_KEY) !== 'off';
+/** Render stats start hidden; only an explicit "on" from the user shows them. */
+let statsVisible = readPreference(STATS_KEY) === 'on';
 const applyStats = (): void => {
   ui.statsPanel.hidden = !statsVisible;
   ui.stats.classList.toggle('on', statsVisible);
@@ -1301,7 +1364,7 @@ const applySidePanel = (): void => {
   syncActiveFixture();
   requestAnimationFrame(() => {
     refreshScrollMetrics();
-    waveform.requestPaint();
+    paintTimeAxis();
   });
 };
 
@@ -1378,7 +1441,7 @@ const endPanelResize = (): void => {
   window.removeEventListener('pointercancel', endPanelResize);
   writePreference(PANEL_WIDTH_KEY, String(Math.round(panelWidthPx)));
   refreshScrollMetrics();
-  waveform.requestPaint();
+  paintTimeAxis();
 };
 
 ui.sidePanelResizer.addEventListener('pointerdown', (event) => {
@@ -1475,15 +1538,12 @@ const setZoom = (nextZoom: number, anchorClientX?: number): void => {
     : Math.max(trackWidth, anchorClientX - bounds.left);
   const anchorTime = Math.max(0, ui.arrangementScroll.scrollLeft + anchorX - trackWidth) / previousZoom;
   arrangement.setZoom(zoom);
-  const width = currentTimeline.durationSec * zoom;
-  ui.waveform.style.width = `${width}px`;
-  createRuler(ui.ruler, currentTimeline, width, zoom);
   ui.zoomLevel.value = String(zoomToSlider(zoom));
   ui.zoomPercent.textContent = `${Math.round((zoom / PIXELS_PER_SECOND) * 100)}%`;
   const nextScroll = Math.max(0, anchorTime * zoom + trackWidth - anchorX);
   ui.arrangementScroll.scrollLeft = nextScroll;
   scrollMetrics.left = nextScroll;
-  waveform.requestPaint();
+  paintTimeAxis();
   setRulerPlayhead(clock.time * zoom);
 };
 
@@ -1538,16 +1598,18 @@ const hideTimelineTooltip = (): void => {
   ui.tooltip.hidden = true;
 };
 ui.waveform.addEventListener('pointermove', (event) => {
+  const scrollLeft = ui.arrangementScroll.scrollLeft;
   ui.waveformHover.hidden = false;
-  ui.waveformHover.style.transform = `translate3d(${event.offsetX}px, 0, 0)`;
-  showTimelineTooltip(event, event.offsetX / arrangement.zoomLevel, 'click to seek');
+  ui.waveformHover.style.transform = `translate3d(${event.offsetX + scrollLeft}px, 0, 0)`;
+  showTimelineTooltip(event, (event.offsetX + scrollLeft) / arrangement.zoomLevel, 'click to seek');
 });
 ui.waveform.addEventListener('pointerleave', () => {
   ui.waveformHover.hidden = true;
   hideTimelineTooltip();
 });
 ui.ruler.addEventListener('pointermove', (event) => {
-  showTimelineTooltip(event, event.offsetX / arrangement.zoomLevel, 'click to seek · Shift-drag for loop');
+  const scrollLeft = ui.arrangementScroll.scrollLeft;
+  showTimelineTooltip(event, (event.offsetX + scrollLeft) / arrangement.zoomLevel, 'click to seek · Shift-drag for loop');
 });
 ui.ruler.addEventListener('pointerleave', hideTimelineTooltip);
 
@@ -1601,13 +1663,7 @@ const applyLoop = (commitToClock = true): void => {
       bpm: timeline.bpm,
       beatsPerBar: timeline.beatsPerBar,
     });
-    waveform.requestPaint();
-    createRuler(
-      ui.ruler,
-      currentTimeline,
-      timeline.durationSec * arrangement.zoomLevel,
-      arrangement.zoomLevel,
-    );
+    paintTimeAxis();
   }
   updateLoopUi();
 };
@@ -1678,17 +1734,14 @@ const updateLoopDraw = (timeSec: number): void => {
 const rulerTimeAt = (clientX: number): number => {
   const timeline = currentTimeline;
   if (timeline === null) return 0;
-  const rect = ui.ruler.getBoundingClientRect();
-  const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
-  return (x / Math.max(1, rect.width)) * timeline.durationSec;
+  const rect = ui.arrangementScroll.getBoundingClientRect();
+  const x = clientX - rect.left - labelWidth() + ui.arrangementScroll.scrollLeft;
+  return Math.max(0, Math.min(timeline.durationSec, x / Math.max(1e-6, arrangement.zoomLevel)));
 };
 
-const rulerXFor = (timeSec: number): number => {
-  const timeline = currentTimeline;
-  if (timeline === null) return 0;
-  const rect = ui.ruler.getBoundingClientRect();
-  return (timeSec / Math.max(1, timeline.durationSec)) * rect.width;
-};
+/** Viewport x of a song time, relative to the ruler canvas's left edge. */
+const rulerXFor = (timeSec: number): number =>
+  timeSec * arrangement.zoomLevel - ui.arrangementScroll.scrollLeft;
 
 ui.ruler.addEventListener('pointermove', (event) => {
   if (ui.ruler.hasPointerCapture(event.pointerId)) return;
@@ -2223,7 +2276,6 @@ const importAudio = (
     bpm,
     beatsPerBar: options.beatsPerBar,
   });
-  waveform.requestPaint();
   // `setTimeline` clears the clips: the old arrangement belonged to the old song.
   arrangement.setTimeline(timeline);
 
@@ -2232,8 +2284,7 @@ const importAudio = (
   ui.audioStatus.textContent = '';
   clock.setLoop({ startSec: loopStartSec, endSec: loopRegion.endSec }, true);
   clock.seek(loopStartSec);
-  ui.waveform.style.width = `${durationSec * arrangement.zoomLevel}px`;
-  createRuler(ui.ruler, timeline, durationSec * arrangement.zoomLevel, arrangement.zoomLevel);
+  paintTimeAxis();
   enableTimelineControls();
   setZoom(PIXELS_PER_SECOND);
   applyLoop();
@@ -2356,7 +2407,7 @@ const resizeViewport = (): void => {
   stage.camera.aspect = viewport.clientWidth / Math.max(1, viewport.clientHeight);
   stage.camera.updateProjectionMatrix();
   refreshScrollMetrics();
-  waveform.paint();
+  paintTimeAxis();
 };
 window.addEventListener('resize', resizeViewport);
 

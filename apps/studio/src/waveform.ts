@@ -67,6 +67,10 @@ export class WaveformStrip {
   private timeline: Timeline | null = null;
   private width = 0;
   private height = 0;
+  /** Horizontal zoom in CSS px per song second. */
+  private pixelsPerSecond = 0;
+  /** Song time at the canvas's left edge. */
+  private scrollLeft = 0;
   private dragging = false;
   private paintQueued = false;
 
@@ -103,6 +107,19 @@ export class WaveformStrip {
 
   setTimeline(timeline: Timeline): void {
     this.timeline = timeline;
+  }
+
+  /**
+   * Point the strip at the visible part of the timeline. The canvas stays one
+   * viewport wide (a full-song canvas at high zoom exceeds the browser's
+   * maximum canvas dimension, which renders blank) and is shifted by the
+   * scroller instead.
+   */
+  setViewport(viewportWidth: number, pixelsPerSecond: number, scrollLeft: number): void {
+    this.pixelsPerSecond = pixelsPerSecond;
+    this.scrollLeft = scrollLeft;
+    this.canvas.style.width = `${Math.max(1, Math.round(viewportWidth))}px`;
+    this.canvas.style.transform = `translate3d(${scrollLeft}px, 0, 0)`;
   }
 
   /** Repaint the static strip. Call on resize, zoom, peaks or timeline changes. */
@@ -148,6 +165,8 @@ export class WaveformStrip {
     const timeline = this.timeline;
     if (timeline === null) return;
 
+    const pps = this.pixelsPerSecond;
+    const worldWidth = timeline.durationSec * pps;
     const loopX0 = this.timeToX(timeline.loopStartSec);
     const loopX1 = this.timeToX(timeline.loopEndSec);
     ctx.fillStyle = LOOP_FILL;
@@ -161,19 +180,25 @@ export class WaveformStrip {
     this.paintTicks(ctx, timeline);
 
     const peaks = this.peaks;
-    if (peaks !== null) {
+    if (peaks !== null && worldWidth > 0) {
       const buckets = peaks.min.length;
       const mid = height / 2;
       const scale = height / 2 - 2;
 
+      let inLoopStyle = false;
+      ctx.fillStyle = WAVE;
       for (let x = 0; x < width; x += 1) {
-        const bucket = Math.min(buckets - 1, Math.floor((x / width) * buckets));
+        const worldX = this.scrollLeft + x;
+        const bucket = Math.max(0, Math.min(buckets - 1, Math.floor((worldX / worldWidth) * buckets)));
         const lo = peaks.min[bucket] ?? 0;
         const hi = peaks.max[bucket] ?? 0;
         const top = mid - hi * scale;
         const bottom = mid - lo * scale;
         const inLoop = x >= loopX0 && x <= loopX1;
-        ctx.fillStyle = inLoop ? WAVE_IN_LOOP : WAVE;
+        if (inLoop !== inLoopStyle) {
+          inLoopStyle = inLoop;
+          ctx.fillStyle = inLoop ? WAVE_IN_LOOP : WAVE;
+        }
         ctx.fillRect(x, top, 1, Math.max(1, bottom - top));
       }
     }
@@ -190,33 +215,40 @@ export class WaveformStrip {
   }
 
   private paintTicks(ctx: CanvasRenderingContext2D, timeline: Timeline): void {
-    if (timeline.bpm === null || timeline.bpm <= 0) return;
+    const pps = this.pixelsPerSecond;
+    if (timeline.bpm === null || timeline.bpm <= 0 || pps <= 0) return;
 
     const beatSec = 60 / timeline.bpm;
-    const spacing = (beatSec / timeline.durationSec) * this.width;
+    const spacing = beatSec * pps;
     if (spacing < 2.5) return;
 
-    const firstIndex = Math.ceil(-timeline.firstBeatSec / beatSec);
-    const lastIndex = Math.floor((timeline.durationSec - timeline.firstBeatSec) / beatSec);
+    const fromSec = this.scrollLeft / pps;
+    const toSec = (this.scrollLeft + this.width) / pps;
+    const firstIndex = Math.max(0, Math.ceil((fromSec - timeline.firstBeatSec) / beatSec));
+    const lastIndex = Math.min(
+      Math.floor((timeline.durationSec - timeline.firstBeatSec) / beatSec),
+      Math.floor((toSec - timeline.firstBeatSec) / beatSec),
+    );
 
     for (let index = firstIndex; index <= lastIndex; index += 1) {
       const t = timeline.firstBeatSec + index * beatSec;
       const isBar = ((index % timeline.beatsPerBar) + timeline.beatsPerBar) % timeline.beatsPerBar === 0;
-      const x = Math.round((t / timeline.durationSec) * this.width);
+      const x = Math.round(t * pps - this.scrollLeft);
       ctx.fillStyle = isBar ? BAR_TICK : BEAT_TICK;
       ctx.fillRect(x, isBar ? 0 : this.height - 6, 1, isBar ? this.height : 6);
     }
   }
 
+  /** Screen x (inside the viewport-sized canvas) for a song time. */
   private timeToX(songSec: number): number {
-    const duration = this.timeline?.durationSec ?? 0;
-    if (duration <= 0) return 0;
-    return (songSec / duration) * this.width;
+    if (this.pixelsPerSecond <= 0) return 0;
+    return songSec * this.pixelsPerSecond - this.scrollLeft;
   }
 
   private xToTime(x: number): number {
     const duration = this.timeline?.durationSec ?? 0;
-    if (this.width <= 0 || duration <= 0) return 0;
-    return Math.max(0, Math.min(duration, (x / this.width) * duration));
+    if (this.pixelsPerSecond <= 0 || duration <= 0) return 0;
+    const songSec = (this.scrollLeft + x) / this.pixelsPerSecond;
+    return Math.max(0, Math.min(duration, songSec));
   }
 }

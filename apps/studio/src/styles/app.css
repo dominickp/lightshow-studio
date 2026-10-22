@@ -80,9 +80,28 @@
         user-select: none;
       }
 
-      /* Always-visible camera-mode badge: reads "Orbit on" while the auto-orbit
+      /* Stage overlay chips: Info (bottom left), Orbit (bottom right) and View
+         (top right). They share one look so the viewport corners read as a
+         single control surface. */
+      #orbit-pill,
+      #controls-toggle,
+      #hint {
+        min-height: 24px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 6px;
+        background: rgba(10, 14, 20, 0.6);
+        backdrop-filter: blur(8px);
+        color: var(--ink);
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+
+      /* Always-visible camera-mode chip: reads "Orbit on" while the auto-orbit
          follows playback and "Orbit off" when it is off. It keeps the same
-         grey styling in both states — only the last word changes. */
+         grey styling in both states — only the last word changes. Clicking it
+         does the same thing as the `o` shortcut. */
       #orbit-pill {
         position: absolute;
         right: 12px;
@@ -91,25 +110,14 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 4px 10px;
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        border-radius: 999px;
-        background: rgba(10, 14, 20, 0.66);
-        backdrop-filter: blur(8px);
-        color: var(--dim);
-        font-size: 10px;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
+        padding: 0 10px;
+        appearance: none;
+        cursor: pointer;
         user-select: none;
-        pointer-events: none;
+        transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
       }
-      #orbit-pill::before {
-        content: '';
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: currentColor;
-      }
+      #orbit-pill:hover { color: var(--accent); border-color: var(--edge); background: rgba(122, 209, 255, 0.08); }
+      #orbit-pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
       #stats { top: 12px; left: 12px; min-width: 172px; }
       #stats[hidden] { display: none; }
@@ -133,23 +141,28 @@
         top: 12px;
         right: 12px;
         z-index: 6;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 10px;
+        appearance: none;
+        cursor: pointer;
+        transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+      }
+      /* Disclosure caret, leading the label exactly like the Info chip on the
+         opposite corner. */
+      #controls-toggle::before {
+        content: '›';
         display: grid;
         place-items: center;
-        width: 26px;
-        height: 22px;
-        padding: 0;
-        border: 1px solid rgba(255, 255, 255, 0.11);
-        border-radius: 5px;
-        background: rgba(10, 14, 20, 0.55);
-        color: var(--dim);
-        font-size: 12px;
+        width: 12px;
+        font-size: 14px;
         line-height: 1;
-        cursor: pointer;
-        opacity: 0.5;
-        transition: opacity 120ms ease, color 120ms ease, border-color 120ms ease;
+        transition: transform 120ms ease;
       }
-      #controls-toggle:hover { opacity: 1; color: var(--accent); border-color: var(--edge); }
-      #controls-toggle.on { opacity: 0.85; color: var(--accent); border-color: rgba(122, 209, 255, 0.55); }
+      #controls-toggle.on::before { transform: rotate(90deg); }
+      #controls-toggle:hover { color: var(--accent); border-color: var(--edge); background: rgba(122, 209, 255, 0.08); }
+      #controls-toggle.on { color: var(--accent); border-color: rgba(122, 209, 255, 0.55); background: rgba(122, 209, 255, 0.1); }
       #controls-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
       #controls button, #transport button, #clip-inspector select {
@@ -668,9 +681,11 @@
         border-color: rgba(122, 209, 255, 0.55);
         color: var(--accent);
       }
-      /* Underlined shortcut letter inside a label (e.g. <u>S</u>elect). */
+      /* Underlined shortcut letter inside a label (e.g. <u>S</u>elect,
+         <u>O</u>rbit, <u>I</u>nfo). */
       button u,
-      #orbit-pill u {
+      #orbit-pill u,
+      #hint summary u {
         text-decoration: underline;
         text-underline-offset: 2px;
         text-decoration-thickness: 1px;
@@ -983,6 +998,15 @@
       }
       #btn-hide-unfiltered:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
       .ruler-track { position: relative; width: max-content; }
+      /* Both time-axis canvases are one viewport wide and shifted by the
+         scroller. Sizing them to the whole song exceeded the browser's
+         maximum canvas dimension on long songs at high zoom (rendered blank). */
+      #timeline-ruler, #waveform {
+        position: absolute;
+        top: 0;
+        left: 0;
+        will-change: transform;
+      }
       #timeline-ruler { display: block; height: 28px; cursor: ew-resize; touch-action: none; }
 
       #zoom-tools {
@@ -1303,12 +1327,6 @@
         /* Collapsed, the panel must stay a small affordance: a fixed width
            here made the closed bar span the whole viewport bottom. */
         width: auto;
-        border: 1px solid var(--edge);
-        border-radius: 8px;
-        background: var(--panel);
-        backdrop-filter: blur(8px);
-        color: var(--dim);
-        font-size: 10px;
         user-select: none;
         overflow: hidden;
         max-height: calc(100% - 24px);
@@ -1323,12 +1341,12 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 6px 10px;
-        color: var(--ink);
+        /* 22px + the wrapper's 1px border top and bottom lines the collapsed
+           chip up with the Orbit and View chips at 24px. */
+        height: 22px;
+        padding: 0 10px;
+        color: inherit;
         cursor: pointer;
-        font-size: 10px;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
         list-style: none;
         transition: background 120ms ease;
       }
@@ -1344,7 +1362,6 @@
         transition: transform 120ms ease;
       }
       #hint[open] summary::before { transform: rotate(90deg); }
-      #hint summary kbd { margin-left: auto; opacity: 0.7; }
       #hint summary:hover { background: rgba(122, 209, 255, 0.08); color: var(--accent); }
       #hint summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
       #hint[open] summary { border-bottom: 1px solid rgba(255, 255, 255, 0.09); }
@@ -1358,9 +1375,17 @@
         max-height: min(46vh, 380px);
         overflow-y: auto;
         overflow-x: hidden;
+        /* Scrolling still works; the thin native bar was the last thing
+           visible at the popover's right edge, so hide it. */
+        scrollbar-width: none;
         overscroll-behavior: contain;
         padding: 12px;
+        /* The chip colour is the label's; body prose reads a step dimmer. */
+        color: var(--dim);
+        letter-spacing: normal;
+        text-transform: none;
       }
+      #hint .hint-body::-webkit-scrollbar { display: none; }
       #hint .hint-section {
         break-inside: avoid;
         min-width: 0;
@@ -1393,6 +1418,17 @@
         font: inherit;
         font-size: 9px;
         line-height: 1.45;
+      }
+      #hint .hint-link {
+        color: var(--accent);
+        text-decoration: none;
+        border-bottom: 1px solid rgba(122, 209, 255, 0.35);
+        word-break: break-word;
+      }
+      #hint .hint-link:hover,
+      #hint .hint-link:focus-visible {
+        border-bottom-color: var(--accent);
+        text-decoration: underline;
       }
       @media (max-height: 620px) {
         #hint .hint-body { max-height: min(38vh, 260px); }

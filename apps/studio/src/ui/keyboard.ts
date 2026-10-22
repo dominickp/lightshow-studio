@@ -142,7 +142,7 @@ export function installKeyboardShortcuts(deps: KeyboardDeps): void {
     } else if (event.key === 'Escape') {
       if (ui.hint.open) ui.hint.open = false;
       else arrangement.clearSelection();
-    } else if (event.key === '?') {
+    } else if (event.key === 'i' || event.key === 'I') {
       ui.hint.open = !ui.hint.open;
     } else if (event.key === 'm' || event.key === 'M') {
       deps.toggleMute();

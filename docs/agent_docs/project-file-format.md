@@ -453,7 +453,7 @@ section.
       "zoomPixelsPerSecond": 48
     },
     "ui": {
-      "statsVisible": true,
+      "statsVisible": false,
       "dockCollapsed": false,
       "dockHeightPx": 0,
       "waveformHeightPx": 62

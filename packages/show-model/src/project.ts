@@ -390,7 +390,7 @@ export const projectSettingsSchema = z
       .prefault({}),
     ui: z
       .object({
-        statsVisible: z.boolean().default(true),
+        statsVisible: z.boolean().default(false),
         dockCollapsed: z.boolean().default(false),
         /** 0 keeps the stylesheet's default dock height. */
         dockHeightPx: z.number().nonnegative().default(0),

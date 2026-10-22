@@ -1349,7 +1349,7 @@
           "type": "object",
           "properties": {
             "statsVisible": {
-              "default": true,
+              "default": false,
               "type": "boolean"
             },
             "dockCollapsed": {

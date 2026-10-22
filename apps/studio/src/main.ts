@@ -547,7 +547,7 @@ const syncPanelHeader = (fixture: Fixture | null, surface: LedSurface | null = n
   if (sidePanelMode === 'rig') {
     ui.panelFixtureKind.textContent = 'Venue';
     ui.panelFixtureName.textContent = activeVenue.name;
-    ui.panelFixtureMeta.textContent = `${show.fixtures.length} light${show.fixtures.length === 1 ? '' : 's'} · click one to edit it`;
+    ui.panelFixtureMeta.textContent = `${show.fixtures.length} light${show.fixtures.length === 1 ? '' : 's'}`;
     return;
   }
 
@@ -557,7 +557,7 @@ const syncPanelHeader = (fixture: Fixture | null, surface: LedSurface | null = n
     : arrangement.labelFor(fixture);
   ui.panelFixtureMeta.textContent = fixture === null
     ? 'Click a track name to open this panel'
-    : `${mountLabel(fixture)} · ${fixture.profile.channels.length} DMX channels`;
+    : '';
 };
 
 const syncCueInspector = (
@@ -973,7 +973,7 @@ const mountLabel = (fixture: FixturePlacement): string => {
 };
 
 arrangement.setSubtitleResolver(
-  (fixture) => `${mountLabel(fixture)} · ${kindLabel(fixture.profile.kind)}`,
+  (fixture) => kindLabel(fixture.profile.kind),
 );
 
 /** Plural, user-facing names for the track filter's fixture kinds. */

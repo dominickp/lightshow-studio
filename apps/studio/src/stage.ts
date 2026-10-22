@@ -135,7 +135,7 @@ export class Stage {
   private venueObjects: THREE.Object3D[] = [];
   /** Crowd mesh, if the venue has one; hidden rather than rebuilt on toggle. */
   private crowd: THREE.Object3D | null = null;
-  private audience = true;
+  private audience = false;
 
   constructor(private readonly domElement: HTMLElement, show: Show, venue: VenueTemplate = CLUB_STAGE) {
     this.beatSec = secondsPerBeat(show.beatGrid);

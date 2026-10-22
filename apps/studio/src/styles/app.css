@@ -989,7 +989,6 @@
       #btn-rig-menu.on .rig-menu-count { color: var(--accent); border-color: rgba(122, 209, 255, 0.4); }
 
       #rig-pane[hidden] { display: none; }
-      #rig-note { margin-top: 0; }
       #waveform {
         display: block;
         height: var(--wave-height);

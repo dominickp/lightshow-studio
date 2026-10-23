@@ -1977,37 +1977,30 @@ export function cueToClip(fixture: FixturePlacement | undefined, cue: Cue): Clip
 }
 
 /**
- * Paint the measure ruler for the visible part of the timeline.
+ * Paint one window of the measure ruler.
  *
- * The canvas is one viewport wide and shifted by `scrollLeft`. Sizing it to
- * the whole song used to exceed the browser's maximum canvas dimension on
- * long songs at high zoom, which made the ruler (and waveform) paint blank.
+ * `start` is the world x (timeline px) of the canvas's left edge, so a song
+ * time maps to canvas x as `sec * pixelsPerSecond - start`. The canvas is a
+ * window of the timeline rather than the whole song: a full-song canvas
+ * exceeds the browser's maximum canvas dimension on long songs at high zoom,
+ * which made the ruler (and waveform) paint blank. Painting a window that is
+ * wider than the viewport also means scrolling never repaints it - see
+ * `WindowedCanvas`.
  */
-export function createRuler(
-  canvas: HTMLCanvasElement,
-  timeline: CueTimeline,
+export function paintRuler(
+  ctx: CanvasRenderingContext2D,
+  timeline: CueTimeline | null,
   pixelsPerSecond: number,
-  viewportWidth: number,
-  scrollLeft = 0,
+  start: number,
+  width: number,
+  height: number,
 ): void {
-  const width = Math.max(1, Math.round(viewportWidth));
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const pixelWidth = Math.round(width * dpr);
-  const pixelHeight = Math.round(28 * dpr);
-  // Reassigning width/height reallocates the backing store, which is expensive
-  // on every scroll frame. Only do it when the size actually changed.
-  if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
-  if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
-  canvas.style.width = `${width}px`;
-  canvas.style.height = '28px';
-  canvas.style.transform = `translate3d(${scrollLeft}px, 0, 0)`;
-  const ctx = canvas.getContext('2d');
-  if (ctx === null) throw new Error('2d canvas unavailable');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = '#111720';
-  ctx.fillRect(0, 0, width, 28);
+  ctx.fillRect(0, 0, width, height);
   ctx.font = '10px ui-monospace, monospace';
   ctx.textBaseline = 'middle';
+  if (timeline === null) return;
   const beatSec = timeline.bpm !== null && timeline.bpm > 0 ? 60 / timeline.bpm : null;
   if (beatSec === null) {
     ctx.fillStyle = '#7a8399';
@@ -2015,10 +2008,10 @@ export function createRuler(
     return;
   }
 
-  /** Screen x inside the canvas for a song time. */
-  const xFor = (sec: number): number => sec * pixelsPerSecond - scrollLeft;
-  const fromSec = scrollLeft / pixelsPerSecond;
-  const toSec = (scrollLeft + width) / pixelsPerSecond;
+  /** Canvas x for a song time. */
+  const xFor = (sec: number): number => sec * pixelsPerSecond - start;
+  const fromSec = start / pixelsPerSecond;
+  const toSec = (start + width) / pixelsPerSecond;
 
   const beatsPerBar = Math.max(1, timeline.beatsPerBar);
   const barSec = beatSec * beatsPerBar;
@@ -2035,14 +2028,14 @@ export function createRuler(
     // the inverted treatment: a deeper-black band with accent edges and
     // drag handles, instead of a brighter/tinted region.
     ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-    ctx.fillRect(loopX0, 0, Math.max(0, loopX1 - loopX0), 28);
+    ctx.fillRect(loopX0, 0, Math.max(0, loopX1 - loopX0), height);
     // Slight lift outside the loop so the loop band reads as recessed.
     ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
-    ctx.fillRect(0, 0, loopX0, 28);
-    ctx.fillRect(loopX1, 0, Math.max(0, width - loopX1), 28);
+    ctx.fillRect(0, 0, loopX0, height);
+    ctx.fillRect(loopX1, 0, Math.max(0, width - loopX1), height);
     ctx.fillStyle = 'rgba(122, 209, 255, 0.6)';
-    ctx.fillRect(Math.round(loopX0), 0, 1, 28);
-    ctx.fillRect(Math.round(loopX1) - 1, 0, 1, 28);
+    ctx.fillRect(Math.round(loopX0), 0, 1, height);
+    ctx.fillRect(Math.round(loopX1) - 1, 0, 1, height);
     // Grab handles for dragging the loop in/out points.
     ctx.fillStyle = 'rgba(122, 209, 255, 0.95)';
     for (const x of [xFor(loopStart), xFor(loopEnd)]) {

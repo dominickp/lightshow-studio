@@ -975,7 +975,13 @@
       .fixture-row.hidden .track-visibility { color: #566173; }
       .fixture-row.selected .track-name { box-shadow: inset 3px 0 0 var(--accent); }
 
-      #timeline-ruler-row { position: sticky; top: 0; z-index: 6; height: 28px; will-change: transform; }
+      /* Both time-axis canvases are painted windows of the timeline, placed at
+         their own world offset (see `canvas-window.ts`), so scrolling the
+         timeline needs no canvas work. Sizing one canvas to the whole song
+         exceeded the browser's maximum canvas dimension on long songs at high
+         zoom (rendered blank). The track backgrounds match the canvases, so a
+         window edge is never visible. */
+      #timeline-ruler-row { position: sticky; top: 0; z-index: 6; height: 28px; will-change: transform; background: #111720; }
       /* The ruler's label cell holds the track filter, so the filter lives in
          the left gutter instead of spanning the timeline. */
       #timeline-ruler-label {

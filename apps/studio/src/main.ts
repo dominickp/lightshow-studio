@@ -46,6 +46,7 @@ import cryoJetSfxUrl from './assets/cryo-jet.ogg?url';
 import { loopEndSec, loopStartSec, TRACK, TRACK_URL } from './track';
 import { followScrollLeft, smoothFollowScrollLeft } from './timeline-follow';
 import { computePeaks, WaveformStrip } from './waveform';
+import { WindowedCanvas } from './canvas-window';
 import demoProjectUrl from '../../../resources/sample_projects/koto-chill/koto-chill.dmxsim?url';
 import {
   applyProjectFixtureSetup,
@@ -65,7 +66,7 @@ import {
   type Cue,
   type CueTimeline,
   type TimelineMode,
-  createRuler,
+  paintRuler,
 } from './arrangement';
 import {
   barBeatLabel,
@@ -284,6 +285,9 @@ const backend = (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBack
 ui.backend.textContent = backend;
 
 const waveform = new WaveformStrip(ui.waveform, (songSec) => clock.seek(songSec));
+const rulerStrip = new WindowedCanvas(ui.ruler, (ctx, start, width, height) => {
+  paintRuler(ctx, currentTimeline, arrangement.zoomLevel, start, width, height);
+});
 let cues: readonly Cue[] = [];
 // Assigned after the closure below captures it.
 // eslint-disable-next-line prefer-const
@@ -1216,36 +1220,54 @@ const setTimeAxisWidth = (width: number): void => {
   if (waveformTrack !== null && waveformTrack.style.width !== px) waveformTrack.style.width = px;
 };
 
-/** Repaint the visible ruler and waveform at the current zoom/scroll. */
 let timeAxisFrame = 0;
 let timeAxisScrollLeft = -1;
 
-const paintTimeAxis = (): void => {
+/**
+ * Follow the visible part of the timeline with the ruler and waveform.
+ *
+ * Both canvases are painted as windows wider than the viewport and placed in
+ * the timeline's own coordinate space, so this is just a few comparisons while
+ * the viewport stays inside the painted window. Follow-mode playback scrolls
+ * every frame and must not repaint canvases, so a repaint only happens when
+ * the window, the zoom or the axis width changed.
+ */
+const updateTimeAxisViewport = (): void => {
   if (currentTimeline === null) return;
-  setTimeAxisWidth(timelineWidth());
+  const worldWidth = timelineWidth();
+  setTimeAxisWidth(worldWidth);
+  // Read the scroll offset before any style write, so the frame never forces
+  // a synchronous layout of the sticky timeline.
   const scrollLeft = ui.arrangementScroll.scrollLeft;
   const viewportWidth = timeAxisViewportWidth();
   timeAxisScrollLeft = scrollLeft;
   waveform.setViewport(viewportWidth, arrangement.zoomLevel, scrollLeft);
-  waveform.paint();
-  createRuler(ui.ruler, currentTimeline, arrangement.zoomLevel, viewportWidth, scrollLeft);
+  rulerStrip.show(viewportWidth, arrangement.zoomLevel, scrollLeft, worldWidth);
 };
 
-const requestTimeAxisPaint = (): void => {
+/** Repaint the ruler and waveform at the current zoom/scroll. */
+const paintTimeAxis = (): void => {
+  if (currentTimeline === null) return;
+  updateTimeAxisViewport();
+  waveform.paint();
+  rulerStrip.repaint();
+};
+
+const requestTimeAxisViewport = (): void => {
   if (timeAxisFrame !== 0) return;
   timeAxisFrame = requestAnimationFrame(() => {
     timeAxisFrame = 0;
-    paintTimeAxis();
+    updateTimeAxisViewport();
   });
 };
 ui.arrangementScroll.addEventListener('scroll', () => {
   // Vertical scrolling cannot change the painted window.
   if (ui.arrangementScroll.scrollLeft === timeAxisScrollLeft) return;
-  requestTimeAxisPaint();
+  requestTimeAxisViewport();
 }, { passive: true });
 // Scrollbar appearance, panel changes and window resizes alter the visible
 // width without moving the scroll offset.
-new ResizeObserver(() => requestTimeAxisPaint()).observe(ui.arrangementScroll);
+new ResizeObserver(() => requestTimeAxisViewport()).observe(ui.arrangementScroll);
 
 const VOLUME_KEY = STORAGE_KEYS.volume;
 const storedVolume = readNumberPreference(VOLUME_KEY);
@@ -1762,18 +1784,17 @@ const hideTimelineTooltip = (): void => {
   ui.tooltip.hidden = true;
 };
 ui.waveform.addEventListener('pointermove', (event) => {
-  const scrollLeft = ui.arrangementScroll.scrollLeft;
+  const x = timelineWorldX(event.clientX);
   ui.waveformHover.hidden = false;
-  ui.waveformHover.style.transform = `translate3d(${event.offsetX + scrollLeft}px, 0, 0)`;
-  showTimelineTooltip(event, (event.offsetX + scrollLeft) / arrangement.zoomLevel, 'click to seek');
+  ui.waveformHover.style.transform = `translate3d(${x}px, 0, 0)`;
+  showTimelineTooltip(event, x / arrangement.zoomLevel, 'click to seek');
 });
 ui.waveform.addEventListener('pointerleave', () => {
   ui.waveformHover.hidden = true;
   hideTimelineTooltip();
 });
 ui.ruler.addEventListener('pointermove', (event) => {
-  const scrollLeft = ui.arrangementScroll.scrollLeft;
-  showTimelineTooltip(event, (event.offsetX + scrollLeft) / arrangement.zoomLevel, 'click to seek · Shift-drag for loop');
+  showTimelineTooltip(event, timelineWorldX(event.clientX) / arrangement.zoomLevel, 'click to seek · Shift-drag for loop');
 });
 ui.ruler.addEventListener('pointerleave', hideTimelineTooltip);
 
@@ -1895,34 +1916,40 @@ const updateLoopDraw = (timeSec: number): void => {
   setLoopRegion(start, end, false);
 };
 
+/**
+ * World x (timeline px from the first sample) for a client x over the axis.
+ *
+ * Measured from the scroller, not from the ruler/waveform canvas: those are
+ * painted windows wider than the viewport and placed in the timeline's own
+ * coordinate space, so their boxes no longer start at the viewport's edge.
+ */
+const timelineWorldX = (clientX: number): number => {
+  const rect = ui.arrangementScroll.getBoundingClientRect();
+  return clientX - rect.left - labelWidth() + ui.arrangementScroll.scrollLeft;
+};
+
 const rulerTimeAt = (clientX: number): number => {
   const timeline = currentTimeline;
   if (timeline === null) return 0;
-  const rect = ui.arrangementScroll.getBoundingClientRect();
-  const x = clientX - rect.left - labelWidth() + ui.arrangementScroll.scrollLeft;
+  const x = timelineWorldX(clientX);
   return Math.max(0, Math.min(timeline.durationSec, x / Math.max(1e-6, arrangement.zoomLevel)));
 };
 
-/** Viewport x of a song time, relative to the ruler canvas's left edge. */
-const rulerXFor = (timeSec: number): number =>
-  timeSec * arrangement.zoomLevel - ui.arrangementScroll.scrollLeft;
-
 ui.ruler.addEventListener('pointermove', (event) => {
   if (ui.ruler.hasPointerCapture(event.pointerId)) return;
-  const rect = ui.ruler.getBoundingClientRect();
-  const x = event.clientX - rect.left;
-  const near = Math.abs(x - rulerXFor(loopRegion.startSec)) <= LOOP_GRIP_PX
-    || Math.abs(x - rulerXFor(loopRegion.endSec)) <= LOOP_GRIP_PX;
+  const x = timelineWorldX(event.clientX);
+  const zoom = arrangement.zoomLevel;
+  const near = Math.abs(x - loopRegion.startSec * zoom) <= LOOP_GRIP_PX
+    || Math.abs(x - loopRegion.endSec * zoom) <= LOOP_GRIP_PX;
   ui.ruler.style.cursor = near ? 'col-resize' : 'ew-resize';
 });
 
 ui.ruler.addEventListener('pointerdown', (event) => {
   if (currentTimeline === null) return;
   ui.ruler.setPointerCapture(event.pointerId);
-  const rect = ui.ruler.getBoundingClientRect();
-  const x = event.clientX - rect.left;
-  const startX = rulerXFor(loopRegion.startSec);
-  const endX = rulerXFor(loopRegion.endSec);
+  const x = timelineWorldX(event.clientX);
+  const startX = loopRegion.startSec * arrangement.zoomLevel;
+  const endX = loopRegion.endSec * arrangement.zoomLevel;
 
   if (event.shiftKey) {
     beginLoopDraw(rulerTimeAt(event.clientX));

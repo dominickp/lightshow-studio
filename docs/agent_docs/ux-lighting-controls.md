@@ -162,7 +162,7 @@ Severity reflects user impact on the next authoring pass.
 | In-memory only; no save/load/autosave | `setTimeline()` clears `this.cues`; loading another audio file in `main.ts` rebuilds the timeline and discards work. | **High** |
 | Snap is hardcoded to 1/16 | `Arrangement.snap()` divides the beat by 4; no off/bar/beat options, no Alt bypass. | **High** |
 | DOM full re-render on every pointer move | `pointerMove()` calls `renderRows()`, which rebuilds `root.innerHTML`; this will jank with many clips (risks.md already flags canvas). | **High** |
-| BPM/offset cannot be edited; imported audio has `bpm: null` | `src/track.ts` constants; `main.ts` sets `bpm: null` on import and `createRuler()` prints "Beat grid not set". | **Medium–High** |
+| BPM/offset cannot be edited; imported audio has `bpm: null` | `src/track.ts` constants; `main.ts` sets `bpm: null` on import and `paintRuler()` prints "Beat grid not set". | **Medium–High** |
 | Loop region is editable but not saved | The ruler grips and Shift+drag update the loop live; `Loop`/`Fit loop` control playback and zoom. There is no save/restore, and the loop is not part of the show document yet. | **Medium** |
 | No groups, palettes, or preset library | `renderRows()` maps `show.fixtures` directly; no track grouping or palette model; `CUE_COLORS` is the entire preset vocabulary. | **Medium** |
 | No track reorder/collapse/height; headers not editable | `renderRows()` writes fixed rows in fixture order; track header shows `fixture.id` and a capability string only. | **Medium** |
@@ -192,7 +192,7 @@ Severity reflects user impact on the next authoring pass.
 2. **Preset/palette library** (positions, colours, beams) and fixture **groups**; clips can reference or expand presets, with a clear "reference vs baked" indicator.
 3. **Movement shape generator** for pan/tilt: circle, figure-8, sweep, bounce, with size/speed/direction/phase; generates editable envelopes.
 4. **Strobe/blinder controls** with Hz and note-division units, shutter duration, attack/release, and one-shot hits.
-5. **BPM/offset editor and tap tempo**; make `createRuler` and snapping react to corrected grids; persist the grid in the show.
+5. **BPM/offset editor and tap tempo**; make `paintRuler` and snapping react to corrected grids; persist the grid in the show.
 6. **Track operations**: reorder, group, collapse, height presets; group-level clips that fan out to member fixtures.
 7. Canvas-rendered clips and virtualisation for 16–32 fixtures × hundreds of clips; keyboard navigation and focusable clips.
 8. Autosave, schema versioning, and undo persistence.

@@ -67,6 +67,20 @@ Chromium remained at 144 fps (6.9 ms, ~0.9 ms JS per frame) after the changes; t
 
 See `docs/agent_docs/ux-lighting-controls.md` for the evaluated control surface and phased feature plan.
 
+### Time-axis scroll cost (2026-10-22)
+
+Smooth follow scrolling (the playhead pans the timeline continuously) re-broke the "no canvas work during playback" rule above: the ruler and waveform canvases were **pinned to the viewport** (`translate3d(scrollLeft)`) and repainted on every scroll frame. A repaint meant ~2,200 `fillRect` calls for the waveform (one per viewport column, with a bucket lookup from the world position), the ruler's ticks and bar labels, and a re-assignment of both backing stores, which also forced a synchronous layout after the style writes. Fine on a desktop, visible frame loss on lower-end machines.
+
+Both canvases are now **painted windows of the timeline** (`apps/studio/src/canvas-window.ts`, `WindowedCanvas`):
+
+- The canvas is painted as `viewport + 2 × 768 px` and positioned at its own world offset, inside the scrolled content. The scroller moves it for free, so scrolling runs no canvas code at all.
+- A repaint happens only when the viewport leaves the painted window (about once per 768 px scrolled, i.e. never during normal playback), when the zoom, axis width or world size changes, or when the caller asks for one after the peaks/loop/timeline changed.
+- The window is clamped to the song, so the canvas never spills past the track end (which would grow the scroller's scrollable width and change the maximum scroll offset), and it stays far below the browser's maximum canvas dimension.
+- `paintRuler` (was `createRuler`) takes a context and a window instead of a canvas element; the waveform strip paints through the same helper. Pointer maths moved to `timelineWorldX()`, measured from the scroller, because the canvas box is no longer pinned to the viewport edge.
+- The row backgrounds match the canvases, so a window edge is never visible.
+
+Measured in the studio (Chromium, WebGL2): **zero** canvas draws over 5-6 s of follow playback at 100% and 138% zoom (previously every frame); `window.__dmxsim.benchmark()` `cpuMs.p50` 6.9 ms, no regression against the previous 6.7-7.4 ms runs on this machine.
+
 ### Measured track facts
 
 `The Koto Chill` (zircon) was analysed offline with a spectral-flux onset envelope plus a dynamic-programming beat tracker:

@@ -122,6 +122,12 @@ describe('formatClock', () => {
   it('clamps negative times to zero', () => {
     expect(formatClock(-3)).toBe('0:00.0');
   });
+
+  it('drops the tenths in seconds precision', () => {
+    expect(formatClock(0, 'seconds')).toBe('0:00');
+    expect(formatClock(65.9, 'seconds')).toBe('1:05');
+    expect(formatClock(-3, 'seconds')).toBe('0:00');
+  });
 });
 
 describe('barBeatLabel', () => {

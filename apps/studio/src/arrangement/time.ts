@@ -73,11 +73,19 @@ export function snapTimeToBar(timeline: CueTimeline | null, timeSec: number): nu
   return Math.max(0, Math.min(timeline.durationSec, snapped));
 }
 
-/** `m:ss.d` transport clock text. */
-export function formatClock(seconds: number): string {
+/**
+ * Clock precision: tenths on desktop, whole seconds in the compact phone UI
+ * where the transport has no room for the decimal.
+ */
+type ClockPrecision = 'tenths' | 'seconds';
+
+/** `m:ss.d` transport clock text, or `m:ss` with `precision: 'seconds'`. */
+export function formatClock(seconds: number, precision: ClockPrecision = 'tenths'): string {
   const safe = Math.max(0, seconds);
   const minutes = Math.floor(safe / 60);
-  return `${minutes}:${(safe - minutes * 60).toFixed(1).padStart(4, '0')}`;
+  const rest = safe - minutes * 60;
+  if (precision === 'seconds') return `${minutes}:${Math.floor(rest).toString().padStart(2, '0')}`;
+  return `${minutes}:${rest.toFixed(1).padStart(4, '0')}`;
 }
 
 /** `bar.beat` readout for the timeline tooltip. */

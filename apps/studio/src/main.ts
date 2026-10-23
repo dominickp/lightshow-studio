@@ -44,6 +44,7 @@ import { analyzeAudioBuffer, type TempoCandidate } from './audio-analysis';
 import { CryoJetAudio } from './cryo-jet-audio';
 import cryoJetSfxUrl from './assets/cryo-jet.ogg?url';
 import { loopEndSec, loopStartSec, TRACK, TRACK_URL } from './track';
+import { followScrollLeft, smoothFollowScrollLeft } from './timeline-follow';
 import { computePeaks, WaveformStrip } from './waveform';
 import demoProjectUrl from '../../../resources/sample_projects/koto-chill/koto-chill.dmxsim?url';
 import {
@@ -240,6 +241,17 @@ let activeCount = show.fixtures.length;
 stage.setActiveCount(activeCount);
 
 const ui = collectUi();
+
+/**
+ * Phone widths (`app.css`'s compact breakpoint) drop the tenths from the
+ * transport clock so the song position and duration still fit on one line.
+ */
+const narrowViewport = window.matchMedia('(max-width: 680px)');
+const formatTransportClock = (seconds: number): string =>
+  formatClock(seconds, narrowViewport.matches ? 'seconds' : 'tenths');
+const paintTransportTime = (currentSec: number, totalSec: number): void => {
+  ui.transportTime.textContent = `${formatTransportClock(currentSec)} / ${formatTransportClock(totalSec)}`;
+};
 
 /**
  * The side panel shows one thing at a time: the rig (opened from the timeline's
@@ -1147,6 +1159,47 @@ const timelineWidth = (): number =>
 /** Visible time-axis width, excluding the sticky track labels. */
 const timeAxisViewportWidth = (): number =>
   Math.max(1, ui.arrangementScroll.clientWidth - labelWidth());
+
+/**
+ * Follow mode stands down while a pointer is down on the timeline, so an
+ * auto-scroll never fights a scrub, a clip drag or a pan gesture.
+ */
+let timelinePointerDown = false;
+const releaseTimelinePointer = (): void => {
+  timelinePointerDown = false;
+};
+ui.arrangementScroll.addEventListener(
+  'pointerdown',
+  () => {
+    timelinePointerDown = true;
+  },
+  { capture: true, passive: true },
+);
+// Release on the window as well: a captured pointer can end outside the scroller.
+window.addEventListener('pointerup', releaseTimelinePointer, { passive: true });
+window.addEventListener('pointercancel', releaseTimelinePointer, { passive: true });
+window.addEventListener('blur', releaseTimelinePointer);
+
+/**
+ * Pan the timeline so the playhead sits in the middle of the time axis.
+ *
+ * `followScrollLeft` clamps against the scrollable range, which is what keeps
+ * the start and end natural: the playhead runs from the left edge to the
+ * middle before the view moves, and slides from the middle to the right edge
+ * at the end of the song. A zoom level where the whole song fits never scrolls.
+ */
+const followPlayheadScroll = (songTime: number): void => {
+  const viewportWidth = scrollMetrics.width || ui.arrangementScroll.clientWidth;
+  const trackWidth = labelWidth();
+  const axisWidth = Math.max(1, viewportWidth - trackWidth);
+  const maxScroll = Math.max(0, trackWidth + timelineWidth() - viewportWidth);
+  const target = followScrollLeft(songTime, arrangement.zoomLevel, axisWidth, maxScroll);
+  const next = smoothFollowScrollLeft(scrollMetrics.left, target);
+  if (Math.abs(next - scrollMetrics.left) < 0.5) return;
+  ui.arrangementScroll.scrollLeft = next;
+  // Keep the cached value in step; the scroll event only runs on the next task.
+  scrollMetrics.left = ui.arrangementScroll.scrollLeft;
+};
 
 /**
  * The ruler/waveform tracks stay full-song wide (so the playheads and layout
@@ -2391,7 +2444,7 @@ const importAudio = (
   arrangement.setTimeline(timeline);
 
   ui.transportTrack.textContent = describeAudio(projectAudio, bpm);
-  ui.transportTime.textContent = `${formatClock(loopStartSec)} / ${formatClock(durationSec)}`;
+  paintTransportTime(loopStartSec, durationSec);
   ui.audioStatus.textContent = '';
   clock.setLoop({ startSec: loopStartSec, endSec: loopRegion.endSec }, true);
   clock.seek(loopStartSec);
@@ -2521,6 +2574,12 @@ const resizeViewport = (): void => {
   paintTimeAxis();
 };
 window.addEventListener('resize', resizeViewport);
+
+// The transport clock loses its tenths at phone widths. Repaint when the
+// breakpoint is crossed so a paused timecode does not keep the old precision.
+narrowViewport.addEventListener('change', () => {
+  paintTransportTime(clock.time, clock.duration);
+});
 
 // Assigned after `applyResolutionScale` captures it.
 // eslint-disable-next-line prefer-const
@@ -2745,7 +2804,7 @@ const updateStats = (now: number, states: readonly FixtureState[], songTime: num
   const bar = Math.floor(beat / beatsPerBar) + 1;
   const beatInBar = Math.floor(((beat % beatsPerBar) + beatsPerBar) % beatsPerBar) + 1;
   ui.time.textContent = `${bar}.${beatInBar}`;
-  ui.transportTime.textContent = `${formatClock(songTime)} / ${formatClock(clock.duration)}`;
+  paintTransportTime(songTime, clock.duration);
   if (sidePanelOpen) {
     if (sidePanelMode === 'surface') syncSurfacePanel();
     else refreshPanelClipStats();
@@ -2757,24 +2816,7 @@ const frame = (now: number): void => {
   const deltaMs = perf.sampleFrame(now);
 
   const songTime = clock.time;
-  if (clock.playing && followPlayhead) {
-    const trackWidth = labelWidth();
-    const pps = arrangement.zoomLevel;
-    const viewportWidth = scrollMetrics.width || ui.arrangementScroll.clientWidth;
-    // Content coordinates include the sticky label column; the lane starts after it.
-    const playheadX = trackWidth + songTime * pps;
-    const viewportRight = scrollMetrics.left + viewportWidth;
-    const visibleLeft = scrollMetrics.left + trackWidth;
-    if (playheadX > viewportRight - 140) {
-      const next = Math.max(0, playheadX - viewportWidth + 200);
-      ui.arrangementScroll.scrollLeft = next;
-      scrollMetrics.left = next;
-    } else if (playheadX < visibleLeft + 40) {
-      const next = Math.max(0, playheadX - trackWidth - 80);
-      ui.arrangementScroll.scrollLeft = next;
-      scrollMetrics.left = next;
-    }
-  }
+  if (clock.playing && followPlayhead && !timelinePointerDown) followPlayheadScroll(songTime);
   const showAt = showTime(loopRegion, songTime);
   const states = show.fixtures.map((fixture) => {
     const trackClips = activeFixtureCuesAt(cuesForLane(cuesByFixture, fixture.id), songTime)
@@ -2938,7 +2980,7 @@ const applyProject = (project: ProjectFile, source: 'project' | 'default' = 'pro
   // start of the timeline snap to the beat grid, so resting at raw 0 would sit
   // in a dead gap and show an empty stage until the user pressed play.
   clock.seek(Math.max(loopRegion.startSec, timeline.firstBeatSec));
-  ui.transportTime.textContent = `${formatClock(loopRegion.startSec)} / ${formatClock(clock.duration)}`;
+  paintTransportTime(loopRegion.startSec, clock.duration);
   ui.arrangementScroll.scrollLeft = Math.max(0, loopRegion.startSec * arrangement.zoomLevel);
   enableTimelineControls();
 };
@@ -3136,7 +3178,7 @@ try {
       ...createDemoSurfaceCues(timeline),
     ]);
     ui.arrangementScroll.scrollLeft = Math.max(0, loopStartSec * PIXELS_PER_SECOND);
-    ui.transportTime.textContent = `${formatClock(loopStartSec)} / ${formatClock(buffer.duration)}`;
+    paintTransportTime(loopStartSec, buffer.duration);
   }
 } catch (error) {
   console.error(error);

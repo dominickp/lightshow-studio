@@ -41,6 +41,16 @@ Root cause, per component:
 
 - **Compact breakpoint:** width only, `max-width: 680px`. No
   `pointer: coarse` rules for now; that keeps the existing breakpoint model.
+- **Mid breakpoint:** `480px`-`680px` gets a second, additive block, because
+  the 375-430 px sacrifices leave the transport half empty at tablet-ish phone
+  widths. It puts back the song name (`#transport-track`) and audio status next
+  to the clock, widens the volume slider to 88 px and restores the `Loop`
+  toggle in the zoom footer. Nothing is added that the narrow layout needs to
+  hide again, so the two blocks stay independent.
+- **Dock collapse control:** icon-only on phones, drawn as a CSS chevron
+  (`::before` with rotated borders) rather than the `⌄` glyph, which sat off
+  centre. It rotates to point up while `#timeline-dock.collapsed`; the label
+  text stays in the DOM for `aria-expanded` and the tooltip.
 - **Clip inspector:** keep the current feature set. It still has to stop
   overlapping, but controls are not being removed.
 - **Project actions (`New` / `Edit` / `Open` / `Save`):** on phones they

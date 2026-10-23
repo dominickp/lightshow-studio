@@ -1594,12 +1594,15 @@
         }
         #project-menu button:hover { border-color: var(--edge); color: var(--accent); }
 
-        /* The clock takes whatever space is left and ellipsises rather than
-           widening the row. */
+        /* The clock keeps only the width it needs. It used to be the flexible
+           item (`flex: 1 1 0`), so on a phone the leftover row space was
+           absorbed here and painted as an empty gap between the time and the
+           volume slider — the song name and status that fill this box on
+           desktop are hidden below. The slider takes that space instead. */
         #transport-meta {
           order: 3;
           display: grid;
-          flex: 1 1 0;
+          flex: 0 1 auto;
           min-width: 0;
           overflow: hidden;
           column-gap: 8px;
@@ -1608,26 +1611,46 @@
            already ellipsise to nothing useful. */
         #transport-track,
         #audio-status { display: none; }
-        #volume-control { order: 4; flex: 0 0 auto; }
-        #volume { width: 56px; }
+        #volume-control { order: 4; flex: 1 1 56px; min-width: 0; }
+        /* Grows into the free space, but never below a thumb-sized 56 px. */
+        #volume { flex: 1 1 auto; width: auto; min-width: 56px; }
         /* "Collapse timeline" is far too wide for the playback row. The label
            is set as textContent by main.ts, so it is hidden with font-size
            and replaced by a caret; `title` and `aria-expanded` still describe
            the action. */
         #transport #btn-dock {
           order: 5;
-          flex: 0 0 30px;
-          width: 30px;
-          min-width: 30px;
+          display: grid;
+          place-items: center;
+          flex: 0 0 32px;
+          width: 32px;
+          min-width: 32px;
           min-height: 32px;
           padding: 0;
           margin-left: 0;
           font-size: 0;
         }
+        /* A drawn chevron rather than a text glyph: it inherits the button's
+           colour, stays crisp at any zoom and is symmetric, which the `⌄`
+           character was not. The corner points down (timeline collapses) and
+           rotates to point up once the dock is collapsed. */
         #transport #btn-dock::before {
-          content: '⌄';
-          font-size: 13px;
-          line-height: 1;
+          content: '';
+          width: 7px;
+          height: 7px;
+          margin-top: -3px;
+          border-right: 1.5px solid currentColor;
+          border-bottom: 1.5px solid currentColor;
+          border-radius: 1px;
+          transform: rotate(45deg);
+          transition: transform 140ms ease, margin-top 140ms ease;
+        }
+        #timeline-dock.collapsed #transport #btn-dock::before {
+          margin-top: 3px;
+          transform: rotate(-135deg);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          #transport #btn-dock::before { transition: none; }
         }
 
         /* --- Clip inspector: mode + action, timing + colour, one row ----- */
@@ -1730,6 +1753,26 @@
         #arrangement-content { padding-bottom: 8px; }
 
         #hint { display: none; }
+      }
+
+      /* Wider phones and small tablets (480-680 px) have room to spare in the
+         transport, so the compact block's sacrifices are partly undone: the
+         song name returns, the volume slider gets its desktop length back and
+         the loop toggle fits in the zoom footer again. Ordering matters —
+         this block comes after the compact one so its declarations win at
+         equal specificity. */
+      @media (min-width: 480px) and (max-width: 680px) {
+        #transport { gap: 6px 8px; padding: 6px 8px 6px 7px; }
+        /* Folds back under `grid-column: 2`, ellipsising in whatever the clock
+           leaves instead of stretching the row. */
+        #transport-meta #transport-track { display: block; }
+        #transport-meta #audio-status { display: block; }
+        /* There is text to fill this box again, so it goes back to taking the
+           free space and the slider returns to a fixed, predictable length. */
+        #transport-meta { flex: 1 1 0; }
+        #volume-control { flex: 0 0 auto; }
+        #volume { flex: 0 0 auto; width: 88px; }
+        #btn-loop { display: inline-block; }
       }
 
       /* --- LED walls ------------------------------------------------------ */

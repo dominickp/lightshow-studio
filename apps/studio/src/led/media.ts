@@ -10,6 +10,8 @@ export interface LedMediaAsset {
   kind: LedMediaKind;
   /** Playable/loadable URL (dev-server asset or blob URL). */
   url: string;
+  /** Byte length, used to recognise a bundle copy of an uploaded file. */
+  size?: number;
 }
 
 const bundledUrls = import.meta.glob('./pre-generated/*.mp4', {
@@ -275,6 +277,7 @@ export class LedMediaLibrary implements LedMediaRuntime {
         label: file.fileName ?? `Embedded ${file.kind}`,
         kind: file.kind,
         url: URL.createObjectURL(new Blob([file.bytes as unknown as BlobPart], { type: file.mime })),
+        size: file.bytes.length,
       };
       this.localAssets.set(source, asset);
       this.createEntry(asset);
@@ -342,6 +345,7 @@ export class LedMediaLibrary implements LedMediaRuntime {
         label: this.uniqueLabel(file.name),
         kind,
         url: URL.createObjectURL(file),
+        size: file.size,
       };
       this.localAssets.set(asset.source, asset);
       this.createEntry(asset);
@@ -364,10 +368,31 @@ export class LedMediaLibrary implements LedMediaRuntime {
         label: record.name,
         kind: record.type.startsWith('image/') ? 'image' : 'video',
         url: URL.createObjectURL(record.blob),
+        size: record.blob.size,
       });
     }
-    return [...this.localAssets.values()].sort((left, right) =>
-      left.label.localeCompare(right.label, undefined, { numeric: true }));
+    return this.visibleAssets();
+  }
+
+  /**
+   * The gallery list, without bundle copies of files that are also uploaded.
+   *
+   * Opening a saved project registers its embedded media, which are usually the
+   * very files the upload library still holds. Showing both puts two identical
+   * tiles in the Upload tab, so the embedded copy steps aside for the upload.
+   */
+  private visibleAssets(): LedMediaAsset[] {
+    const assets = [...this.localAssets.values()];
+    const uploads = assets.filter((asset) => asset.source.startsWith('local:'));
+    const isBundleCopy = (asset: LedMediaAsset): boolean =>
+      asset.source.startsWith('embedded:')
+      && uploads.some((upload) =>
+        upload.label === asset.label
+        && upload.kind === asset.kind
+        && upload.size === asset.size);
+    return assets
+      .filter((asset) => !isBundleCopy(asset))
+      .sort((left, right) => left.label.localeCompare(right.label, undefined, { numeric: true }));
   }
 
   /** Delete an uploaded asset from memory and persistent storage. */
@@ -442,6 +467,7 @@ export class LedMediaLibrary implements LedMediaRuntime {
         label: record.name,
         kind: record.type.startsWith('image/') ? 'image' : 'video',
         url: URL.createObjectURL(record.blob),
+        size: record.blob.size,
       };
       if (existing === undefined) this.localAssets.set(source, asset);
       this.createEntry(asset);

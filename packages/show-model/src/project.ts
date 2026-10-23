@@ -394,7 +394,7 @@ export const projectSettingsSchema = z
         dockCollapsed: z.boolean().default(false),
         /** 0 keeps the stylesheet's default dock height. */
         dockHeightPx: z.number().nonnegative().default(0),
-        waveformHeightPx: z.number().min(40).max(200).default(62),
+        waveformHeightPx: z.number().min(40).max(200).default(40),
       })
       .prefault({}),
   })

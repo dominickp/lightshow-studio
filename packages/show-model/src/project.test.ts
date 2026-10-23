@@ -84,7 +84,7 @@ describe('project file schema', () => {
     const project = minimalProject();
     expect(project.settings.render.strobes).toBe(true);
     expect(project.settings.playback.volume).toBe(1);
-    expect(project.settings.ui.waveformHeightPx).toBe(62);
+    expect(project.settings.ui.waveformHeightPx).toBe(40);
     expect(project.audio.source).toBe('external');
     expect(project.show.tracks).toEqual([]);
   });

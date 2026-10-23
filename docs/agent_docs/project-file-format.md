@@ -456,7 +456,7 @@ section.
       "statsVisible": false,
       "dockCollapsed": false,
       "dockHeightPx": 0,
-      "waveformHeightPx": 62
+      "waveformHeightPx": 40
     }
   }
 }
@@ -467,7 +467,8 @@ section.
 - `render.lofi` is accepted for older files but ignored; the grade was removed.
 - `render.cameraView` is an index into the app's camera presets.
 - `ui.dockHeightPx: 0` keeps the stylesheet default dock height.
-- `ui.waveformHeightPx` is clamped to `40..200`.
+- `ui.waveformHeightPx` is clamped to `40..200` and defaults to the `40`
+  minimum, so the waveform row starts as small as it can get.
 - Fixture setup (mount yaw/pitch and `show.fixtures[].defaults`) **is** saved;
   clips override those values only while they are active.
 

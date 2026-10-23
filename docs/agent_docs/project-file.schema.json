@@ -1362,7 +1362,7 @@
               "minimum": 0
             },
             "waveformHeightPx": {
-              "default": 62,
+              "default": 40,
               "type": "number",
               "minimum": 40,
               "maximum": 200

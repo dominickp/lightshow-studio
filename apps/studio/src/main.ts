@@ -1387,7 +1387,7 @@ ui.dockToggle.addEventListener('click', () => {
 });
 
 const storedWaveHeight = readNumberPreference(WAVE_HEIGHT_KEY);
-let waveHeightPx = Number.isFinite(storedWaveHeight) ? Math.max(40, Math.min(200, storedWaveHeight)) : 62;
+let waveHeightPx = Number.isFinite(storedWaveHeight) ? Math.max(40, Math.min(200, storedWaveHeight)) : 40;
 const applyWaveHeight = (): void => {
   document.documentElement.style.setProperty('--wave-height', `${waveHeightPx}px`);
   waveform.paint();

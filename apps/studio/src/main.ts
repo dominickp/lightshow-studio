@@ -293,7 +293,8 @@ let cues: readonly Cue[] = [];
 // eslint-disable-next-line prefer-const
 let arrangement: Arrangement;
 let currentTimeline: CueTimeline | null = null;
-let followPlayhead = bundledProject?.settings.playback.followPlayhead ?? true;
+/** Follow starts on; `applyProjectSettings` applies a project's saved choice. */
+let followPlayhead = true;
 let loopRegion = bundledProject === null
   ? { startSec: loopStartSec, endSec: loopEndSec }
   : {
@@ -1749,11 +1750,19 @@ ui.zoomFit.addEventListener('click', () => {
   setZoom(fitZoom(), trackWidth + availableWidth / 2);
   ui.arrangementScroll.scrollLeft = 0;
 });
-ui.follow.addEventListener('click', () => {
-  followPlayhead = !followPlayhead;
+const FOLLOW_KEY = STORAGE_KEYS.followPlayhead;
+/**
+ * Follow starts on. The demo bundle is re-applied on every load, so its saved
+ * flag would otherwise pin whatever the demo was saved with; the user's last
+ * toggle wins instead. An opened project still restores its own setting.
+ */
+const setFollowPlayhead = (follow: boolean, persist = true): void => {
+  followPlayhead = follow;
+  if (persist) writePreference(FOLLOW_KEY, follow ? 'on' : 'off');
   ui.follow.classList.toggle('on', followPlayhead);
   ui.follow.setAttribute('aria-pressed', String(followPlayhead));
-});
+};
+ui.follow.addEventListener('click', () => setFollowPlayhead(!followPlayhead));
 ui.arrangementScroll.addEventListener('wheel', (event) => {
   if (!event.ctrlKey && !event.metaKey) return;
   event.preventDefault();
@@ -2957,9 +2966,13 @@ const applyProjectSettings = (settings: ProjectSettings, source: 'project' | 'de
   volume = settings.playback.volume;
   muted = settings.playback.muted;
   applyVolume();
-  followPlayhead = settings.playback.followPlayhead;
-  ui.follow.classList.toggle('on', followPlayhead);
-  ui.follow.setAttribute('aria-pressed', String(followPlayhead));
+  const storedFollow = keepLocalUi ? readPreference(FOLLOW_KEY) : null;
+  setFollowPlayhead(
+    storedFollow === null
+      ? keepLocalUi || settings.playback.followPlayhead
+      : storedFollow === 'on',
+    false,
+  );
 
   // Local panel/dock prefs survive the demo load; a freshly opened project wins.
   if (!keepLocalUi) {

@@ -12,6 +12,7 @@ export const STORAGE_KEYS = {
   dockCollapsed: 'dmxsim.dockCollapsed',
   waveHeight: 'dmxsim.waveHeight',
   panelWidth: 'dmxsim.sidePanelWidth',
+  followPlayhead: 'dmxsim.followPlayhead',
   photosensitivity: 'dmxsim.photosensitivity',
 } as const;
 

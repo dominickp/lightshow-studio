@@ -718,6 +718,18 @@
         cursor: pointer;
       }
       #clip-inspector button:disabled { opacity: 0.4; cursor: not-allowed; }
+      /* Every control in the row is one height. The Action select used 5px of
+         block padding where the buttons used 4px, so it stood 2px taller and
+         the whole bar (and the timeline under it) shifted whenever a selection
+         showed or hid that field. Nested popover controls are excluded. */
+      #clip-inspector > button,
+      #clip-inspector .tool-modes button,
+      #clip-inspector .clip-field select,
+      #clip-inspector .clip-field > button {
+        height: 28px;
+        padding-top: 0;
+        padding-bottom: 0;
+      }
       /* Delete only appears while a clip is selected, so the bar stays clear
          when the user is just setting defaults for the next clip. */
       #btn-cue-delete[hidden] { display: none; }
@@ -1515,8 +1527,8 @@
         :root {
           --side-panel-width: min(230px, 62vw);
           --track-width: 145px;
-          /* The inspector still wraps into two rows, so the dock keeps a larger
-             share of the screen than on desktop. */
+          /* The dock keeps a larger share of the screen than on desktop: the
+             zoom tools are a full extra row here (see below). */
           --dock-height: 58vh;
         }
         /* The zoom toolbar is a real fifth row here (see below), so the
@@ -1618,13 +1630,23 @@
           line-height: 1;
         }
 
-        /* --- Clip inspector: mode + action, then timing + colour --------- */
+        /* --- Clip inspector: mode + action, timing + colour, one row ----- */
+        /* Everything the bar needs to edit a selected clip has to share one
+           row here: wrapping pushed the two color swatches onto a second line
+           at 375 px and below. Items shrink instead of wrapping now, and the
+           12 px monospace labels lose a point, which is what buys the row. */
         #clip-inspector {
-          flex-wrap: wrap;
+          flex-wrap: nowrap;
           align-items: center;
-          gap: 4px 8px;
-          padding: 5px 8px;
+          gap: 0 4px;
+          padding: 5px 6px;
+          font-size: 11px;
         }
+        /* The popovers are children of the bar, so they would inherit the
+           smaller size; they keep the desktop scale. */
+        #clip-inspector #color-picker,
+        #clip-inspector #look-editor,
+        #clip-inspector #strobe-editor { font-size: 12px; }
         /* The selection readout is already hidden here; the empty wrapper would
            still contribute a flex gap between the mode switch and the action. */
         #clip-inspector .inspector-target { display: none; }
@@ -1633,6 +1655,26 @@
         #clip-inspector #btn-cue-paste { display: none; }
         #clip-inspector .clip-field-label, #selected-fixture { display: none; }
         #clip-inspector .clip-field { gap: 0; }
+        /* Same single control height as the desktop bar, a touch shorter to
+           match the 11px labels. Which fields the selection shows must not
+           change the row height. */
+        #clip-inspector > button,
+        #clip-inspector .tool-modes button,
+        #clip-inspector .clip-field select,
+        #clip-inspector .clip-field > button { height: 26px; }
+        /* The mode switch is the widest fixed item in the row; trim its boxes
+           rather than dropping a gesture that has no touch equivalent. */
+        #clip-inspector .tool-modes button { min-width: 0; padding: 4px 7px; }
+        /* Timing is the only variable-width label here ("Aim 0° / -135° →
+           0° / 135°"), so it is the one item allowed to shrink. Ellipsising
+           it keeps the swatches on the row; `title` still has the full text. */
+        #clip-inspector #btn-clip-timing {
+          flex: 0 1 auto;
+          min-width: 0;
+          padding: 4px 7px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
         .color-swatch { width: 14px; height: 14px; }
         #cue-color .color-swatch { width: 20px; height: 20px; }
 

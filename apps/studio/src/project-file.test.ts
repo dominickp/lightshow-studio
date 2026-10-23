@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { parseProject, PROJECT_VERSION, type ProjectFile } from '@dmxsim/show-model';
+import {
+  CLUB_STAGE,
+  instantiateRig,
+  parseProject,
+  PROJECT_VERSION,
+  type ProjectFile,
+} from '@dmxsim/show-model';
+import { PROFILE_LIBRARY } from '@dmxsim/fixtures';
 import {
   applyProjectFixtureSetup,
   cueTimelineFromProject,
@@ -13,7 +20,6 @@ import {
 } from './project-file';
 import type { Cue } from './arrangement';
 import type { FixturePlacement, FixtureProfile } from '@dmxsim/show-model';
-import { createDemoRig } from './demo-rig';
 import { loopEndSec, loopStartSec, TRACK } from './track';
 
 const profile: FixtureProfile = {
@@ -132,14 +138,14 @@ describe('project mapping', () => {
   });
 
   it('derives the show rig from the project', () => {
-    const rig = createDemoRig(TRACK.firstBeatSec, TRACK.bpm);
+    const fixtures = instantiateRig(CLUB_STAGE, PROFILE_LIBRARY);
     const withRig = parseProject({
       ...project,
-      show: { version: 2, name: rig.name, fixtures: rig.fixtures },
+      show: { version: 2, name: 'Club rig', fixtures },
     });
-    expect(rigMatches(withRig, rig.fixtures)).toBe(true);
-    expect(rigMatches(withRig, rig.fixtures.slice(1))).toBe(false);
-    expect(showFromProject(withRig).fixtures).toHaveLength(rig.fixtures.length);
+    expect(rigMatches(withRig, fixtures)).toBe(true);
+    expect(rigMatches(withRig, fixtures.slice(1))).toBe(false);
+    expect(showFromProject(withRig).fixtures).toHaveLength(fixtures.length);
   });
 
   it('builds a filesystem-safe filename', () => {

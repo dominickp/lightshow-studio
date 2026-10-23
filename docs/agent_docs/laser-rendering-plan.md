@@ -254,8 +254,8 @@ surface list for both the moving-head pool and the laser splat.
 The demo ships two lasers (`laser-0`, `laser-1`) on `truss-rear`. Give them
 `laser: { beams: 12, pattern: 'fan', fanDeg: 55 }` and `pattern: 'tunnel'` for
 one of them, then let the existing `sweep`/`hold` cues drive `rotation`.
-Update `resources/sample_projects/koto-chill/koto-chill.dmxsim` through
-`npm run project:generate` plus a manual pass, and check both camera presets.
+Update `resources/sample_projects/koto-chill/koto-chill.dmxsim` in the app
+(**Save project**) and check both camera presets.
 
 ## Milestones
 

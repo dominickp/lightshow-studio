@@ -35,7 +35,6 @@ import { DEFAULT_AIM, defaultLedLook } from '@dmxsim/show-model';
 import { lookDefinition } from './led/look-definitions';
 import { clamp } from './lib/math';
 
-export { CUE_COLORS } from './arrangement/colors';
 export type {
   Cue,
   CueAction,

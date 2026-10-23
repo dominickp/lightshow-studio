@@ -16,7 +16,7 @@
     "knip": "knip",
     "check": "npm run typecheck && npm run lint && npm run knip && npm test",
     "bench:report": "vite-node --config apps/studio/vite.config.ts apps/studio/scripts/perf-report.ts",
-    "project:generate": "vite-node --config apps/studio/vite.config.ts apps/studio/scripts/generate-demo-project.ts"
+    "schema:generate": "vite-node --config apps/studio/vite.config.ts apps/studio/scripts/write-schema.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

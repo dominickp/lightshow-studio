@@ -8,7 +8,8 @@ Laser rendering is a separate plan: `laser-rendering-plan.md`.
 ## Why now
 
 The app's venue is fixed in code (`addRoom()` in `src/stage.ts`) and its rig
-is generated in `src/demo-rig.ts`. A `.dmxsim` project can change fixture
+is instantiated from the venue template's `defaultRig` (`instantiateRig()` in
+`packages/show-model`). A `.dmxsim` project can change fixture
 *setup* values but not which fixtures exist: `openProject()` rejects any
 project whose fixture IDs differ from the running build
 (`rigMatches()` in `src/project-file.ts`). `activeFixtureCount` reveals the
@@ -393,7 +394,7 @@ large LED backdrop, low front uplights) and proves the template system: new
 anchors, different camera set, same fixture model. Each template also ships
 its `defaultRig`, built from the same profile library and anchored to that
 venue's structures, so a user who does not want to customize anything gets a
-working show immediately. `demo-rig.ts` is replaced by these presets.
+working show immediately.
 
 ### 9. Switching venues starts a new project
 

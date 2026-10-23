@@ -2,7 +2,7 @@
 
 The dmx-sim studio app. It renders a procedural club/stage venue with a 32-fixture rig driven by an editable arrangement. Stable renderer pieces will move into `packages/renderer` as the app grows.
 
-The stage has no hard-coded lighting effects. The rig and the 16-bar demo arrangement are loaded from [../../resources/sample_projects/koto-chill/koto-chill.dmxsim](../../resources/sample_projects/koto-chill/koto-chill.dmxsim) at startup — the project file carries the song it scores, so it is one self-contained file to find, replace and share. Playback evaluates exactly those clips, so moving, resizing, or deleting a clip changes the light on screen. **Save project** downloads the current rig, timeline, clips, and settings as a `.dmxsim` file; **Open project** validates one and applies it. Edit the demo file on disk and reload the page to iterate on it, or run `npm run project:generate` (repo root) to rebuild it from [src/demo-arrangement.ts](src/demo-arrangement.ts). Format spec: [../../docs/agent_docs/project-file-format.md](../../docs/agent_docs/project-file-format.md).
+The stage has no hard-coded lighting effects. The rig and the 16-bar demo arrangement are loaded from [../../resources/sample_projects/koto-chill/koto-chill.dmxsim](../../resources/sample_projects/koto-chill/koto-chill.dmxsim) at startup — the project file carries the song it scores, so it is one self-contained file to find, replace and share. Playback evaluates exactly those clips, so moving, resizing, or deleting a clip changes the light on screen. **Save project** downloads the current rig, timeline, clips, and settings as a `.dmxsim` file; **Open project** validates one and applies it. To update the demo, edit it in the app, use **Save project**, and commit the downloaded file over the sample (or replace the file on disk and reload to iterate). Format spec: [../../docs/agent_docs/project-file-format.md](../../docs/agent_docs/project-file-format.md).
 
 Playback is driven by the audio clock prototype ([src/audio-clock.ts](src/audio-clock.ts)): song time comes from `AudioContext`, not from frame deltas, and the transport strip scrubs a real waveform with the beat grid drawn on it.
 
@@ -35,20 +35,3 @@ npm run dev        # from the repo root, or: npm run dev -w @dmxsim/studio
 
 Open the Vite URL in a WebGPU-capable browser. Uses three.js `WebGPURenderer` with TSL node materials; the browser may fall back to WebGL2 — verify with the backend label in the HUD.
 
-## Controls
-
-- **Space**: play/pause the audio and the lighting arrangement
-- **Click / drag the waveform**: scrub
-- **L**: toggle audio looping (clips play at their absolute song times)
-- **1**: toggle beam cones (mesh-based haze proxy, not true raymarched volumetrics)
-- **2**: toggle bloom
-- **3**: toggle shadows
-- **4**: toggle fixture strobes (on by default)
-- **C**: cycle camera presets
-- **O**: toggle a slow orbit across the front of the stage, with a gentle rise/fall and zoom breathing
-- **[ / ]**: cycle fixture counts
-- Mouse drag / scroll: orbit and zoom
-
-Drag a lane to add a clip, drag a clip to move it, drag its edge to resize it, or select a clip and press **Delete** to remove it. The demo arrangement is ordinary clip data; edit it freely.
-
-The HUD reports requestAnimationFrame timing, per-frame draw calls/triangles, resolution scale, backend, active fixtures, song position in bars/beats, measured output latency, and the loop bars. rAF timing follows the display refresh rate; it is not a GPU timestamp.

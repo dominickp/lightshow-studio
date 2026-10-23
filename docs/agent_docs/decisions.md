@@ -247,8 +247,8 @@ carrying arbitrary media.
   error.
 - The demo ships as a binary bundle in git
   (`resources/sample_projects/koto-chill/koto-chill.dmxsim`). **Save project**
-  from the app produces a replacement directly; `npm run project:generate`
-  rebuilds it from `demo-arrangement.ts`.
+  from the app is the only way to rebuild it; there is no generator script to
+  run, so an in-app edit can never be silently overwritten.
 
 **Consequences.**
 - Amends ADR-003: the app still does not import from YouTube, upload to a

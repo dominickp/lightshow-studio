@@ -542,21 +542,19 @@ project can still open.
 ```
 resources/sample_projects/koto-chill/
   koto-chill.dmxsim      # ZIP bundle loaded at startup, song included
-npm run project:generate # rebuilds the bundle from demo-arrangement.ts
 ```
 
-- **Recommended loop:** edit the show in the app and press **Save project**.
-  The download is already a complete bundle (document + audio + wall media),
-  so replacing `koto-chill.dmxsim` with it updates the demo.
+- **The bundle is the only source of the demo.** Edit the show in the app and
+  press **Save project**; the download is already a complete bundle (document +
+  audio + wall media), so committing it over `koto-chill.dmxsim` updates the
+  demo. There is no generator script: nothing can overwrite an in-app edit.
 - To inspect a bundle: `unzip -p koto-chill.dmxsim project.json`. To change the
   JSON by hand, unpack into a scratch directory, edit, and re-zip with
   `project.json` at the root and media under `media/`.
-- `npm run project:generate` is a reset: it rebuilds the arrangement from the
-  procedural demo and regenerates the JSON Schema companion. It overwrites any
-  hand edits in the bundle.
-- The song exists only inside the bundle. The generator reads the bundle's own
-  embedded audio and carries it into the rebuilt file, so there is no second
-  copy of the track in the repo.
+- `npm run schema:generate` rewrites `project-file.schema.json` from the Zod
+  definitions. It touches no project data.
+- The song exists only inside the bundle, so the repo holds exactly one copy of
+  the track.
 
 The app's rig is authored in the app (or loaded from a project) and saved
 with the file; opening a project whose venue or fixture IDs differ from the

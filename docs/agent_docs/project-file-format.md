@@ -541,8 +541,7 @@ project can still open.
 
 ```
 resources/sample_projects/koto-chill/
-  The Koto Chill.ogg     # source audio, kept so the bundle can be rebuilt
-  koto-chill.dmxsim      # ZIP bundle loaded at startup
+  koto-chill.dmxsim      # ZIP bundle loaded at startup, song included
 npm run project:generate # rebuilds the bundle from demo-arrangement.ts
 ```
 
@@ -553,11 +552,11 @@ npm run project:generate # rebuilds the bundle from demo-arrangement.ts
   JSON by hand, unpack into a scratch directory, edit, and re-zip with
   `project.json` at the root and media under `media/`.
 - `npm run project:generate` is a reset: it rebuilds the arrangement from the
-  procedural demo, embeds the `.ogg`, and regenerates the JSON Schema
-  companion. It overwrites any hand edits in the bundle.
-- `resources/sample_projects/koto-chill/The Koto Chill.ogg` is the source of
-  truth for the audio; it is not loaded by the app any more (the bundle is),
-  but the generator needs it.
+  procedural demo and regenerates the JSON Schema companion. It overwrites any
+  hand edits in the bundle.
+- The song exists only inside the bundle. The generator reads the bundle's own
+  embedded audio and carries it into the rebuilt file, so there is no second
+  copy of the track in the repo.
 
 The app's rig is authored in the app (or loaded from a project) and saved
 with the file; opening a project whose venue or fixture IDs differ from the

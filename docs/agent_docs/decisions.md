@@ -248,7 +248,7 @@ carrying arbitrary media.
 - The demo ships as a binary bundle in git
   (`resources/sample_projects/koto-chill/koto-chill.dmxsim`). **Save project**
   from the app produces a replacement directly; `npm run project:generate`
-  rebuilds it from `demo-arrangement.ts` and the source `.ogg`.
+  rebuilds it from `demo-arrangement.ts`.
 
 **Consequences.**
 - Amends ADR-003: the app still does not import from YouTube, upload to a

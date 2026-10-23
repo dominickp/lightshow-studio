@@ -2,7 +2,6 @@ import * as THREE from 'three/webgpu';
 import {
   CLUB_STAGE,
   DEFAULT_LASER_SETUP,
-  DEFAULT_VENUE_ID,
   evaluateFixture,
   findAnchor,
   ledSurfaceFromFeature,
@@ -37,13 +36,10 @@ import {
   type BenchmarkResult,
   type MachineInfo,
 } from './app/benchmark';
-import { createDemoRig } from './demo-rig';
-import { createDemoCues, createDemoSurfaceCues } from './demo-arrangement';
 import { AudioClock } from './audio-clock';
 import { analyzeAudioBuffer, type TempoCandidate } from './audio-analysis';
 import { CryoJetAudio } from './cryo-jet-audio';
 import cryoJetSfxUrl from './assets/cryo-jet.ogg?url';
-import { loopEndSec, loopStartSec, TRACK, TRACK_URL } from './track';
 import { followScrollLeft, smoothFollowScrollLeft } from './timeline-follow';
 import { computePeaks, WaveformStrip } from './waveform';
 import { WindowedCanvas } from './canvas-window';
@@ -129,36 +125,36 @@ window.addEventListener('unhandledrejection', (event) => {
 
 /**
  * The demo is a project bundle, not generated code: the app loads
- * `resources/sample_projects/koto-chill/koto-chill.dmxsim` at startup so the
- * show (and its audio) can be replaced as a single file. The procedural
- * rig/cues remain as a fallback if the bundle is missing or invalid.
+ * `resources/sample_projects/koto-chill/koto-chill.dmxsim` at startup, and the
+ * bundle is the only source of the demo show, its song and its wall media.
+ * There is no procedural fallback: a missing or invalid bundle is a startup
+ * error, reported in the loading overlay.
  */
-const loadBundledProject = async (): Promise<ProjectBundle | null> => {
-  try {
-    setBootStatus('Loading demo project…');
-    const response = await fetch(demoProjectUrl);
-    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-    return await readProjectBundle(await readWithProgress(response, 'Loading demo project'));
-  } catch (error) {
-    console.warn('could not load the bundled project; using the generated demo rig', error);
-    return null;
-  }
+const loadBundledProject = async (): Promise<ProjectBundle> => {
+  setBootStatus('Loading demo project…');
+  const response = await fetch(demoProjectUrl);
+  if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+  return readProjectBundle(await readWithProgress(response, 'Loading demo project'));
 };
 
-const bundledBundle = await loadBundledProject();
-const bundledProject = bundledBundle?.project ?? null;
-const show = bundledProject === null
-  ? createDemoRig(loopStartSec, TRACK.bpm)
-  : showFromProject(bundledProject);
-let projectName = bundledProject?.name ?? 'Untitled project';
-let projectDescription = bundledProject?.description;
+let bundledBundle: ProjectBundle;
+try {
+  bundledBundle = await loadBundledProject();
+} catch (error) {
+  bootFailed('Could not load the demo project', error);
+  throw error;
+}
+const bundledProject = bundledBundle.project;
+const show = showFromProject(bundledProject);
+let projectName = bundledProject.name;
+let projectDescription = bundledProject.description;
 /**
  * Active venue template. Resolved from the project file so opening a project
  * renders the stage it was authored on. Unknown ids fall back to the club
  * stage with a warning rather than failing the load; a real venue switch UI is
  * still to come (see `stage-rig-editor-plan.md`).
  */
-const requestedVenueId = bundledProject?.venue.id ?? DEFAULT_VENUE_ID;
+const requestedVenueId = bundledProject.venue.id;
 const activeVenue = venueById(requestedVenueId) ?? CLUB_STAGE;
 if (activeVenue.id !== requestedVenueId) {
   console.warn(`unknown venue "${requestedVenueId}"; using ${activeVenue.id}`);
@@ -171,13 +167,7 @@ const venueSurfaces = (venue: typeof activeVenue): LedSurface[] =>
   venue.features.ledWall === undefined ? [] : [ledSurfaceFromFeature(venue.features.ledWall)];
 let surfaces: LedSurface[] = venueSurfaces(activeVenue);
 
-let projectAudio: ProjectFile['audio'] = bundledProject?.audio ?? {
-  source: 'bundled',
-  id: 'koto-chill',
-  title: TRACK.title,
-  artist: TRACK.artist,
-  fileName: 'The Koto Chill.ogg',
-};
+let projectAudio: ProjectFile['audio'] = bundledProject.audio;
 /**
  * Bytes of the loaded track, so Save can embed it. `null` means the audio is
  * app-shipped (`bundled:`) and stays a reference.
@@ -209,7 +199,7 @@ const stage = new Stage(renderer.domElement, show, activeVenue);
 const media = new LedMediaLibrary();
 // Wall media that shipped inside the demo bundle must exist before the stage
 // builds its materials from the project's looks.
-if (bundledBundle !== null) media.addEmbedded(bundledBundle.media);
+media.addEmbedded(bundledBundle.media);
 stage.setLedMediaRuntime(media);
 // A local upload restored from IndexedDB is only usable once its texture
 // exists, so rebuild the media materials when the library reports it.
@@ -230,7 +220,10 @@ stage.warmup();
 const clock = new AudioClock();
 const cryoAudio = new CryoJetAudio(clock);
 void cryoAudio.load(cryoJetSfxUrl);
-clock.setLoop({ startSec: loopStartSec, endSec: loopEndSec }, true);
+clock.setLoop({
+  startSec: bundledProject.timeline.loop.startSec,
+  endSec: bundledProject.timeline.loop.endSec,
+}, true);
 
 let volumetrics = true;
 let bloomOn = true;
@@ -295,12 +288,10 @@ let arrangement: Arrangement;
 let currentTimeline: CueTimeline | null = null;
 /** Follow starts on; `applyProjectSettings` applies a project's saved choice. */
 let followPlayhead = true;
-let loopRegion = bundledProject === null
-  ? { startSec: loopStartSec, endSec: loopEndSec }
-  : {
-      startSec: bundledProject.timeline.loop.startSec,
-      endSec: bundledProject.timeline.loop.endSec,
-    };
+let loopRegion = {
+  startSec: bundledProject.timeline.loop.startSec,
+  endSec: bundledProject.timeline.loop.endSec,
+};
 
 const kindLabel = (kind: string): string =>
   kind.split('-').map((word) => word[0]!.toUpperCase() + word.slice(1)).join(' ');
@@ -3158,72 +3149,36 @@ ui.projectFile.addEventListener('change', () => {
 
 setBootStatus('Loading audio…');
 
-try {
-  /* The demo bundle carries its song; the sample track on disk is the fallback
-   * when the bundle is unavailable or predates embedded audio. */
-  const bundledAudioSha = bundledProject?.audio.source === 'embedded'
-    ? bundledProject.audio.sha256
-    : undefined;
-  const bundledAudio = bundledAudioSha === undefined
-    ? undefined
-    : bundledBundle?.media.get(bundledAudioSha);
-  let audioBytes: Uint8Array;
-  if (bundledAudio !== undefined) {
-    audioBytes = bundledAudio.bytes;
+/* The bundle is the only source of the demo song: the track is shipped inside
+ * the `.dmxsim` and decoded from its media map, so the app never carries a
+ * second copy of the audio file. */
+const bundledAudioSha = bundledProject.audio.source === 'embedded'
+  ? bundledProject.audio.sha256
+  : undefined;
+const bundledAudio = bundledAudioSha === undefined
+  ? undefined
+  : bundledBundle.media.get(bundledAudioSha);
+if (bundledAudio === undefined) {
+  console.error('the demo bundle has no embedded song', bundledProject.audio);
+  ui.audioStatus.textContent = 'Could not load the demo song';
+} else {
+  try {
     projectAudioFile = bundledAudio;
     loadedAudioSha = bundledAudioSha ?? null;
-  } else {
-    const response = await fetch(TRACK_URL);
-    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-    audioBytes = new Uint8Array(await response.arrayBuffer());
+    const buffer = await clock.decode(bundledAudio.bytes.slice().buffer as ArrayBuffer);
+    clock.load(buffer);
+    waveform.setPeaks(computePeaks(buffer, 1600));
+    // The track line already names the song; a generic "Ready" here was noise.
+    ui.audioStatus.textContent = '';
+  } catch (error) {
+    console.error(error);
+    ui.audioStatus.textContent = `Could not load the demo song: ${bundledAudio.fileName ?? 'embedded audio'}`;
   }
-  const buffer = await clock.decode(audioBytes.slice().buffer as ArrayBuffer);
-  clock.load(buffer);
-  waveform.setPeaks(computePeaks(buffer, 1600));
-  // The track line already names the song; a generic "Ready" here was noise.
-  ui.audioStatus.textContent = '';
-
-  if (bundledProject !== null) {
-    applyProject(bundledProject, 'default');
-    const clipCount = bundledProject.arrangement.clips.length + bundledProject.arrangement.surfaceClips.length;
-    setProjectStatus(`Bundled demo: ${bundledProject.name} · ${clipCount} clips`);
-  } else {
-    clock.setLoop({ startSec: loopStartSec, endSec: loopEndSec }, true);
-    clock.seek(loopStartSec);
-    ui.transportTrack.textContent = `${TRACK.title} — ${TRACK.artist} · ${TRACK.bpm} BPM`;
-    const timeline: CueTimeline = {
-      durationSec: buffer.duration,
-      firstBeatSec: TRACK.firstBeatSec,
-      bpm: TRACK.bpm,
-      beatsPerBar: TRACK.beatsPerBar,
-      loopStartSec,
-      loopEndSec,
-    };
-    currentTimeline = timeline;
-    loopRegion = { startSec: loopStartSec, endSec: loopEndSec };
-    waveform.setTimeline({
-      durationSec: buffer.duration,
-      loopStartSec,
-      loopEndSec,
-      firstBeatSec: TRACK.firstBeatSec,
-      bpm: TRACK.bpm,
-      beatsPerBar: TRACK.beatsPerBar,
-    });
-    arrangement.setTimeline(timeline);
-    enableTimelineControls();
-    setZoom(PIXELS_PER_SECOND);
-    applyLoop();
-    arrangement.setCues([
-      ...createDemoCues(show.fixtures, timeline),
-      ...createDemoSurfaceCues(timeline),
-    ]);
-    ui.arrangementScroll.scrollLeft = Math.max(0, loopStartSec * PIXELS_PER_SECOND);
-    paintTransportTime(loopStartSec, buffer.duration);
-  }
-} catch (error) {
-  console.error(error);
-  ui.audioStatus.textContent = `Could not load default track: ${TRACK.title}`;
 }
+
+applyProject(bundledProject, 'default');
+const demoClipCount = bundledProject.arrangement.clips.length + bundledProject.arrangement.surfaceClips.length;
+setProjectStatus(`Bundled demo: ${bundledProject.name} · ${demoClipCount} clips`);
 
 ui.loading.hidden = true;
 syncButtons();

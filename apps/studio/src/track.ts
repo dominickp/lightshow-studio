@@ -1,10 +1,12 @@
-import trackUrl from '../../../resources/sample_projects/koto-chill/The Koto Chill.ogg?url';
-
 /**
  * Offline analysis of the sample track, not import-time detection: an
  * onset-flux envelope plus a DP beat tracker put it at 130.00 BPM with the
  * first beat at 0.02 s. Bars 41–56 are a high-energy 16-bar window, so that
  * is the default loop.
+ *
+ * These values describe the demo bundle's song. The audio itself ships only
+ * inside `koto-chill.dmxsim`, so the app never carries a second copy of it;
+ * this module is just the metadata the generator and tests need.
  *
  * ADR-003 wants analysis to be a real, correctable import step. These numbers
  * are a hand-off placeholder until that exists.
@@ -19,8 +21,6 @@ export const TRACK = {
   loopStartBar: 41,
   loopBars: 16,
 } as const;
-
-export const TRACK_URL = trackUrl;
 
 const beatSec = 60 / TRACK.bpm;
 const barSec = beatSec * TRACK.beatsPerBar;

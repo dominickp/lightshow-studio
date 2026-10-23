@@ -8,10 +8,9 @@ import {
   defaultProjectSettings,
   ledSurfaceFromFeature,
   projectJsonSchema,
-  sha256Hex,
+  readProjectBundle,
   writeProjectBundle,
   type ProjectFile,
-  type ProjectMediaFile,
   type ProjectMediaMap,
 } from '@dmxsim/show-model';
 import type { CueTimeline } from '../src/arrangement';
@@ -29,7 +28,8 @@ import { TRACK, loopEndSec, loopStartSec } from '../src/track';
  * bundle holding `project.json` and the song. Replace that file with a saved
  * bundle to publish arrangement edits; run this script only to rebuild it from
  * the authored `demo-arrangement.ts` (which would overwrite those edits). The
- * source `.ogg` stays next to the bundle so it can be regenerated.
+ * song is carried over from the bundle itself, so there is no side-car audio
+ * file to keep in sync.
  *
  *   npm run project:generate
  */
@@ -98,20 +98,25 @@ const project: ProjectFile = {
   media: [],
 };
 
-const audioPath = fileURLToPath(new URL('../../../resources/sample_projects/koto-chill/The Koto Chill.ogg', import.meta.url));
-const audioBytes = new Uint8Array(readFileSync(audioPath));
-const audioSha = await sha256Hex(audioBytes);
+const audioPath = fileURLToPath(new URL('../../../resources/sample_projects/koto-chill/koto-chill.dmxsim', import.meta.url));
+
+/**
+ * The song exists only inside the bundle, so the generator carries its bytes
+ * over from the bundle currently on disk rather than reading a second copy
+ * from a side-car `.ogg`. Regenerating the arrangement therefore keeps the
+ * audio byte-identical, and the repo ships the track exactly once.
+ */
+const existing = await readProjectBundle(new Uint8Array(readFileSync(audioPath)));
+const audioSha = existing.project.audio.sha256;
+const audio = audioSha === undefined ? undefined : existing.media.get(audioSha);
+if (audioSha === undefined || audio === undefined) {
+  throw new Error('the demo bundle has no embedded song to carry over');
+}
 project.audio.sha256 = audioSha;
-const audio: ProjectMediaFile = {
-  bytes: audioBytes,
-  kind: 'audio',
-  mime: 'audio/ogg',
-  fileName: 'The Koto Chill.ogg',
-};
 const media: ProjectMediaMap = new Map([[audioSha, audio]]);
 
 const bundle = await writeProjectBundle(project, media);
-const projectPath = fileURLToPath(new URL('../../../resources/sample_projects/koto-chill/koto-chill.dmxsim', import.meta.url));
+const projectPath = audioPath;
 mkdirSync(dirname(projectPath), { recursive: true });
 writeFileSync(projectPath, bundle);
 

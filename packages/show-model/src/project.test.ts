@@ -83,6 +83,7 @@ describe('project file schema', () => {
   it('fills optional sections with documented defaults', () => {
     const project = minimalProject();
     expect(project.settings.render.strobes).toBe(true);
+    expect(project.settings.render.haze).toBe(0.65);
     expect(project.settings.playback.volume).toBe(1);
     expect(project.settings.ui.waveformHeightPx).toBe(40);
     expect(project.audio.source).toBe('external');
@@ -105,6 +106,28 @@ describe('project file schema', () => {
   it('round-trips through serialize/parse', () => {
     const project = minimalProject();
     expect(parseProject(JSON.parse(serializeProject(project)))).toEqual(project);
+  });
+
+  it.each([0, 0.23, 1])('round-trips project haze density %s', (haze) => {
+    const project = minimalProject();
+    project.settings.render.haze = haze;
+    expect(parseProject(JSON.parse(serializeProject(project))).settings.render.haze).toBe(haze);
+  });
+
+  it.each([-0.01, 1.01, '0.5', null])('rejects invalid haze density %s', (haze) => {
+    const project = minimalProject();
+    expect(() => parseProject({
+      ...project,
+      settings: { ...project.settings, render: { ...project.settings.render, haze } },
+    })).toThrow(/haze/);
+  });
+
+  it('defaults haze in older render settings', () => {
+    const project = minimalProject();
+    expect(parseProject({
+      ...project,
+      settings: { ...project.settings, render: { bloom: false } },
+    }).settings.render).toMatchObject({ bloom: false, haze: 0.65 });
   });
 
   it('round-trips fixture setup defaults', () => {

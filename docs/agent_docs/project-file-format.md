@@ -441,6 +441,7 @@ section.
       "volumetrics": true,
       "bloom": true,
       "shadows": true,
+      "haze": 0.65,
       "strobes": true,
       "activeFixtureCount": 32,
       "cameraView": 0
@@ -464,6 +465,9 @@ section.
 
 - `render.activeFixtureCount: 0` means "use the whole rig".
 - `render.strobes` defaults to `true`.
+- `render.haze` is venue atmosphere density in `0..1`, defaulting to `0.65`
+  when absent in older bundles. It is saved with the project and restored on
+  every load (including the startup demo), never from browser-local preferences.
 - `render.lofi` is accepted for older files but ignored; the grade was removed.
 - `render.cameraView` is an index into the app's camera presets.
 - `ui.dockHeightPx: 0` keeps the stylesheet default dock height.

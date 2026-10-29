@@ -68,6 +68,7 @@ describe('project bundle', () => {
   it('round-trips the document and its media', async () => {
     const audioSha = await sha256Hex(AUDIO);
     const project = await projectWithAudio(audioSha);
+    project.settings.render.haze = 0.23;
     const bytes = await writeProjectBundle(project, new Map([
       [audioSha, mediaFile(AUDIO, 'audio', 'audio/ogg', 'song.ogg')],
     ]));

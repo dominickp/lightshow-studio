@@ -53,6 +53,7 @@ const project = buildProjectFile({
     volumetrics: true,
     bloom: true,
     shadows: false,
+    haze: 0.65,
     strobes: true,
     activeFixtureCount: 1,
     cameraView: 0,

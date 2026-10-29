@@ -371,6 +371,8 @@ export const projectSettingsSchema = z
         volumetrics: z.boolean().default(true),
         bloom: z.boolean().default(true),
         shadows: z.boolean().default(true),
+        /** Scene haze density, independent of browser-local render preferences. */
+        haze: z.number().min(0).max(1).default(0.65),
         /** Deprecated: accepted for older files, but the grade was removed. */
         lofi: z.boolean().optional(),
         strobes: z.boolean().default(true),

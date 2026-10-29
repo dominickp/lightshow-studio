@@ -1041,9 +1041,6 @@ interface StoredRenderSettings {
   cameraView?: number;
   /** Slow automatic camera sweep across the front of the stage. */
   orbit?: boolean;
-  /** Scene haze 0..1. A render preference, not a project setting: it changes
-   * how the room is *shown*, not what the show does. */
-  haze?: number;
 }
 
 const readStoredRender = (): StoredRenderSettings => {
@@ -1063,7 +1060,6 @@ const snapshotRender = (): StoredRenderSettings => ({
   strobes: strobesOn,
   cameraView: stage.view,
   orbit: stage.orbitEnabled,
-  haze: stage.hazeLevel,
 });
 
 let persistedRender = '';
@@ -2588,7 +2584,6 @@ ui.strobe.addEventListener('click', () => {
 ui.haze.addEventListener('input', () => {
   stage.setHaze(Number(ui.haze.value) / 100);
   ui.hazeValue.textContent = ui.haze.value;
-  persistRender();
 });
 ui.view.addEventListener('click', () => {
   stage.nextView();
@@ -3023,6 +3018,7 @@ const enableTimelineControls = (): void => {
  *   and become the local defaults for the next refresh.
  * - `default`: the bundled demo, which is re-applied on every load. Local
  *   preferences (localStorage) win so refreshing does not undo the user's setup.
+ * Haze is project-owned venue atmosphere, so it always uses the saved setting.
  */
 const applyProjectSettings = (settings: ProjectSettings, source: 'project' | 'default' = 'project'): void => {
   const local = source === 'default' ? readStoredRender() : {};
@@ -3036,8 +3032,8 @@ const applyProjectSettings = (settings: ProjectSettings, source: 'project' | 'de
   /* The fixture-count budget has no UI: the whole rig is always rendered, so
    * `render.activeFixtureCount` is accepted but not applied. */
   setActiveCount(show.fixtures.length);
-  /* Local haze wins; otherwise start from the venue's own atmosphere. */
-  stage.setHaze(local.haze ?? stage.hazeLevel);
+  // Venue atmosphere always belongs to the project, including the startup demo.
+  stage.setHaze(settings.render.haze);
   stage.setView(local.cameraView ?? settings.render.cameraView, true);
   stage.setOrbit(local.orbit ?? true);
 
@@ -3120,6 +3116,7 @@ const buildProject = (): ProjectFile | null => {
       bloom: bloomOn,
       /* Shadows always render; the toggle was removed as visually inert. */
       shadows: true,
+      haze: stage.hazeLevel,
       strobes: strobesOn,
       /* No fixture-count control: saved projects always carry the full rig. */
       activeFixtureCount: activeCount,

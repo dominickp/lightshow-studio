@@ -1279,6 +1279,12 @@
               "default": true,
               "type": "boolean"
             },
+            "haze": {
+              "default": 0.65,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
             "lofi": {
               "type": "boolean"
             },
@@ -1303,6 +1309,7 @@
             "volumetrics",
             "bloom",
             "shadows",
+            "haze",
             "strobes",
             "activeFixtureCount",
             "cameraView"

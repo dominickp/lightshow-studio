@@ -29,7 +29,9 @@ import { lookTime } from './led/looks';
 import { PROFILE_LIBRARY } from '@dmxsim/fixtures';
 import {
   BENCH_SCENARIO,
+  BENCH_RENDER,
   BenchmarkRecorder,
+  benchmarkRenderSize,
   buildBenchCues,
   buildBenchSurfaceCues,
   machineInfo,
@@ -2593,12 +2595,21 @@ ui.view.addEventListener('click', () => {
   persistRender();
 });
 
+let benchmarkSizing = false;
+const applyRenderSize = (): void => {
+  const size = benchmarkRenderSize(
+    benchmarkSizing, viewport.clientWidth, viewport.clientHeight, baseRatio * perf.resolutionScale,
+  );
+  renderer.setPixelRatio(size.pixelRatio);
+  renderer.setSize(size.width, size.height);
+  stage.camera.aspect = size.width / Math.max(1, size.height);
+  stage.camera.updateProjectionMatrix();
+};
+
 const resizeViewport = (): void => {
   measureTrackWidth();
   applyPanelWidth();
-  renderer.setSize(viewport.clientWidth, viewport.clientHeight);
-  stage.camera.aspect = viewport.clientWidth / Math.max(1, viewport.clientHeight);
-  stage.camera.updateProjectionMatrix();
+  applyRenderSize();
   refreshScrollMetrics();
   paintTimeAxis();
 };
@@ -2614,8 +2625,7 @@ narrowViewport.addEventListener('change', () => {
 // eslint-disable-next-line prefer-const
 let perf: PerfMonitor;
 const applyResolutionScale = (): void => {
-  renderer.setPixelRatio(baseRatio * perf.resolutionScale);
-  renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+  applyRenderSize();
 };
 perf = new PerfMonitor({
   applyResolutionScale,
@@ -2629,6 +2639,7 @@ interface BenchRun {
   recorder: BenchmarkRecorder;
   startedAt: string;
   options: BenchmarkResult['options'];
+  machine: MachineInfo;
   restore: () => void;
   resolve: (result: BenchmarkResult) => void;
 }
@@ -2655,19 +2666,17 @@ const gpuLabel = (): string => {
   }
 };
 
-let cachedMachine: MachineInfo | null = null;
+let cachedGpu: string | undefined;
 const currentMachine = (): MachineInfo => {
-  if (cachedMachine !== null) return cachedMachine;
   const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
-  cachedMachine = machineInfo({
-    gpu: gpuLabel(),
+  return machineInfo({
+    gpu: cachedGpu ??= gpuLabel(),
     cores: navigator.hardwareConcurrency || 0,
     ...(memory === undefined ? {} : { memoryGb: memory }),
     devicePixelRatio: window.devicePixelRatio || 1,
     viewport: `${viewport.clientWidth}x${viewport.clientHeight}`,
     userAgent: navigator.userAgent,
   });
-  return cachedMachine;
 };
 
 /**
@@ -2676,13 +2685,13 @@ const currentMachine = (): MachineInfo => {
  * The scenario is built from the loaded rig, not from the sample project, so
  * editing `koto-chill.dmxsim` cannot invalidate a comparison. Everything that
  * changes the number is pinned for the run: all fixtures visible, orbit on,
- * 100% resolution scale, a fixed zoom, and a fixed song time.
+ * 1280×720 at pixel ratio 1, a fixed zoom, and a fixed song time.
  *
  * Roughly 3.5 s of wall clock at the defaults (0.9 s warmup, 2.4 s sampling),
  * which is enough for ~150 frames at 60 fps.
  */
 const runBenchmark = async (options: BenchmarkOptions = {}): Promise<BenchmarkResult> => {
-  if (benchRun !== null) throw new Error('a benchmark is already running');
+  if (benchRun !== null || benchmarkSizing) throw new Error('a benchmark is already running');
   // A background tab throttles requestAnimationFrame to ~1 Hz, which would
   // report a fake 0.1 fps. Better to fail loudly than to poison the history.
   if (document.hidden) throw new Error('benchmark needs a visible page: background tabs throttle rAF');
@@ -2704,9 +2713,13 @@ const runBenchmark = async (options: BenchmarkOptions = {}): Promise<BenchmarkRe
     songTime: clock.time,
     loop: { ...loopRegion },
     loopEnabled: clock.loopEnabled,
+    autoResolution: perf.autoResolutionEnabled,
   };
 
   const restore = (): void => {
+    benchmarkSizing = false;
+    viewport.removeAttribute('data-benchmark');
+    applyRenderSize();
     clock.pause();
     arrangement.setCues(previous.cues);
     setActiveCount(previous.activeCount);
@@ -2717,41 +2730,50 @@ const runBenchmark = async (options: BenchmarkOptions = {}): Promise<BenchmarkRe
     applyLoop(false);
     clock.setLoopEnabled(previous.loopEnabled);
     clock.seek(previous.songTime);
-    perf.setAutoResolution(true);
+    perf.setAutoResolution(previous.autoResolution);
     if (previous.playing) void clock.play();
   };
 
-  // Pin the scenario.
-  setActiveCount(show.fixtures.length);
-  stage.setView(0, true);
-  stage.setOrbit(orbitOn);
-  stage.setOrbitTimeScale(orbitSpeed);
-  setZoom(PIXELS_PER_SECOND);
-  arrangement.setCues([
-    ...buildBenchCues(show.fixtures, startSec, BENCH_SCENARIO.windowSec),
-    ...buildBenchSurfaceCues(surfaces, startSec, BENCH_SCENARIO.windowSec),
-  ]);
-  loopRegion = { startSec, endSec: startSec + BENCH_SCENARIO.windowSec };
-  applyLoop(false);
-  clock.setLoopEnabled(false);
-  clock.seek(startSec);
-  perf.setAutoResolution(false);
-  perf.resetScale();
-  applyResolutionScale();
-  await clock.play();
+  // Pin CSS dimensions too: LED mask LOD reads the canvas's clientHeight.
+  benchmarkSizing = true;
+  viewport.setAttribute('data-benchmark', '');
+  try {
+    // Pin the scenario.
+    setActiveCount(show.fixtures.length);
+    stage.setView(0, true);
+    stage.setOrbit(orbitOn);
+    stage.setOrbitTimeScale(orbitSpeed);
+    setZoom(PIXELS_PER_SECOND);
+    arrangement.setCues([
+      ...buildBenchCues(show.fixtures, startSec, BENCH_SCENARIO.windowSec),
+      ...buildBenchSurfaceCues(surfaces, startSec, BENCH_SCENARIO.windowSec),
+    ]);
+    loopRegion = { startSec, endSec: startSec + BENCH_SCENARIO.windowSec };
+    applyLoop(false);
+    clock.setLoopEnabled(false);
+    clock.seek(startSec);
+    perf.setAutoResolution(false);
+    perf.resetScale();
+    applyResolutionScale();
+    await clock.play();
 
-  const recorder = new BenchmarkRecorder(warmupMs, measureMs);
-  const result = new Promise<BenchmarkResult>((resolve) => {
-    benchRun = {
-      recorder,
-      startedAt: new Date().toISOString(),
-      options: { startSec, warmupMs, measureMs, orbit: orbitOn, orbitSpeed },
-      restore,
-      resolve,
-    };
-    recorder.start(performance.now());
-  });
-  return result;
+    const recorder = new BenchmarkRecorder(warmupMs, measureMs);
+    const result = new Promise<BenchmarkResult>((resolve) => {
+      benchRun = {
+        recorder,
+        startedAt: new Date().toISOString(),
+        options: { startSec, warmupMs, measureMs, orbit: orbitOn, orbitSpeed },
+        machine: currentMachine(),
+        restore,
+        resolve,
+      };
+      recorder.start(performance.now());
+    });
+    return result;
+  } catch (error) {
+    restore();
+    throw error;
+  }
 };
 
 /**
@@ -2799,18 +2821,19 @@ const finishBenchmark = (): void => {
     backend,
     resolutionScale: 1,
     fixtureCount: show.fixtures.length,
-    machine: currentMachine(),
+    machine: run.machine,
     rigSignature: rigSignature(show.fixtures),
     options: run.options,
   });
+  result.render = { ...BENCH_RENDER };
   if (!playing) result.warnings = ['audio did not start; animation phase is static'];
   // Fewer than ~20 frames over the sample window means the tab lost focus or
   // the machine stalled; the percentiles are not meaningful.
   if (result.frames < 20) {
     result.warnings = [...(result.warnings ?? []), `only ${result.frames} frames sampled; page may have been throttled`];
   }
-  void postBenchmarkResult(result);
-  run.resolve(result);
+  // Awaiting benchmark() also guarantees the next report can see this run.
+  void postBenchmarkResult(result).then(() => run.resolve(result));
 };
 
 const updateStats = (now: number, states: readonly FixtureState[], songTime: number): void => {

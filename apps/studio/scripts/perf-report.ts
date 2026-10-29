@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { benchmarkComparisonKey, type BenchmarkResult } from '../src/app/benchmark';
 
 /**
  * Print recent benchmark runs and the delta against the previous run **on the
@@ -10,7 +11,8 @@ import { fileURLToPath } from 'node:url';
  *
  * Laptop and desktop numbers are never compared to each other: each run is
  * stamped with a hardware id, and a run only diffs against the last run with
- * the same id and viewport.
+ * the same id, render preset, backend, rig and scenario options. Legacy runs
+ * still require matching viewport and DPR. Display limit never limits lookup.
  */
 
 interface MachineInfo {
@@ -36,6 +38,9 @@ interface Run {
   drawCalls: number;
   triangles: number;
   backend: string;
+  render?: BenchmarkResult['render'];
+  resolutionScale?: number;
+  options?: BenchmarkResult['options'];
   fixtureCount: number;
   machine?: MachineInfo;
   rigSignature: string;
@@ -59,7 +64,9 @@ const readRuns = (): Run[] => {
 
 /** Runs written before machine stamping are grouped separately, never silently mixed. */
 const machineId = (run: Run): string => run.machine?.id ?? 'unknown';
-const viewportOf = (run: Run): string => run.machine?.viewport ?? 'unknown';
+const viewportOf = (run: Run): string => run.render === undefined
+  ? `${run.machine?.viewport ?? 'unknown'} (legacy)`
+  : `${run.render.width}x${run.render.height}@${run.render.pixelRatio} (${run.render.protocol})`;
 
 const runs = readRuns();
 if (runs.length === 0) {
@@ -75,6 +82,7 @@ const format = (run: Run): string =>
     run.machine?.id ?? 'no-machine',
     run.backend,
     `${run.fixtureCount} fix`,
+    viewportOf(run),
     `fps ${run.fps.p50.toFixed(1)}/${run.fps.p95.toFixed(1)}`,
     `p95 ${run.frameMs.p95.toFixed(1)}ms`,
     `cpu ${run.cpuMs.p50.toFixed(1)}ms`,
@@ -109,10 +117,11 @@ const afterId = machineId(after);
 const afterViewport = viewportOf(after);
 // A flagged run (throttled tab, audio never started) cannot be a baseline.
 const comparable = (run: Run): boolean => run.warnings === undefined || run.warnings.length === 0;
-const before = recent
+const afterKey = benchmarkComparisonKey(after);
+const before = runs
   .slice(0, -1)
   .reverse()
-  .find((run) => machineId(run) === afterId && viewportOf(run) === afterViewport && comparable(run));
+  .find((run) => afterKey !== null && benchmarkComparisonKey(run) === afterKey && comparable(run));
 
 console.log('\nLast change');
 if (!comparable(after)) {
@@ -120,7 +129,7 @@ if (!comparable(after)) {
   process.exit(0);
 }
 if (before === undefined) {
-  console.log(`  No earlier run on machine ${afterId} at ${afterViewport}; nothing to compare.`);
+  console.log(`  No compatible earlier run on machine ${afterId} at ${afterViewport} with this backend, rig and scenario; nothing to compare.`);
   process.exit(0);
 }
 console.log(`  against ${before.startedAt.replace('T', ' ').slice(0, 19)} (${afterId}, ${afterViewport})`);

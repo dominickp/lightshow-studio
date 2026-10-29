@@ -6,6 +6,7 @@ import {
   normalView,
   positionLocal,
   positionViewDirection,
+  positionWorld,
   smoothstep,
   uniform,
   uv,
@@ -37,12 +38,67 @@ export interface SurfaceHit {
 
 const BOUNDS_EPSILON = 1e-3;
 
+/**
+ * Surface decals a single fixture can own at once.
+ *
+ * A cone is not limited to one surface: a wide wash over the stage lip covers
+ * the dance floor in front *and* the stage top, and light grazing a wall also
+ * lands on the riser. One decal per surface, nearest first, is what makes a
+ * beam read as landing on two objects instead of only the one its centre axis
+ * happens to hit.
+ */
+const POOL_DECALS = 3;
+/** Steepest slope stretch a grazing footprint is allowed (matches the old decal). */
+const MAX_STRETCH = 4;
+/** "No limit" for the clip box axis a decal lies on. */
+const CLIP_OPEN = 1e6;
+/** Feather on the bounds cut, metres. */
+const POOL_EDGE_FEATHER = 0.035;
+/** Shared unit disc every surface decal is scaled from. */
+const POOL_GEOMETRY = new THREE.CircleGeometry(1, 48);
+/** Name on every decal mesh, so the scene can be inspected (and tested). */
+export const POOL_MESH_NAME = 'beam-pool';
+
 function surfaceNormal(surface: VenueSurface, direction: THREE.Vector3, target: THREE.Vector3): THREE.Vector3 {
   if (surface.axis === 'x') target.set(1, 0, 0);
   else if (surface.axis === 'z') target.set(0, 0, 1);
   else target.set(0, 1, 0);
   if (target.dot(direction) > 0) target.negate();
   return target;
+}
+
+/**
+ * Ray/plane hit on one venue surface, or `null` when the ray misses.
+ */
+function intersectSurface(
+  surface: VenueSurface,
+  origin: THREE.Vector3,
+  direction: THREE.Vector3,
+  limit: number,
+): SurfaceHit | null {
+  const component = direction[surface.axis];
+  if (Math.abs(component) < 1e-4) return null;
+
+  const distance = (surface.value - origin[surface.axis]) / component;
+  if (distance <= 0.05 || distance > limit) return null;
+
+  const x = origin.x + direction.x * distance;
+  const y = origin.y + direction.y * distance;
+  const z = origin.z + direction.z * distance;
+  const bounds = surface.bounds;
+  const slack = BOUNDS_EPSILON;
+  if (bounds !== null) {
+    if (x < bounds.x[0] - slack || x > bounds.x[1] + slack) return null;
+    if (y < bounds.y[0] - slack || y > bounds.y[1] + slack) return null;
+    if (z < bounds.z[0] - slack || z > bounds.z[1] + slack) return null;
+  }
+
+  return {
+    distance,
+    point: new THREE.Vector3(x, y, z),
+    normal: surfaceNormal(surface, direction, new THREE.Vector3()),
+    surface,
+  };
 }
 
 /** Nearest venue surface along a ray, or `null` when the ray escapes. */
@@ -55,32 +111,37 @@ export function intersectSurfaces(
   let best: SurfaceHit | null = null;
 
   for (const surface of surfaces) {
-    const component = direction[surface.axis];
-    if (Math.abs(component) < 1e-4) continue;
-
-    const distance = (surface.value - origin[surface.axis]) / component;
-    if (distance <= 0.05 || distance > limit) continue;
-
-    const x = origin.x + direction.x * distance;
-    const y = origin.y + direction.y * distance;
-    const z = origin.z + direction.z * distance;
-    const bounds = surface.bounds;
-    if (bounds !== null) {
-      if (x < bounds.x[0] - BOUNDS_EPSILON || x > bounds.x[1] + BOUNDS_EPSILON) continue;
-      if (y < bounds.y[0] - BOUNDS_EPSILON || y > bounds.y[1] + BOUNDS_EPSILON) continue;
-      if (z < bounds.z[0] - BOUNDS_EPSILON || z > bounds.z[1] + BOUNDS_EPSILON) continue;
-    }
-
-    if (best !== null && distance >= best.distance) continue;
-    best = {
-      distance,
-      point: new THREE.Vector3(x, y, z),
-      normal: surfaceNormal(surface, direction, new THREE.Vector3()),
-      surface,
-    };
+    const hit = intersectSurface(surface, origin, direction, limit);
+    if (hit === null) continue;
+    if (best !== null && hit.distance >= best.distance) continue;
+    best = hit;
   }
 
   return best;
+}
+
+/**
+ * One decal slot: a surface a fixture's cone covers, with the basis of the
+ * ellipse the cone projects onto it.
+ *
+ * Preallocated per rig and rewritten each frame (only the nearest
+ * `POOL_DECALS` candidates survive), so a beam crossing two surfaces does not
+ * churn garbage in the frame loop.
+ */
+interface PoolSlot {
+  surface: VenueSurface | null;
+  distance: number;
+  /** Cone radius at the hit, metres. */
+  radius: number;
+  /** Slope stretch along the beam's shadow direction. */
+  stretch: number;
+  readonly point: THREE.Vector3;
+  readonly normal: THREE.Vector3;
+  readonly tangent: THREE.Vector3;
+  readonly bitangent: THREE.Vector3;
+  /** World-space box the decal is cut to (surface bounds, open on its axis). */
+  readonly clipMin: THREE.Vector3;
+  readonly clipMax: THREE.Vector3;
 }
 
 const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x15171d, roughness: 0.6, metalness: 0.65 });
@@ -160,6 +221,20 @@ function createPoolMaterial() {
   /** Scene haze, 0..1. Widens the penumbra and the spill. */
   const uHaze = uniform(0.65);
 
+  /* World-space box this decal is cut to, taken from the venue surface's own
+   * bounds. A beam that crosses two objects (floor in front of the stage, plus
+   * the stage top) gets one decal per surface, and each has to stop at the
+   * edge of the surface it lies on. Without the cut the floor decal runs on
+   * under the stage and the stage top never gets one at all — the beam looks
+   * like it lights the ground and skips the stage. The axis the surface lies
+   * on is left wide open, because the decal sits in that plane. */
+  const uClipMinX = uniform(-CLIP_OPEN);
+  const uClipMinY = uniform(-CLIP_OPEN);
+  const uClipMinZ = uniform(-CLIP_OPEN);
+  const uClipMaxX = uniform(CLIP_OPEN);
+  const uClipMaxY = uniform(CLIP_OPEN);
+  const uClipMaxZ = uniform(CLIP_OPEN);
+
   const material = new THREE.MeshBasicNodeMaterial({
     transparent: true,
     depthWrite: false,
@@ -195,13 +270,34 @@ function createPoolMaterial() {
   const hot = float(1).sub(smoothstep(0.0, mix(0.5, 0.6, haze), radius));
   const noise = mx_noise_float(vec3(uv().mul(7), uTime.mul(0.25))).mul(0.18).add(0.9);
 
+  /* Bounds cut, feathered so a grazing edge does not alias into a staircase.
+   * Multiply by 0 rather than discard: the pool is additive, so a masked
+   * fragment contributes nothing and the edge stays smooth. */
+  const world = positionWorld;
+  const feather = float(POOL_EDGE_FEATHER);
+  const clipX = smoothstep(uClipMinX.sub(feather), uClipMinX.add(feather), world.x)
+    .mul(float(1).sub(smoothstep(uClipMaxX.sub(feather), uClipMaxX.add(feather), world.x)));
+  const clipY = smoothstep(uClipMinY.sub(feather), uClipMinY.add(feather), world.y)
+    .mul(float(1).sub(smoothstep(uClipMaxY.sub(feather), uClipMaxY.add(feather), world.y)));
+  const clipZ = smoothstep(uClipMinZ.sub(feather), uClipMinZ.add(feather), world.z)
+    .mul(float(1).sub(smoothstep(uClipMaxZ.sub(feather), uClipMaxZ.add(feather), world.z)));
+
   material.colorNode = uColor
     .mul(core.mul(0.92).add(penumbra).add(hot.mul(0.07)))
     .mul(noise)
+    .mul(clipX.mul(clipY).mul(clipZ))
     .mul(uIntensity);
   material.fog = true;
 
-  return { material, uColor, uIntensity, uTime, uHaze };
+  return {
+    material,
+    uColor,
+    uIntensity,
+    uTime,
+    uHaze,
+    clipMin: [uClipMinX, uClipMinY, uClipMinZ] as const,
+    clipMax: [uClipMaxX, uClipMaxY, uClipMaxZ] as const,
+  };
 }
 
 /**
@@ -293,13 +389,14 @@ export class FixtureRig {
   private readonly beamUnitPositions: Float32Array;
   private readonly apertureRadius: number;
   private readonly beamMaterial: ReturnType<typeof createBeamMaterial>;
-  private readonly pool: THREE.Mesh;
-  private readonly poolMaterial: ReturnType<typeof createPoolMaterial>;
+  private readonly poolDecals: { mesh: THREE.Mesh; material: ReturnType<typeof createPoolMaterial> }[] = [];
+  private readonly poolSlots: PoolSlot[] = [];
   private readonly glare: THREE.Mesh;
   private readonly glareMaterial: ReturnType<typeof createGlareMaterial>;
-  private readonly poolTangent = new THREE.Vector3();
-  private readonly poolBitangent = new THREE.Vector3();
   private readonly poolBasis = new THREE.Matrix4();
+  /** Scratch for the candidate surface a pool slot is being built for. */
+  private readonly poolPoint = new THREE.Vector3();
+  private readonly poolNormal = new THREE.Vector3();
   private readonly lensMaterial: THREE.MeshBasicNodeMaterial;
   private readonly lensColor = uniform(new THREE.Color(0x000000));
   private readonly lensGlow = uniform(0);
@@ -403,12 +500,29 @@ export class FixtureRig {
     this.head.add(this.beam);
     this.beamLength = profile.beam.throwM;
 
-    this.poolMaterial = createPoolMaterial();
-    /* Kept in the XY plane with +Z as the surface normal; update() builds a
-     * basis from the hit surface so a grazing beam projects an ellipse. */
-    this.pool = new THREE.Mesh(new THREE.CircleGeometry(1, 48), this.poolMaterial.material);
-    this.pool.renderOrder = 1;
-    this.pool.visible = false;
+    /* Decal geometry is shared: one unit disc, scaled per surface in the pool
+     * material. Each slot needs its own material because the clip box and the
+     * intensity are per-surface uniforms. */
+    for (let index = 0; index < POOL_DECALS; index += 1) {
+      const material = createPoolMaterial();
+      const mesh = new THREE.Mesh(POOL_GEOMETRY, material.material);
+      mesh.name = POOL_MESH_NAME;
+      mesh.renderOrder = 1;
+      mesh.visible = false;
+      this.poolDecals.push({ mesh, material });
+      this.poolSlots.push({
+        surface: null,
+        distance: 0,
+        radius: 0,
+        stretch: 1,
+        point: new THREE.Vector3(),
+        normal: new THREE.Vector3(),
+        tangent: new THREE.Vector3(),
+        bitangent: new THREE.Vector3(),
+        clipMin: new THREE.Vector3(-CLIP_OPEN, -CLIP_OPEN, -CLIP_OPEN),
+        clipMax: new THREE.Vector3(CLIP_OPEN, CLIP_OPEN, CLIP_OPEN),
+      });
+    }
 
     this.glareMaterial = createGlareMaterial();
     this.glare = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.glareMaterial.material);
@@ -417,17 +531,17 @@ export class FixtureRig {
   }
 
   addTo(scene: THREE.Scene): void {
-    scene.add(this.root, this.pool, this.glare);
+    scene.add(this.root, this.glare, ...this.poolDecals.map((decal) => decal.mesh));
   }
   removeFrom(scene: THREE.Scene): void {
-    scene.remove(this.root, this.pool, this.glare);
+    scene.remove(this.root, this.glare, ...this.poolDecals.map((decal) => decal.mesh));
   }
 
   setVisible(visible: boolean): void {
     this.enabled = visible;
     this.root.visible = visible;
     if (!visible) {
-      this.pool.visible = false;
+      for (const decal of this.poolDecals) decal.mesh.visible = false;
       this.glare.visible = false;
     }
   }
@@ -470,10 +584,6 @@ export class FixtureRig {
     this.beamMaterial.uHaze.value = Math.max(0, options.haze);
     this.lensColor.value.copy(color);
     this.lensGlow.value = level > 0.004 ? 0.12 + level * 5 : 0;
-
-    this.poolMaterial.uColor.value.copy(color);
-    this.poolMaterial.uTime.value = timeSec;
-    this.poolMaterial.uHaze.value = Math.max(0, Math.min(1, options.haze));
 
     this.head.updateWorldMatrix(true, false);
     const origin = this.head.localToWorld(this.beamOrigin.set(0, -0.24, 0));
@@ -538,39 +648,158 @@ export class FixtureRig {
     info.color.copy(color);
     info.hit = hit === null ? null : { point: hit.point, normal: hit.normal };
 
-    if (this.enabled && level > 0.004 && hit !== null && !isLaser) {
-      /* Cone/plane intersection is an ellipse: stretch along the slope and
-       * keep the same penumbra the beam has. */
-      const incidence = Math.min(1, Math.abs(direction.dot(hit.normal)));
-      const stretch = Math.min(4, 1 / Math.max(incidence, 0.25));
-      const radius = Math.max(0.2, Math.tan((spread * DEG) / 2) * hit.distance);
-
-      this.poolTangent.copy(direction).addScaledVector(hit.normal, -direction.dot(hit.normal));
-      if (this.poolTangent.lengthSq() < 1e-6) {
-        if (Math.abs(hit.normal.x) > 0.9) this.poolTangent.set(0, 1, 0);
-        else this.poolTangent.set(1, 0, 0);
-      } else {
-        this.poolTangent.normalize();
-      }
-      this.poolBitangent.crossVectors(hit.normal, this.poolTangent).normalize();
-      this.poolBasis.makeBasis(this.poolTangent, this.poolBitangent, hit.normal);
-
-      this.pool.quaternion.setFromRotationMatrix(this.poolBasis);
-      this.pool.position.copy(hit.point).addScaledVector(hit.normal, hit.surface.decalOffset);
+    if (this.enabled && level > 0.004 && !isLaser) {
+      const count = this.collectSurfacePools(origin, direction, spread, length, options.surfaces);
       /* The spill footprint also tracks haze: a clear room has no sideways
        * scattering, so the pool sits on the cone; haze adds a wider tail. */
       const footprint = 1.18 + options.haze * 0.17;
-      this.pool.scale.set(radius * stretch * footprint, radius * footprint, 1);
+      const haze = Math.max(0, Math.min(1, options.haze));
       /* At low haze the volume is gone, so the pool carries the fixture: it
        * brightens as the air clears (see `poolHazeGain`). The decal is the
-       * primary floor light for every fixture, so the look is identical for
+       * primary surface light for every fixture, so the look is identical for
        * identical fixtures regardless of the real-light budget. */
-      this.poolMaterial.uIntensity.value =
-        (level * spreadGain * 0.55 * poolHazeGain(options.haze))
-        / ((1 + hit.distance * 0.1) * stretch);
-      this.pool.visible = true;
+      const gain = (level * spreadGain * 0.55 * poolHazeGain(haze));
+
+      this.poolDecals.forEach((decal, index) => {
+        const slot = index < count ? this.poolSlots[index] : undefined;
+        if (slot === undefined || slot.surface === null) {
+          decal.mesh.visible = false;
+          return;
+        }
+
+        this.poolBasis.makeBasis(slot.tangent, slot.bitangent, slot.normal);
+        decal.mesh.quaternion.setFromRotationMatrix(this.poolBasis);
+        decal.mesh.position.copy(slot.point).addScaledVector(slot.normal, slot.surface.decalOffset);
+        decal.mesh.scale.set(slot.radius * slot.stretch * footprint, slot.radius * footprint, 1);
+
+        decal.material.uColor.value.copy(color);
+        decal.material.uTime.value = timeSec;
+        decal.material.uHaze.value = haze;
+        decal.material.uIntensity.value = gain / ((1 + slot.distance * 0.1) * slot.stretch);
+        for (let axis = 0; axis < 3; axis += 1) {
+          decal.material.clipMin[axis]!.value = slot.clipMin.getComponent(axis);
+          decal.material.clipMax[axis]!.value = slot.clipMax.getComponent(axis);
+        }
+        decal.mesh.visible = true;
+      });
     } else {
-      this.pool.visible = false;
+      for (const decal of this.poolDecals) decal.mesh.visible = false;
     }
+  }
+
+  /**
+   * Fill the pool slots with the venue surfaces this cone actually lands on,
+   * nearest first. Returns how many slots are filled.
+   *
+   * The old renderer painted one decal where the beam's *centre axis* hit and
+   * nothing else. That is why a beam looked like it lit the ground and not the
+   * stage: a wide wash whose axis hit the floor in front of the riser painted
+   * one flat disc in the floor plane, the part of it that overlapped the stage
+   * was buried in the stage box (and depth-culled), and the stage top never got
+   * a decal at all. It also meant a fixture whose axis missed every surface
+   * inside its throw lit nothing, even though its cone was clearly on the
+   * floor.
+   *
+   * A cone has volume, so every surface whose bounds the footprint overlaps
+   * gets a decal, and the material cuts each one to those bounds — which is
+   * what makes light stop exactly at the riser lip instead of spilling across
+   * it.
+   */
+  private collectSurfacePools(
+    origin: THREE.Vector3,
+    direction: THREE.Vector3,
+    spreadDeg: number,
+    limit: number,
+    surfaces: readonly VenueSurface[],
+  ): number {
+    const tanHalf = Math.tan((Math.max(0.2, spreadDeg) * DEG) / 2);
+    let count = 0;
+
+    for (const surface of surfaces) {
+      const component = direction[surface.axis];
+      if (Math.abs(component) < 1e-4) continue;
+      const distance = (surface.value - origin[surface.axis]) / component;
+      if (distance <= 0.05 || distance > limit) continue;
+
+      const point = this.poolPoint.set(
+        origin.x + direction.x * distance,
+        origin.y + direction.y * distance,
+        origin.z + direction.z * distance,
+      );
+      const radius = Math.max(0.2, tanHalf * distance);
+
+      /* Cone/plane intersection is an ellipse: stretch along the slope and
+       * keep the same penumbra the beam has. Needed before the bounds test,
+       * because the stretch is how far the footprint can reach past the axis. */
+      const normal = surfaceNormal(surface, direction, this.poolNormal);
+      const incidence = Math.min(1, Math.abs(direction.dot(normal)));
+      const stretch = Math.min(MAX_STRETCH, 1 / Math.max(incidence, 0.25));
+
+      /* The axis can miss a plane's bounds while the footprint covers them, so
+       * widen the test by the ellipse's own reach. Keeping this tight matters:
+       * there are only `POOL_DECALS` slots, and a surface the footprint does not
+       * actually touch would take one from a surface it does. */
+      const bounds = surface.bounds;
+      if (bounds !== null) {
+        const pad = radius * stretch + BOUNDS_EPSILON;
+        if (point.x < bounds.x[0] - pad || point.x > bounds.x[1] + pad) continue;
+        if (point.y < bounds.y[0] - pad || point.y > bounds.y[1] + pad) continue;
+        if (point.z < bounds.z[0] - pad || point.z > bounds.z[1] + pad) continue;
+      }
+
+      let slot: PoolSlot;
+      if (count < POOL_DECALS) {
+        slot = this.poolSlots[count]!;
+        count += 1;
+      } else {
+        /* Keep the three nearest: the ones outside that are behind whatever the
+         * beam already lit, which the pool cannot model anyway. */
+        let worst = 0;
+        for (let i = 1; i < count; i += 1) {
+          if (this.poolSlots[i]!.distance > this.poolSlots[worst]!.distance) worst = i;
+        }
+        if (distance >= this.poolSlots[worst]!.distance) continue;
+        slot = this.poolSlots[worst]!;
+      }
+
+      slot.surface = surface;
+      slot.distance = distance;
+      slot.radius = radius;
+      slot.stretch = stretch;
+      slot.normal.copy(normal);
+      slot.point.copy(point);
+      slot.tangent.copy(direction).addScaledVector(normal, -direction.dot(normal));
+      if (slot.tangent.lengthSq() < 1e-6) {
+        if (Math.abs(normal.x) > 0.9) slot.tangent.set(0, 1, 0);
+        else slot.tangent.set(1, 0, 0);
+      } else {
+        slot.tangent.normalize();
+      }
+      slot.bitangent.crossVectors(normal, slot.tangent).normalize();
+
+      slot.clipMin.set(-CLIP_OPEN, -CLIP_OPEN, -CLIP_OPEN);
+      slot.clipMax.set(CLIP_OPEN, CLIP_OPEN, CLIP_OPEN);
+      if (bounds !== null) {
+        for (const axis of ['x', 'y', 'z'] as const) {
+          /* The decal lies in the surface's own plane, so that axis stays open. */
+          if (axis === surface.axis) continue;
+          slot.clipMin[axis] = bounds[axis][0];
+          slot.clipMax[axis] = bounds[axis][1];
+        }
+      }
+    }
+
+    /* Nearest first, so slot 0 is the surface the beam visibly lands on. */
+    for (let i = 1; i < count; i += 1) {
+      const slot = this.poolSlots[i]!;
+      let j = i - 1;
+      while (j >= 0 && this.poolSlots[j]!.distance > slot.distance) {
+        this.poolSlots[j + 1] = this.poolSlots[j]!;
+        j -= 1;
+      }
+      this.poolSlots[j + 1] = slot;
+    }
+
+    return count;
   }
 }

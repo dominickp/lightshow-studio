@@ -62,6 +62,14 @@
         background: #04060a;
       }
 
+      /* Match BENCH_RENDER: CSS size also controls LED mask LOD. The preview
+         may be clipped by a small IDE pane; the rendering workload is not. */
+      #stage-viewport[data-benchmark] {
+        inset: 0 auto auto 0;
+        width: 1280px;
+        height: 720px;
+      }
+
       #app, #app canvas {
         position: absolute;
         inset: 0;

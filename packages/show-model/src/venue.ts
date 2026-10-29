@@ -445,6 +445,13 @@ export const CLUB_STAGE: VenueTemplate = {
   surfaces: [
     { kind: 'floor', axis: 'y', value: 0, bounds: null, decalOffset: 0.012 },
     { kind: 'riser', axis: 'y', value: 0.3, bounds: { x: [-12, 12], y: [0.3, 0.3], z: [-12, -2.6] }, decalOffset: 0.012 },
+    /* The stage lip is a real vertical face. Without it a beam that crosses the
+     * front edge had nowhere to land: the floor decal stopped at the riser and
+     * the stage side stayed dark. */
+    { kind: 'riser', axis: 'z', value: -2.6, bounds: { x: [-12, 12], y: [0, 0.3], z: [-2.6, -2.6] }, decalOffset: 0.012 },
+    /* DJ booth on the stage, so beams aimed at the back of the set light the
+     * booth top instead of passing through it to the floor. */
+    { kind: 'riser', axis: 'y', value: 1.8, bounds: { x: [-2.3, 2.3], y: [1.8, 1.8], z: [-10.4, -9.0] }, decalOffset: 0.012 },
     { kind: 'ceiling', axis: 'y', value: 12, bounds: { x: [-20, 20], y: [12, 12], z: [-14, 20] }, decalOffset: 0.02 },
     { kind: 'wall', axis: 'z', value: -11.9, bounds: { x: [-20, 20], y: [0, 14], z: [-12, -11.8] }, decalOffset: 0.02 },
     { kind: 'led', axis: 'z', value: -11.85, bounds: { x: [-6.75, 6.75], y: [1.8, 8], z: [-11.9, -11.8] }, decalOffset: 0.03 },

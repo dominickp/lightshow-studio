@@ -311,6 +311,22 @@ Never add, remove, hide or un-hide a light while a cue can be changing.
   last ~0.9 m instead of showing a cap.
 - The pool is a world-space disc oriented by `makeBasis(tangent, bitangent,
   normal)` with `1 / cos(incidence)` stretch and matching penumbra.
+- A fixture owns up to `POOL_DECALS` (3) decals, one per venue surface its cone
+  covers, nearest first. This replaced a single decal at the centre-axis hit,
+  which is why a beam used to look like it lit the ground and skip the stage:
+  the floor disc was buried inside the stage box and the stage top never got
+  one. Each decal carries the surface's bounds as uniforms and the material
+  cuts to them (`positionWorld` + feathered `smoothstep`), so light stops at
+  the riser lip instead of spilling across it. `throwM` is the search limit, so
+  it must be long enough to actually reach the room: wide fixtures mounted high
+  (strobes, blinders, LED strips) had throws shorter than their mount-to-floor
+  distance and lit nothing.
+- Missing vertical faces never receive light. The stage lip (`z = -2.6`,
+  `y 0..0.3`) and the DJ booth top are declared surfaces in `CLUB_STAGE` for
+  that reason; add a surface for any new lit object.
+- Known limit: no occlusion between surfaces. A decal appears on every surface
+  the cone crosses, even one in the shadow of a nearer object, and a beam
+  crossing more than three surfaces drops the farthest.
 - `Stage.setHaze()` updates `FogExp2.density` and the floor haze plane. The
   default comes from `venue.features.haze` (0.65 when present, 0.05 when not).
 - Lasers keep the existing cone for now; `LaserRig` remains the plan of record.

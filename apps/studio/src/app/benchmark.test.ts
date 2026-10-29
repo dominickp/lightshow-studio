@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BENCH_RENDER,
   BenchmarkRecorder,
+  benchmarkComparisonKey,
+  benchmarkRenderSize,
   buildBenchCues,
   machineInfo,
   percentile,
@@ -96,6 +99,53 @@ describe('machineInfo', () => {
   it('keeps viewport out of the id but reports it', () => {
     expect(machineInfo({ ...base, viewport: '800x600' }).id).toBe(machineInfo(base).id);
     expect(machineInfo({ ...base, viewport: '800x600' }).viewport).toBe('800x600');
+  });
+});
+
+describe('fixed render workload', () => {
+  it('ignores pane dimensions and display DPR while active', () => {
+    expect(benchmarkRenderSize(true, 800, 450, 2)).toEqual(BENCH_RENDER);
+    expect(benchmarkRenderSize(true, 1920, 1080, 1.5)).toEqual(BENCH_RENDER);
+    expect(benchmarkRenderSize(false, 900, 500, 1.2)).toEqual({ width: 900, height: 500, pixelRatio: 1.2 });
+  });
+
+  const run = {
+    machine: machineInfo({ gpu: 'GPU', cores: 8, devicePixelRatio: 1, viewport: '800x450', userAgent: 'test' }),
+    render: { ...BENCH_RENDER },
+    backend: 'WebGPU',
+    scenario: 'dense-demo',
+    rigSignature: '2|wash:2',
+    resolutionScale: 1,
+    options: { startSec: 90, warmupMs: 900, measureMs: 2400, orbit: true, orbitSpeed: 4 },
+  };
+
+  it('compares fixed runs across pane sizes and DPR but not legacy runs', () => {
+    const key = benchmarkComparisonKey(run);
+    expect(benchmarkComparisonKey({ ...run, machine: { ...run.machine, viewport: '1920x1080', devicePixelRatio: 2 } })).toBe(key);
+    expect(benchmarkComparisonKey({ ...run, render: undefined })).not.toBe(key);
+    expect(benchmarkComparisonKey({ ...run, machine: undefined })).toBeNull();
+  });
+
+  it('rejects different machines, protocols, dimensions, backends, rigs and options', () => {
+    const key = benchmarkComparisonKey(run);
+    const changes = [
+      { machine: { ...run.machine, id: 'other' } },
+      { render: { ...run.render, protocol: 'future' } },
+      { render: { ...run.render, width: 1920 } },
+      { render: { ...run.render, pixelRatio: 2 } },
+      { backend: 'WebGL2' },
+      { rigSignature: '3|wash:3' },
+      { scenario: 'other' },
+      { options: { ...run.options, orbit: false } },
+    ];
+    for (const change of changes) expect(benchmarkComparisonKey({ ...run, ...change })).not.toBe(key);
+  });
+
+  it('still requires matching viewport and DPR for legacy runs', () => {
+    const legacy = { ...run, render: undefined };
+    const key = benchmarkComparisonKey(legacy);
+    expect(benchmarkComparisonKey({ ...legacy, machine: { ...run.machine, viewport: '900x500' } })).not.toBe(key);
+    expect(benchmarkComparisonKey({ ...legacy, machine: { ...run.machine, devicePixelRatio: 2 } })).not.toBe(key);
   });
 });
 

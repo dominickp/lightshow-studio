@@ -40,6 +40,19 @@ export const BENCH_SCENARIO: BenchmarkScenario = {
   orbitSpeed: 4,
 };
 
+/** Versioned workload: never compare fixed-size runs with legacy pane-sized runs. */
+export const BENCH_RENDER = {
+  protocol: 'fixed-720p-v1',
+  width: 1280,
+  height: 720,
+  pixelRatio: 1,
+} as const;
+
+/** Shared by resize and adaptive-resolution paths, including during warmup. */
+export function benchmarkRenderSize(active: boolean, width: number, height: number, pixelRatio: number) {
+  return active ? BENCH_RENDER : { width, height, pixelRatio };
+}
+
 export interface FrameSample {
   frameMs: number;
   cpuMs: number;
@@ -125,6 +138,8 @@ export interface BenchmarkResult {
   triangles: number;
   backend: string;
   resolutionScale: number;
+  /** Absent on legacy runs whose workload followed the IDE pane size. */
+  render?: { protocol: string; width: number; height: number; pixelRatio: number };
   fixtureCount: number;
   /** Hardware the run executed on; different ids are not comparable. */
   machine: MachineInfo;
@@ -139,6 +154,30 @@ export interface BenchmarkResult {
   };
   /** Conditions that make this run less trustworthy, e.g. audio never started. */
   warnings?: string[];
+}
+
+/** Compatibility key shared by the report and tests; legacy runs stay separate. */
+export function benchmarkComparisonKey(run: {
+  machine?: MachineInfo;
+  render?: BenchmarkResult['render'];
+  backend: string;
+  scenario: string;
+  rigSignature: string;
+  resolutionScale?: number;
+  options?: BenchmarkResult['options'];
+}): string | null {
+  if (run.machine === undefined) return null;
+  const render = run.render;
+  return JSON.stringify([
+    run.machine.id, run.backend, run.scenario, run.rigSignature,
+    render === undefined
+      ? ['legacy', run.machine.viewport, run.machine.devicePixelRatio, run.resolutionScale]
+      : [render.protocol, render.width, render.height, render.pixelRatio],
+    run.options === undefined ? null : [
+      run.options.startSec, run.options.warmupMs, run.options.measureMs,
+      run.options.orbit, run.options.orbitSpeed,
+    ],
+  ]);
 }
 
 /** Options accepted by `window.__dmxsim.benchmark(options)`. */

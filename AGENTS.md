@@ -30,7 +30,7 @@ await window.__dmxsim.benchmark()   // ~3.5 s; returns fps/frameMs/cpuMs percent
 ```
 Then `npm run bench:report` prints the delta against the previous run **on this machine** and exits non-zero on a regression.
 
-- The scenario is built from the loaded rig, not from the sample project, so editing `koto-chill.dmxsim` cannot invalidate a comparison. It pins all fixtures, orbit on, 100% resolution scale, a fixed zoom and a fixed song time, and restores your previous state afterwards.
-- Comparison is gated on hardware id (`machine.id`, from GPU + cores + browser) and viewport. Never compare a laptop run to a desktop run.
+- The scenario is built from the loaded rig, not from the sample project, so editing `koto-chill.dmxsim` cannot invalidate a comparison. It pins all fixtures, orbit on, a fixed zoom and song time, and **1280×720 rendering at pixel ratio 1** (`fixed-720p-v1`), independent of IDE pane size, dock height or display DPR. The preview may be clipped during the run; normal sizing is restored afterwards. Awaiting the benchmark also waits for history persistence.
+- Comparison is gated on hardware id (`machine.id`, from GPU + cores + browser), render protocol/dimensions, backend, rig and scenario options. Reports search all history, not just the displayed rows. Legacy viewport-sized runs are never compared with fixed-size runs; the new protocol needs two runs to establish a delta. Never compare a laptop run to a desktop run. Timeline/UI work and compositor/vsync can still vary with the host window; this pins the 3D workload, not the entire browser.
 - `fps.p50` can be vsync-capped; when it hits the refresh rate, judge `cpuMs.p50` and `drawCalls` instead.
 - History: `docs/agent_docs/perf-runs.jsonl` (append-only, last 200 runs, committed on purpose).

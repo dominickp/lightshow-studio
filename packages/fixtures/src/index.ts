@@ -44,7 +44,7 @@ export const MOVING_HEAD: FixtureProfile = {
     tiltDeg: [-135, 135],
     strobeHz: [1, 25],
   },
-  beam: { spreadDeg: [6, 42], apertureDiameterM: 0.12, throwM: 14 },
+  beam: { spreadDeg: [6, 42], apertureDiameterM: 0.12, throwM: 18 },
 };
 
 export const WASH: FixtureProfile = {
@@ -69,7 +69,7 @@ export const WASH: FixtureProfile = {
     tiltDeg: [-120, 120],
     strobeHz: [1, 20],
   },
-  beam: { spreadDeg: [24, 78], apertureDiameterM: 0.28, throwM: 10 },
+  beam: { spreadDeg: [24, 78], apertureDiameterM: 0.28, throwM: 16 },
 };
 
 export const STROBE: FixtureProfile = {
@@ -94,7 +94,7 @@ export const STROBE: FixtureProfile = {
     tiltDeg: [0, 0],
     strobeHz: [1, 30],
   },
-  beam: { spreadDeg: [110, 120], apertureDiameterM: 0.48, throwM: 7 },
+  beam: { spreadDeg: [110, 120], apertureDiameterM: 0.48, throwM: 12 },
 };
 
 export const LASER: FixtureProfile = {
@@ -149,7 +149,7 @@ export const PAR: FixtureProfile = {
     tiltDeg: [0, 0],
     strobeHz: [1, 20],
   },
-  beam: { spreadDeg: [14, 38], apertureDiameterM: 0.18, throwM: 9 },
+  beam: { spreadDeg: [14, 38], apertureDiameterM: 0.18, throwM: 16 },
 };
 
 export const BLINDER: FixtureProfile = {
@@ -174,7 +174,7 @@ export const BLINDER: FixtureProfile = {
     tiltDeg: [0, 0],
     strobeHz: [1, 20],
   },
-  beam: { spreadDeg: [90, 110], apertureDiameterM: 0.52, throwM: 8 },
+  beam: { spreadDeg: [90, 110], apertureDiameterM: 0.52, throwM: 14 },
 };
 
 export const LED_STRIP: FixtureProfile = {
@@ -199,7 +199,7 @@ export const LED_STRIP: FixtureProfile = {
     tiltDeg: [0, 0],
     strobeHz: [1, 25],
   },
-  beam: { spreadDeg: [120, 160], apertureDiameterM: 0.9, throwM: 4 },
+  beam: { spreadDeg: [120, 160], apertureDiameterM: 0.9, throwM: 8 },
 };
 
 /**

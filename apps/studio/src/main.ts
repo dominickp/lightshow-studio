@@ -15,6 +15,7 @@ import {
   type FixtureState,
   type LaserPattern,
   type LaserSetup,
+  type LedLookState,
   type LedSurface,
   type ProjectBundle,
   type ProjectFile,
@@ -24,6 +25,7 @@ import {
 import type { LedPlaybackLayer } from './led/led-wall';
 import { LedMediaLibrary } from './led/media';
 import { lookDefinition } from './led/look-definitions';
+import { lookTime } from './led/looks';
 import { PROFILE_LIBRARY } from '@dmxsim/fixtures';
 import {
   BENCH_SCENARIO,
@@ -2838,6 +2840,67 @@ const updateStats = (now: number, states: readonly FixtureState[], songTime: num
   }
 };
 
+/* --- Wall media warm-up --------------------------------------------------- */
+
+/** How far ahead a wall clip is prepared before it appears. */
+const WALL_WARMUP_LEAD_SEC = 2.5;
+/** How often the upcoming clips are re-examined; the work is idempotent. */
+const WALL_WARMUP_INTERVAL_MS = 200;
+
+let wallWarmupAt = Number.NEGATIVE_INFINITY;
+/** Sources whose first decoded frame has already been uploaded to the GPU. */
+const preuploadedTextures = new Set<string>();
+
+/**
+ * Prepare wall video for clips that are about to appear.
+ *
+ * A video cue used to start loading on the frame it became visible, so the
+ * decoder spin-up, the seek to the frame the music was on and the material's
+ * first draw all landed after the cue did — the clip showed up late. This
+ * examines the timeline a lead-in ahead and warms each upcoming clip: its
+ * element is created, it is seeked to the frame the cue will start on, its
+ * material is built, and once a frame has decoded it is uploaded to the GPU.
+ *
+ * Everything here is bounded: work only happens for clips inside the lead-in
+ * window, and only every `WALL_WARMUP_INTERVAL_MS`.
+ */
+function warmWallMedia(songTime: number): void {
+  const now = performance.now();
+  if (now - wallWarmupAt < WALL_WARMUP_INTERVAL_MS) return;
+  wallWarmupAt = now;
+
+  const ahead = songTime + WALL_WARMUP_LEAD_SEC;
+  const live = new Set<string>();
+  const warming = new Map<string, LedLookState[]>();
+  for (const surface of surfaces) {
+    const cues = cuesForLane(cuesByFixture, surface.id);
+    for (const layer of wallPlaybackLayers(cues, songTime) ?? []) {
+      if (layer.look.media !== undefined) live.add(layer.look.media.source);
+    }
+    const looks: LedLookState[] = [];
+    for (const layer of wallPlaybackLayers(cues, ahead) ?? []) {
+      const source = layer.look.media?.source;
+      if (source === undefined || live.has(source)) continue;
+      media.prefetch(source, lookTime(layer.look, ahead, show.beatGrid));
+      if (!preuploadedTextures.has(source) && media.isReady(source)) {
+        const texture = media.texture(source);
+        /* Allocate the GPU texture now, so the cue's first frame is not also
+         * its first upload. `loadeddata` fires before this can run, so a ready
+         * source always has a frame to copy. */
+        if (texture !== null) {
+          renderer.initTexture(texture);
+          preuploadedTextures.add(source);
+        }
+      }
+      looks.push(layer.look);
+    }
+    if (looks.length > 0) warming.set(surface.id, looks);
+  }
+  // Clips that have played keep looping otherwise, competing for decode.
+  media.idleExcept(live);
+  if (warming.size > 0) stage.prewarmLedPlayback(warming);
+}
+
 const frame = (now: number): void => {
   const workStart = performance.now();
   const deltaMs = perf.sampleFrame(now);
@@ -2863,6 +2926,7 @@ const frame = (now: number): void => {
     if (layers !== null) wallPlayback.set(surface.id, layers);
   }
   stage.setLedPlayback(wallPlayback);
+  warmWallMedia(songTime);
   stage.update(states, showAt, { volumetrics, playing: clock.playing });
   post.setTime(showAt);
   renderer.info.reset();

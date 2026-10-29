@@ -5,6 +5,7 @@ import {
   CLUB_STAGE,
   secondsPerBeat,
   type FixtureState,
+  type LedLookState,
   type LedSurface,
   type Show,
   type VenueTemplate,
@@ -327,6 +328,16 @@ export class Stage {
   /** A media texture finished loading: rebuild the affected materials. */
   refreshLedMedia(): void {
     for (const wall of this.ledWalls.values()) wall.refreshMedia();
+  }
+
+  /**
+   * Build wall materials for looks that are about to appear, so the frame a
+   * media clip fades in does not also pay for its node graph.
+   */
+  prewarmLedPlayback(looks: ReadonlyMap<string, readonly LedLookState[]>): void {
+    for (const [surfaceId, surfaceLooks] of looks) {
+      this.ledWalls.get(surfaceId)?.prewarm(surfaceLooks);
+    }
   }
 
   /** Active look layers per wall. Crossfades are resolved by the caller. */

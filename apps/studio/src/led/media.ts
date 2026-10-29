@@ -122,7 +122,21 @@ interface MediaEntry {
   texture: THREE.Texture;
   video: HTMLVideoElement | null;
   ready: boolean;
+  /**
+   * Frame pre-seeked ahead of the cue, while the clip is still paused.
+   * `applied` stops a warm-up from re-seeking every frame.
+   */
+  warm: { targetSec: number; applied: boolean } | null;
+  /** When `play()` was last requested, so start-up seeks can wait for it. */
+  startingAt: number | null;
 }
+
+/** A warm-up seek survives this much drift; past it the cue really moved. */
+const WARM_REARM_SEC = 2;
+/** A `play()` that has not begun in this long is retried. */
+const START_GRACE_MS = 750;
+/** `HTMLMediaElement.HAVE_METADATA`, kept local so this module runs under Node. */
+const HAVE_METADATA = 1;
 
 interface StoredAsset {
   id: string;
@@ -240,22 +254,81 @@ export class LedMediaLibrary implements LedMediaRuntime {
   }
 
   texture(source: string): THREE.Texture | null {
+    return this.resolveEntry(source)?.texture ?? null;
+  }
+
+  /** True once a first frame has decoded, which is when a GPU upload can run. */
+  isReady(source: string): boolean {
+    return this.entries.get(source)?.ready === true;
+  }
+
+  /** Find or create the playback entry behind a source, if it can exist yet. */
+  private resolveEntry(source: string): MediaEntry | null {
     const existing = this.entries.get(source);
-    if (existing !== undefined) return existing.texture;
+    if (existing !== undefined) return existing;
     if (source.startsWith('bundled:')) {
       const asset = BUNDLED_MEDIA.find((entry) => entry.source === source);
-      if (asset === undefined) return null;
-      return this.createEntry(asset).texture;
+      return asset === undefined ? null : this.createEntry(asset);
     }
-    if (source.startsWith('embedded:')) {
+    if (source.startsWith('embedded:') || source.startsWith('local:')) {
       const asset = this.localAssets.get(source);
-      return asset === undefined ? null : this.createEntry(asset).texture;
-    }
-    if (source.startsWith('local:')) {
-      void this.hydrate(source);
-      return null;
+      if (asset !== undefined) return this.createEntry(asset);
+      // A `local:` upload restored from a saved project lives in IndexedDB.
+      if (source.startsWith('local:')) void this.hydrate(source);
     }
     return null;
+  }
+
+  /**
+   * Warm a source before its cue appears.
+   *
+   * A video cue used to start loading on the frame it became visible, so the
+   * decoder spin-up and the random-access seek to the frame the music was on
+   * both landed after the cue did. Doing them a lead-in early means the clip
+   * starts on the frame it should. The seek is applied once per warm-up:
+   * re-seeking a paused video every frame would thrash the decoder instead of
+   * helping it, and `sync` corrects the exact frame when the cue goes live.
+   */
+  prefetch(source: string, targetSec: number): void {
+    const entry = this.resolveEntry(source);
+    const video = entry?.video ?? null;
+    if (entry === null || video === null) return;
+    if (!video.paused) {
+      // Already on screen; `sync` owns the clock.
+      entry.warm = null;
+      return;
+    }
+    if (entry.warm !== null && Math.abs(entry.warm.targetSec - targetSec) < WARM_REARM_SEC) return;
+    entry.warm = { targetSec, applied: false };
+    this.applyWarm(entry);
+  }
+
+  /** Seek a paused, warmed clip to the frame its cue will start on. */
+  private applyWarm(entry: MediaEntry): void {
+    const video = entry.video;
+    if (video === null || entry.warm === null || entry.warm.applied) return;
+    // Nothing to seek until metadata arrives; `loadedmetadata` retries.
+    const target = this.targetTime(video, entry.warm.targetSec);
+    if (target === null || video.seeking) return;
+    entry.warm.applied = true;
+    // `targetSec` keeps the requested song time, so the next pass compares like
+    // with like instead of a wrapped frame time against raw song seconds.
+    video.currentTime = target;
+  }
+
+  /**
+   * Pause the clips no wall is showing.
+   *
+   * A video that has played keeps looping in the background, so a show with
+   * several media cues has them all decoding at once even when only one is on
+   * screen. `prefetch` also needs its warmed clip to stay paused.
+   */
+  idleExcept(sources: ReadonlySet<string>): void {
+    for (const [source, entry] of this.entries) {
+      const video = entry.video;
+      if (video === null || video.paused || sources.has(source)) continue;
+      video.pause();
+    }
   }
 
   /**
@@ -309,23 +382,33 @@ export class LedMediaLibrary implements LedMediaRuntime {
 
   /** Keep a video frame on the song clock; pause when the transport pauses. */
   sync(source: string, timeSec: number, playing: boolean): void {
-    const video = this.entries.get(source)?.video;
-    if (video === null || video === undefined) return;
-    const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : null;
-    const target = duration === null ? timeSec : ((timeSec % duration) + duration) % duration;
+    const entry = this.entries.get(source);
+    const video = entry?.video;
+    if (entry === undefined || video === null || video === undefined) return;
     if (!playing) {
+      entry.warm = null;
       if (!video.paused) video.pause();
-      this.seek(video, target, 0.05);
+      this.seek(video, timeSec, 0.05);
       return;
     }
     if (video.paused) {
-      this.seek(video, target, 0);
-      void video.play().catch(() => undefined);
+      /* The cue is starting, which is the one moment the exact frame matters.
+       * Seek, then play — but do not seek again until playback has begun, or
+       * every frame would restart the decoder and the picture would never
+       * arrive. */
+      if (entry.startingAt !== null && performance.now() - entry.startingAt < START_GRACE_MS) return;
+      entry.startingAt = performance.now();
+      entry.warm = null;
+      this.seek(video, timeSec, 0);
+      void video.play().catch(() => {
+        entry.startingAt = null;
+      });
       return;
     }
+    entry.startingAt = null;
     // The video advances on its own; correct drift rather than seeking every
     // frame, which would stall decoding.
-    this.seek(video, target, 0.25);
+    this.seek(video, timeSec, 0.25);
   }
 
   /** Import user files into the persistent library and return look refs. */
@@ -497,9 +580,23 @@ export class LedMediaLibrary implements LedMediaRuntime {
     texture.minFilter = THREE.LinearFilter;
     texture.magFilter = THREE.LinearFilter;
     texture.generateMipmaps = false;
-    const entry: MediaEntry = { asset, texture, video, ready: false };
+    const entry: MediaEntry = {
+      asset,
+      texture,
+      video,
+      ready: false,
+      warm: null,
+      startingAt: null,
+    };
     video.addEventListener('seeked', () => {
       texture.needsUpdate = true;
+    });
+    video.addEventListener('loadedmetadata', () => {
+      // A warm-up seek can be requested before metadata exists.
+      this.applyWarm(entry);
+    });
+    video.addEventListener('playing', () => {
+      entry.startingAt = null;
     });
     video.addEventListener('loadeddata', () => {
       texture.needsUpdate = true;
@@ -518,7 +615,7 @@ export class LedMediaLibrary implements LedMediaRuntime {
     const image = new Image();
     const texture = new THREE.Texture(image);
     texture.colorSpace = THREE.SRGBColorSpace;
-    const entry: MediaEntry = { asset, texture, video: null, ready: false };
+    const entry: MediaEntry = { asset, texture, video: null, ready: false, warm: null, startingAt: null };
     image.addEventListener('load', () => {
       texture.needsUpdate = true;
       if (!entry.ready) {
@@ -533,8 +630,16 @@ export class LedMediaLibrary implements LedMediaRuntime {
     return entry;
   }
 
-  private seek(video: HTMLVideoElement, target: number, tolerance: number): void {
-    if (video.readyState < HTMLMediaElement.HAVE_METADATA) return;
+  /** Fold a song time into the clip's duration; null before metadata. */
+  private targetTime(video: HTMLVideoElement, timeSec: number): number | null {
+    if (video.readyState < HAVE_METADATA) return null;
+    const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : null;
+    return duration === null ? timeSec : ((timeSec % duration) + duration) % duration;
+  }
+
+  private seek(video: HTMLVideoElement, timeSec: number, tolerance: number): void {
+    const target = this.targetTime(video, timeSec);
+    if (target === null) return;
     if (Math.abs(video.currentTime - target) > tolerance) video.currentTime = target;
   }
 }

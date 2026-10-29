@@ -37,14 +37,13 @@ interface Layer {
   materialKey: string | null;
 }
 
-/** Black fill used while a media material is being rebuilt. */
-const EMPTY_MATERIAL = new THREE.MeshBasicNodeMaterial({
-  transparent: true,
-  depthWrite: false,
-  blending: THREE.AdditiveBlending,
-});
-EMPTY_MATERIAL.colorNode = vec3(0, 0, 0);
-EMPTY_MATERIAL.fog = false;
+/**
+ * Cache key for a look's material. Media is keyed by source and fit so two
+ * clips never share a texture; every generator is shared by kind.
+ */
+const materialKey = (look: LedLookState): string => (look.kind === 'media'
+  ? `media:${look.media?.source ?? ''}:${look.media?.fit ?? 'cover'}`
+  : look.kind);
 
 /**
  * The physical wall is always present, even with no clip: an unlit LED panel
@@ -136,10 +135,30 @@ export class LedWall {
   /** Rebuild media materials after a texture finishes loading. */
   refreshMedia(): void {
     for (const layer of this.layers) {
-      for (const material of layer.materials.values()) material.dispose();
-      layer.materials.clear();
-      layer.materialKey = null;
-      layer.mesh.material = EMPTY_MATERIAL;
+      for (const [key, material] of layer.materials) {
+        if (!key.startsWith('media:')) continue;
+        material.dispose();
+        layer.materials.delete(key);
+      }
+      /* Only media materials depend on a texture landing, and the picture is
+       * rebuilt by the next `update`. Clearing the key is enough — assigning
+       * the black placeholder here would flash it for a frame. */
+      if (layer.materialKey?.startsWith('media:')) layer.materialKey = null;
+    }
+  }
+
+  /**
+   * Build media materials for looks that are about to appear.
+   *
+   * The frame a clip fades in used to pay for its node graph as well as its
+   * texture, which is one of the reasons a video cue arrived late. Nothing
+   * here is assigned to a layer; the material is simply cached early so the
+   * real draw only has to swap it in.
+   */
+  prewarm(looks: readonly LedLookState[]): void {
+    for (const look of looks) {
+      if (look.kind !== 'media' || look.media === undefined) continue;
+      for (const layer of this.layers) this.materialFor(layer, look);
     }
   }
 
@@ -198,30 +217,32 @@ export class LedWall {
   }
 
   private setMaterial(layer: Layer, look: LedLookState): void {
-    const key = look.kind === 'media'
-      ? `media:${look.media?.source ?? ''}:${look.media?.fit ?? 'cover'}`
-      : look.kind;
+    const key = materialKey(look);
     if (layer.materialKey === key) return;
     layer.materialKey = key;
-    let material = layer.materials.get(key);
-    if (material === undefined) {
-      const created = new THREE.MeshBasicNodeMaterial({
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-      });
-      const mediaTexture = look.kind === 'media' && look.media !== undefined
-        ? this.media?.texture(look.media.source) ?? null
-        : null;
-      created.colorNode = buildLookNode(look.kind, layer.uniforms, {
-        texture: mediaTexture,
-        fit: look.media?.fit ?? 'cover',
-      });
-      created.fog = false;
-      material = created;
-      layer.materials.set(key, material);
-    }
-    layer.mesh.material = material;
+    layer.mesh.material = this.materialFor(layer, look);
+  }
+
+  /** The cached material for a look, building it the first time it is needed. */
+  private materialFor(layer: Layer, look: LedLookState): THREE.Material {
+    const key = materialKey(look);
+    const cached = layer.materials.get(key);
+    if (cached !== undefined) return cached;
+    const created = new THREE.MeshBasicNodeMaterial({
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const mediaTexture = look.kind === 'media' && look.media !== undefined
+      ? this.media?.texture(look.media.source) ?? null
+      : null;
+    created.colorNode = buildLookNode(look.kind, layer.uniforms, {
+      texture: mediaTexture,
+      fit: look.media?.fit ?? 'cover',
+    });
+    created.fog = false;
+    layer.materials.set(key, created);
+    return created;
   }
 
   dispose(): void {

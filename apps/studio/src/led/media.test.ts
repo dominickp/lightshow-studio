@@ -140,7 +140,7 @@ describe('LedMediaLibrary playback alignment', () => {
   });
 
   it('pauses clips no wall is showing, so they stop competing for decode', () => {
-    const { library, video, source } = libraryWithClip();
+    const { library, video } = libraryWithClip();
     video.paused = false;
 
     library.idleExcept(new Set());

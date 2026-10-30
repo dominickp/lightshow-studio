@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import * as THREE from 'three/webgpu';
 import { defaultLedLook, ledSurfaceFromFeature } from '@dmxsim/show-model';
 import type { LedLookState } from '@dmxsim/show-model';
 import { LedWall, type LedMediaRuntime } from './led-wall';
@@ -18,6 +19,25 @@ function spyRuntime(): SpyRuntime {
     texture: (source: string) => {
       asked.push(source);
       return null;
+    },
+    sync: () => undefined,
+  };
+}
+
+/** A runtime whose textures already exist, as bundled video and images do. */
+function readyRuntime(): SpyRuntime {
+  const asked: string[] = [];
+  const textures = new Map<string, THREE.Texture>();
+  return {
+    asked,
+    texture: (source: string) => {
+      asked.push(source);
+      let texture = textures.get(source);
+      if (texture === undefined) {
+        texture = new THREE.Texture();
+        textures.set(source, texture);
+      }
+      return texture;
     },
     sync: () => undefined,
   };
@@ -71,6 +91,21 @@ describe('LED wall media warm-up', () => {
     makeWall(runtime).prewarm([defaultLedLook('gradient')]);
 
     expect(runtime.asked).toEqual([]);
+  });
+
+  it('keeps a material whose texture existed when it was built', () => {
+    const runtime = readyRuntime();
+    const target = makeWall(runtime);
+    const look = mediaLook('bundled:003');
+
+    target.prewarm([look]);
+    const built = runtime.asked.length;
+    // The first decoded frame arrived: the material already samples it, so
+    // rebuilding the node graph here would only cost a playback frame.
+    target.refreshMedia();
+    show(target, look);
+
+    expect(runtime.asked.length).toBe(built);
   });
 
   it('rebuilds a media look once its texture lands', () => {

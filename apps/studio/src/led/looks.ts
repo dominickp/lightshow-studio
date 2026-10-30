@@ -54,6 +54,8 @@ export interface LookUniforms {
   brightness: Uniform;
   gamma: Uniform;
   aspect: Uniform;
+  /** Pixel aspect of the current media texture; 16:9 until metadata lands. */
+  mediaAspect: Uniform;
   maskStrength: Uniform;
   opacity: Uniform;
 }
@@ -80,6 +82,7 @@ export function createLookUniforms(surface: LedSurface): LookUniforms {
     brightness: uniform(surface.brightness),
     gamma: uniform(surface.gamma),
     aspect: uniform(surface.widthM / Math.max(0.001, surface.heightM)),
+    mediaAspect: uniform(DEFAULT_MEDIA_ASPECT),
     maskStrength: uniform(0),
     opacity: uniform(1),
   };
@@ -263,15 +266,27 @@ function buildBlackout(u: LookUniforms): Node {
   return vec3(0, 0, 0).mul(u.intensity);
 }
 
-/** Pixel aspect of a loaded video or image; 16:9 until metadata arrives. */
-function mediaAspect(texture: THREE.Texture): number {
-  const image = texture.image as
+/** Assumed source aspect before a video or image has decoded its dimensions. */
+const DEFAULT_MEDIA_ASPECT = 16 / 9;
+
+/**
+ * Pixel aspect of a loaded video or image; 16:9 until metadata arrives.
+ *
+ * A `VideoTexture` exists as soon as the clip is cued, but its `<video>`
+ * reports `videoWidth === 0` until metadata loads, so the fallback matters:
+ * a zero aspect collapses the sampling in Y and stretches one column across
+ * the whole wall. The value is pushed into a uniform every frame, because the
+ * material may be built long before the clip has usable dimensions.
+ */
+export function mediaAspect(texture: THREE.Texture | null): number {
+  const image = texture?.image as
     | { videoWidth?: number; videoHeight?: number; width?: number; height?: number }
     | null
     | undefined;
-  const width = image?.videoWidth ?? image?.width ?? 16;
-  const height = image?.videoHeight ?? image?.height ?? 9;
-  return width / Math.max(1, height);
+  const width = image?.videoWidth ?? image?.width ?? 0;
+  const height = image?.videoHeight ?? image?.height ?? 0;
+  if (width <= 0 || height <= 0) return DEFAULT_MEDIA_ASPECT;
+  return width / height;
 }
 
 /**
@@ -280,8 +295,8 @@ function mediaAspect(texture: THREE.Texture): number {
  * `cover` fills the wall and crops the overflow; `contain` shows the whole
  * frame and leaves the unused panel area dark, like letterboxing.
  */
-function mediaUv(u: LookUniforms, aspect: number, fit: LedMediaFit): Node {
-  const source = float(aspect);
+function mediaUv(u: LookUniforms, fit: LedMediaFit): Node {
+  const source = u.mediaAspect;
   const wall = u.aspect;
   const sourceWider = greaterThan(source, wall);
   const ratio = source.div(wall);
@@ -306,7 +321,7 @@ function buildMedia(
   fit: LedMediaFit,
 ): Node {
   if (mediaTexture === null) return vec3(0, 0, 0);
-  const scales = mediaUv(u, mediaAspect(mediaTexture), fit);
+  const scales = mediaUv(u, fit);
   const centered = uv().sub(0.5);
   const sampled = textureNode(mediaTexture, centered.mul(scales).add(0.5));
   // `contain` maps outside the source; clamp-to-edge would smear those pixels

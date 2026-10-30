@@ -51,3 +51,38 @@ export function wallPlaybackLayers(
   layers.push({ look: current.look, opacity: ramp * (current.opacity ?? 1) });
   return layers;
 }
+
+/** A media clip that becomes visible inside the warm-up window. */
+export interface UpcomingMediaCue {
+  look: LedLookState;
+  /** Song time the cue starts, which is the frame worth warming to. */
+  startSec: number;
+}
+
+/**
+ * Media cues that start within `leadSec` of `songTime`.
+ *
+ * The warm-up wants the frame the clip will *start* on, not one that keeps
+ * moving as the playhead advances; using a fixed target means a paused clip is
+ * seeked once rather than re-armed every couple of seconds. Sources are
+ * deduplicated, so two walls opening the same clip warm it once.
+ */
+export function upcomingMediaCues(
+  cues: readonly Cue[],
+  songTime: number,
+  leadSec: number,
+): UpcomingMediaCue[] {
+  const seen = new Set<string>();
+  const upcoming: UpcomingMediaCue[] = [];
+  for (const cue of cues
+    .filter((entry): entry is LookCue => entry.look !== undefined)
+    .slice()
+    .sort((a, b) => a.startSec - b.startSec)) {
+    if (cue.startSec <= songTime || cue.startSec > songTime + leadSec) continue;
+    const source = cue.look.media?.source;
+    if (source === undefined || seen.has(source)) continue;
+    seen.add(source);
+    upcoming.push({ look: cue.look, startSec: cue.startSec });
+  }
+  return upcoming;
+}

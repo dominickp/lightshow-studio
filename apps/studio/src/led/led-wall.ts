@@ -8,6 +8,7 @@ import {
   buildLookNode,
   createLookUniforms,
   lookTime,
+  mediaAspect,
   type LookUniforms,
 } from './looks';
 
@@ -29,12 +30,22 @@ export interface LedPlaybackLayer {
   opacity: number;
 }
 
+interface CachedMaterial {
+  material: THREE.Material;
+  /** Texture the node graph samples; null for a placeholder build. */
+  texture: THREE.Texture | null;
+  /** Built before its texture existed, so the node graph must be rebuilt. */
+  placeholder: boolean;
+}
+
 interface Layer {
   mesh: THREE.Mesh;
   uniforms: LookUniforms;
   /** Keyed by kind plus media source; two clips may share a generator. */
-  materials: Map<string, THREE.Material>;
+  materials: Map<string, CachedMaterial>;
   materialKey: string | null;
+  /** Texture of the assigned material, read each frame for live dimensions. */
+  mediaTexture: THREE.Texture | null;
 }
 
 /**
@@ -93,7 +104,13 @@ export class LedWall {
       );
       mesh.position.set(0, surface.y, surface.z + index * 0.01);
       mesh.renderOrder = 1 + index;
-      const layer: Layer = { mesh, uniforms, materials: new Map(), materialKey: null };
+      const layer: Layer = {
+        mesh,
+        uniforms,
+        materials: new Map(),
+        materialKey: null,
+        mediaTexture: null,
+      };
       this.layers.push(layer);
       this.group.add(mesh);
     }
@@ -132,17 +149,26 @@ export class LedWall {
     this.refreshMedia();
   }
 
-  /** Rebuild media materials after a texture finishes loading. */
+  /**
+   * Rebuild media materials that were built before their texture existed.
+   *
+   * A video or bundled image creates its texture object immediately, so the
+   * material already samples the right texture and only needs the upload that
+   * `loadeddata` queues. Disposing it here used to rebuild the node graph and
+   * recompile the GPU pipeline on the first frame a clip appeared, which is a
+   * measurable stutter. A `local:` upload restored from IndexedDB is the one
+   * case that really starts with no texture, so only those placeholders are
+   * discarded.
+   */
   refreshMedia(): void {
     for (const layer of this.layers) {
-      for (const [key, material] of layer.materials) {
-        if (!key.startsWith('media:')) continue;
-        material.dispose();
+      for (const [key, cached] of layer.materials) {
+        if (!key.startsWith('media:') || !cached.placeholder) continue;
+        cached.material.dispose();
         layer.materials.delete(key);
       }
-      /* Only media materials depend on a texture landing, and the picture is
-       * rebuilt by the next `update`. Clearing the key is enough — assigning
-       * the black placeholder here would flash it for a frame. */
+      /* The picture is rebuilt by the next `update`; clearing the key is
+       * enough — assigning the black placeholder would flash it for a frame. */
       if (layer.materialKey?.startsWith('media:')) layer.materialKey = null;
     }
   }
@@ -190,6 +216,10 @@ export class LedWall {
       layer.uniforms.opacity.value = playback.opacity;
       layer.uniforms.maskStrength.value = maskStrength;
       if (look.media !== undefined) {
+        /* A material can outlive the frame it was built on, and a video only
+         * reports its dimensions once metadata loads, so the aspect is
+         * sampled live rather than baked into the node graph. */
+        layer.uniforms.mediaAspect.value = mediaAspect(layer.mediaTexture);
         this.media?.sync(look.media.source, time, playing);
       }
     }
@@ -220,11 +250,13 @@ export class LedWall {
     const key = materialKey(look);
     if (layer.materialKey === key) return;
     layer.materialKey = key;
-    layer.mesh.material = this.materialFor(layer, look);
+    const cached = this.materialFor(layer, look);
+    layer.mediaTexture = cached.texture;
+    layer.mesh.material = cached.material;
   }
 
   /** The cached material for a look, building it the first time it is needed. */
-  private materialFor(layer: Layer, look: LedLookState): THREE.Material {
+  private materialFor(layer: Layer, look: LedLookState): CachedMaterial {
     const key = materialKey(look);
     const cached = layer.materials.get(key);
     if (cached !== undefined) return cached;
@@ -241,8 +273,13 @@ export class LedWall {
       fit: look.media?.fit ?? 'cover',
     });
     created.fog = false;
-    layer.materials.set(key, created);
-    return created;
+    const entry: CachedMaterial = {
+      material: created,
+      texture: mediaTexture,
+      placeholder: mediaTexture === null,
+    };
+    layer.materials.set(key, entry);
+    return entry;
   }
 
   dispose(): void {
@@ -250,7 +287,7 @@ export class LedWall {
     (this.panel.material as THREE.Material).dispose();
     for (const layer of this.layers) {
       layer.mesh.geometry.dispose();
-      for (const material of layer.materials.values()) material.dispose();
+      for (const cached of layer.materials.values()) cached.material.dispose();
       layer.materials.clear();
     }
   }

@@ -84,7 +84,7 @@ import {
   latestActiveEndSec,
   type CueIndex,
 } from './arrangement/active';
-import { wallPlaybackLayers } from './led/playback';
+import { upcomingMediaCues, wallPlaybackLayers } from './led/playback';
 import { clamp } from './lib/math';
 import { PerfMonitor } from './app/perf';
 import { buildProjectFile } from './project/build';
@@ -2861,13 +2861,27 @@ const updateStats = (now: number, states: readonly FixtureState[], songTime: num
 /* --- Wall media warm-up --------------------------------------------------- */
 
 /** How far ahead a wall clip is prepared before it appears. */
-const WALL_WARMUP_LEAD_SEC = 2.5;
+const WALL_WARMUP_LEAD_SEC = 8;
 /** How often the upcoming clips are re-examined; the work is idempotent. */
 const WALL_WARMUP_INTERVAL_MS = 200;
 
 let wallWarmupAt = Number.NEGATIVE_INFINITY;
 /** Sources whose first decoded frame has already been uploaded to the GPU. */
 const preuploadedTextures = new Set<string>();
+
+/**
+ * Upload a decoded first frame, so a cue's first draw is not its first copy.
+ *
+ * Skipped while the transport is running: a playing clip re-uploads every
+ * frame anyway, so only the paused warm-up needs the head start.
+ */
+function preuploadWallTexture(source: string): void {
+  if (clock.playing || preuploadedTextures.has(source) || !media.isReady(source)) return;
+  const texture = media.texture(source);
+  if (texture === null) return;
+  renderer.initTexture(texture);
+  preuploadedTextures.add(source);
+}
 
 /**
  * Prepare wall video for clips that are about to appear.
@@ -2887,30 +2901,29 @@ function warmWallMedia(songTime: number): void {
   if (now - wallWarmupAt < WALL_WARMUP_INTERVAL_MS) return;
   wallWarmupAt = now;
 
-  const ahead = songTime + WALL_WARMUP_LEAD_SEC;
   const live = new Set<string>();
   const warming = new Map<string, LedLookState[]>();
   for (const surface of surfaces) {
     const cues = cuesForLane(cuesByFixture, surface.id);
-    for (const layer of wallPlaybackLayers(cues, songTime) ?? []) {
-      if (layer.look.media !== undefined) live.add(layer.look.media.source);
-    }
     const looks: LedLookState[] = [];
-    for (const layer of wallPlaybackLayers(cues, ahead) ?? []) {
+    /* The clip on screen is warmed too. It is usually the one that starts at
+     * the parked playhead, so it used to be the only clip excluded from the
+     * warm-up — and therefore the one that paid for decode, node-graph build
+     * and GPU upload on its first visible frame. `prefetch` is not used here:
+     * `sync` owns the clock while the clip is live. */
+    for (const layer of wallPlaybackLayers(cues, songTime) ?? []) {
       const source = layer.look.media?.source;
-      if (source === undefined || live.has(source)) continue;
-      media.prefetch(source, lookTime(layer.look, ahead, show.beatGrid));
-      if (!preuploadedTextures.has(source) && media.isReady(source)) {
-        const texture = media.texture(source);
-        /* Allocate the GPU texture now, so the cue's first frame is not also
-         * its first upload. `loadeddata` fires before this can run, so a ready
-         * source always has a frame to copy. */
-        if (texture !== null) {
-          renderer.initTexture(texture);
-          preuploadedTextures.add(source);
-        }
-      }
+      if (source === undefined) continue;
+      live.add(source);
       looks.push(layer.look);
+      preuploadWallTexture(source);
+    }
+    for (const upcoming of upcomingMediaCues(cues, songTime, WALL_WARMUP_LEAD_SEC)) {
+      const source = upcoming.look.media?.source;
+      if (source === undefined || live.has(source)) continue;
+      media.prefetch(source, lookTime(upcoming.look, upcoming.startSec, show.beatGrid));
+      preuploadWallTexture(source);
+      looks.push(upcoming.look);
     }
     if (looks.length > 0) warming.set(surface.id, looks);
   }

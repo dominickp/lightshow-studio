@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { defaultLedLook } from '@dmxsim/show-model';
+import type { LedLookState } from '@dmxsim/show-model';
 import type { Cue } from '../arrangement/types';
-import { wallPlaybackLayers } from './playback';
+import { upcomingMediaCues, wallPlaybackLayers } from './playback';
 
 const wallClip = (overrides: Partial<Cue> & Pick<Cue, 'id' | 'startSec' | 'endSec'>): Cue => ({
   fixtureId: 'wall-1',
@@ -75,5 +76,44 @@ describe('wallPlaybackLayers', () => {
 
   it('is exclusive at the clip end, unlike a fixture cue', () => {
     expect(wallPlaybackLayers([wallClip({ id: 'a', startSec: 0, endSec: 4 })], 4)).toBeNull();
+  });
+});
+
+const mediaLook = (source: string): LedLookState => ({
+  ...defaultLedLook('media'),
+  media: { source, kind: 'video', fit: 'cover', label: source },
+});
+
+describe('upcomingMediaCues', () => {
+  it('returns media cues that start inside the lead-in window', () => {
+    const cues = [
+      wallClip({ id: 'a', startSec: 10, endSec: 20, look: mediaLook('bundled:001') }),
+      wallClip({ id: 'b', startSec: 25, endSec: 30, look: mediaLook('bundled:002') }),
+    ];
+
+    const upcoming = upcomingMediaCues(cues, 4, 8);
+
+    expect(upcoming.map((entry) => entry.look.media?.source)).toEqual(['bundled:001']);
+    // The fixed cue start is the frame worth warming to, not a moving playhead.
+    expect(upcoming[0]?.startSec).toBe(10);
+  });
+
+  it('ignores the live clip, generator looks and cues outside the window', () => {
+    const cues = [
+      wallClip({ id: 'live', startSec: 0, endSec: 10, look: mediaLook('bundled:001') }),
+      wallClip({ id: 'gen', startSec: 12, endSec: 20 }),
+      wallClip({ id: 'far', startSec: 40, endSec: 50, look: mediaLook('bundled:002') }),
+    ];
+
+    expect(upcomingMediaCues(cues, 5, 8)).toEqual([]);
+  });
+
+  it('deduplicates a clip shared by several walls', () => {
+    const cues = [
+      wallClip({ id: 'a', startSec: 6, endSec: 10, look: mediaLook('bundled:003') }),
+      wallClip({ id: 'b', startSec: 7, endSec: 11, look: mediaLook('bundled:003') }),
+    ];
+
+    expect(upcomingMediaCues(cues, 1, 8)).toHaveLength(1);
   });
 });
